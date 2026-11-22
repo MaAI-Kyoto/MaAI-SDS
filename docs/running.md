@@ -31,7 +31,7 @@ MMDAgent-EX の本体とアバターの取得は [README](../README.md#3-mmdagen
 1. 「MMDAgent-EX起動設定」の「ファイル設定」で次を指定します（README の配置なら自動で入ります）。Docker の構成では
    `controller_config.docker.json` の `mdf_path` も確認します（[Docker の準備](#docker-の準備)）。
    - 実行ファイル：`C:\MMDAgent-EX\MMDAgent-EX.exe`（ソースからビルドした場合は `...\Release\MMDAgent-EX.exe`）
-   - MDF：使用する `.mdf`（例：公式のサンプル集の `C:\MMDAgent-EX\example\example_websocket\example_websocket.mdf`。
+   - MDF：使用する `.mdf`（例：サンプル集に入れた MaAI-SDS 用の `C:\MMDAgent-EX\example\maai_sds\maai_sds.mdf`。
      WebSocket・ポート 9001）
 2. MDF の `Plugin_Remote_*` で Remote の通信方式を 1 つだけ選び、保存します。`EnableServer` と `EnableClient` を
    同時に `true` にしないでください。通信方式は MDF の設定から自動で選択されます。
@@ -56,12 +56,12 @@ Plugin_Remote_Websocket_Directory=/chat
 
 MMDAgent-EX は `ws://localhost:8080/chat` に接続します。Docker では `.env` の `MMDAGENT_REMOTE_WS_PORT=8080`（既定 8080）と
 一致させます。ディレクトリは設定した値（`/chat` など）を指定します。`.env.example` の `MMDAGENT_REMOTE_WS_PORT` は、
-公式のサンプル集の `example_websocket.mdf` に合わせて 9001 にしてあります（compose の既定は 8080）。
+MaAI-SDS 用の `maai_sds.mdf` に合わせて 9001 にしてあります（compose の既定は 8080）。
 
 #### TCP サーバー（対話サーバーがサーバー、MMDAgent-EX がクライアント）
 
-公式のサンプル集で TCP を使う場合は、`example_websocket.mdf` と `example_websocket.fst` を同じフォルダーに別名
-（例：`example_tcp.mdf` と `example_tcp.fst`。MMDAgent-EX は MDF と同じ名前の FST を読みます）でコピーし、MDF の
+TCP を使う場合は、`maai_sds.mdf` と `maai_sds.fst` を同じフォルダーに別名
+（例：`maai_sds_tcp.mdf` と `maai_sds_tcp.fst`。MMDAgent-EX は MDF と同じ名前の FST を読みます）でコピーし、MDF の
 `Plugin_Remote_Websocket_*` の行を次の行に置き換えます。
 
 ```text
@@ -114,7 +114,7 @@ Docker × Web UI と Docker × Qt アプリに共通の手順です。
 4. WebSocket 方式または TCP サーバー方式を使う場合は、`.env` のポートを MDF の値と一致させます。
 5. `controller_config.docker.json` を確認します。ファイルのパスはコンテナ内の形式のまま使います。
    - `mdf_path`：`/app/mmdagent_assets/<MMDAGENT_ASSETS_HOST からの相対パス>`（サンプル集なら
-     `/app/mmdagent_assets/example_websocket/example_websocket.mdf`）
+     `/app/mmdagent_assets/maai_sds/maai_sds.mdf`）
    - `audio_output_mode`：`mmd`
    - コンテナが読むファイルのパス：`/app/mmdagent_assets/...`・`/app/input_wav/...`・`/host_repo/...` のいずれか
    - 例外は `exec_path`：Qt アプリはホストで MMDAgent-EX を起動するため、`MMDAgent-EX.exe` の Windows のパスのまま
@@ -252,7 +252,7 @@ docker compose -f docker-compose.yml -f docker-compose.cpu.yml up
 
    ```powershell
    Set-Location C:\MMDAgent-EX
-   .\MMDAgent-EX.exe ".\example\example_websocket\example_websocket.mdf"
+   .\MMDAgent-EX.exe ".\example\maai_sds\maai_sds.mdf"
    ```
 
 2. Web UI の接続状態が「未接続」から「接続済み（websocket|tcp_server|tcp_client）」に変わることを確認します。

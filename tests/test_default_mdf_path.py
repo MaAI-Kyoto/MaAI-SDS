@@ -31,6 +31,11 @@ class DefaultMdfPathTest(unittest.TestCase):
             (ws / "example_websocket.mdf").write_text("", encoding="utf-8")
             self.assertEqual(detect_default_exec_path(base), str(base / "MMDAgent-EX.exe"))
             self.assertEqual(detect_default_mdf_path(base), str(ws / "example_websocket.mdf"))
+            # README の手順どおり MaAI-SDS 用の MDF をサンプル集に入れたら、そちらを使う
+            ours = base / "example" / "maai_sds"
+            ours.mkdir()
+            (ours / "maai_sds.mdf").write_text("", encoding="utf-8")
+            self.assertEqual(detect_default_mdf_path(base), str(ours / "maai_sds.mdf"))
 
 
 if __name__ == "__main__":

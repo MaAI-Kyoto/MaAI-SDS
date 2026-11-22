@@ -1,0 +1,6 @@
+# MaAI-SDS 用の MDF。対話サーバーへ WebSocket（ws://localhost:9001/chat）で接続する。
+# 同じフォルダーの maai_sds.fst（同じ名前の FST）を読む。
+window_size=600,600
+Plugin_Remote_Websocket_Host=localhost
+Plugin_Remote_Websocket_Port=9001
+Plugin_Remote_Websocket_Directory=/chat

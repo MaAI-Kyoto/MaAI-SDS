@@ -35,7 +35,7 @@
   "llm_backend": "LM Studio",
   "llm_host": "http://host.docker.internal:1234",
   "llm_model_lmstudio": "gemma-4-e4b-it-japanese@q4_k_m",
-  "mdf_path": "/app/mmdagent_assets/example_websocket/example_websocket.mdf",
+  "mdf_path": "/app/mmdagent_assets/maai_sds/maai_sds.mdf",
   "Plugin_Remote_EnableServer": false,
   "Plugin_Remote_EnableClient": false,
   "Plugin_Remote_Websocket_Host": "0.0.0.0",

@@ -16,11 +16,13 @@ _EXE_CANDIDATES = (
     ("bin", "MMDAgent.exe"),
 )
 # 先に見つかったものを使う。Release\ の gene の MDF は自分で用意した場合のもの（TCP 版を WebSocket 版より先に）。
-# 次が公式のサンプル集（C:\MMDAgent-EX\example に git clone --recursive）の WebSocket の例で、README の手順はこれ。
+# 次が公式のサンプル集（C:\MMDAgent-EX\example に git clone --recursive）に入れた MaAI-SDS 用の MDF
+# （assets/mmdagent/maai_sds をコピーしたもの。README の手順はこれ）、その次がサンプル集の WebSocket の例。
 # 配布物の MMDAgent-EX.mdf は Plugin_Remote の設定が無く対話サーバーにつながらないので、最後にする。
 _MDF_CANDIDATES = (
     ("Release", "MMDAgent-EX_gene.mdf"),
     ("Release", "MMDAgent-EX_gene_websocket.mdf"),
+    ("example", "maai_sds", "maai_sds.mdf"),
     ("example", "example_websocket", "example_websocket.mdf"),
     ("MMDAgent-EX.mdf",),
     ("MMDAgent.mdf",),
