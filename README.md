@@ -168,8 +168,20 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
   待機モーションの首の動きは止まります。
 
 > [!NOTE]
-> アバター「ジェネ」は CC BY 4.0 で公開されていますが、商標権・意匠権は名古屋工業大学が保持しており、営利・商用の利用には
-> 別途許諾が必要です（[mmdagent-ex/gene](https://github.com/mmdagent-ex/gene) のライセンスの節）。
+> MaAI-SDS のリポジトリには、MMDAgent-EX 本体・アバター・モーションは含まれていません（上の手順で各配布元から取得します）。
+> 同梱の `maai_sds.mdf` / `maai_sds.fst` は、それらのファイル名を指す設定だけです。
+>
+> - **ジェネ**（`gene/`）は CC BY 4.0 で公開されています。ジェネを映した動画や発表を公開するときは、次のクレジットを表記してください。
+>   商標権・意匠権は名古屋工業大学が保持しており、学術活動（論文・発表など）と個人の非営利の利用は許諾不要、それ以外の営利・商用の
+>   利用には別途許諾が必要です（[mmdagent-ex/gene](https://github.com/mmdagent-ex/gene) のライセンスの節）。
+>
+>   ```text
+>   CG-CA Gene (c) 2023 by Nagoya Institute of Technology, Moonshot R&D Goal 1 Avatar Symbiotic Society
+>   ```
+>
+> - **サンプル集のモーションと画像**（`maai_sds.fst` が使う待機モーション `motions/wait/01_Wait.vmd`、背景の
+>   `images/floor_block.png`・`images/back_white.png` など）は、ライセンスが明記されていません。これらを映した動画などを
+>   公開する場合は、配布元（[mmdagent-ex/example](https://github.com/mmdagent-ex/example)）に確認してください。
 
 ### 4. 外部アプリケーション
 
