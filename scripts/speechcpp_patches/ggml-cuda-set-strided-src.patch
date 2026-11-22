@@ -1,0 +1,14 @@
+--- a/src/ggml-cuda/set.cu
++++ b/src/ggml-cuda/set.cu
+@@ -9,9 +9,9 @@
+     GGML_ASSERT(src1->type == src0->type);
+     GGML_ASSERT(dst ->type == src0->type);
+ 
++    // MaAI-SDS: src0・src1 は連続していなくてよい（下の ggml_cuda_cpy は歩幅のあるテンソルを写せる）。
++    // speech.cpp は連続していない src1 で SET を使い、ここで GGML_ASSERT に掛かって止まっていた。
+     GGML_ASSERT(ggml_is_contiguous(dst));
+-    GGML_ASSERT(ggml_is_contiguous(src0));
+-    GGML_ASSERT(ggml_is_contiguous(src1));
+ 
+     const size_t nb1    = ((int32_t *) dst->op_params)[0];
+     const size_t nb2    = ((int32_t *) dst->op_params)[1];

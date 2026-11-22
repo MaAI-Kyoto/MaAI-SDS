@@ -1,0 +1,209 @@
+# GPU の要求（`gpus: all`）はこのファイルには書かない。compose は `gpus` を
+# 上書きで消せず（変数化は "value must be 'all'" で拒否、extends も継承する）、
+# ベースに書くと GPU の無いマシンで起動できなくなるため。
+#
+#   GPU あり: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
+#   GPU なし: docker compose -f docker-compose.yml -f docker-compose.cpu.yml up
+#
+# web / orchestrator / maai-sds-headless は排他。いずれも dialog worker を持つため
+# （web は OrchestratorBridge が spawn する）、同時に上げると対話ワーカーが複数になり
+# MMD bridge ポートも競合する。既定は web、Qt は --profile qt で orchestrator のみを
+# 対象指定し、従来のバッチ検証は --profile headless を使う。
+#
+# マシン固有の値はこのファイルに書かない（公開リポジトリに載るため）。
+#   設定   : controller_config.docker.example.json をコピーして controller_config.docker.json
+#            を作る（Git 管理外）。無いまま起動すると Docker が同名のディレクトリを作り、
+#            Web サーバが起動時に止まる。
+#   パス   : MMDAgent の素材の置き場は .env で指定する（.env.example 参照）。
+#
+# 追加エンジン（GPU を大きく使うので既定では起動しない）:
+#   docker compose --profile qwen3 --profile nemotron --profile audiocpp up
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/usr/local/bin/maai-web-entrypoint.sh"]
+    environment:
+      MAAI_SDS_WEB_HOST: "0.0.0.0"
+      MAAI_SDS_WEB_PORT: "8000"
+      MAAI_SDS_MMD_ASSETS: "/app/mmdagent_assets"
+      MAAI_SDS_DATA_ROOT: "/host_repo"
+      MAAI_SDS_VOICEVOX_RUNTIME: "/app/voicevox_runtime"
+      MAAI_SDS_ALWAYS_EXTRAS: "web,asr-faster-whisper,asr-sherpa,asr-chirp3,tts-voicevox,tts-kokoro,tts-cartesia,tts-tsukasa"
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+      HF_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # ホストのリポジトリ全体（モデル・Tsukasa-HF・audio.cpp/models）。/app には重ねない。
+      - .:/host_repo
+      - ./controller_config.docker.json:/app/controller_config.json
+      - ./src:/app/src:ro
+      - ./web:/app/web:ro
+      - ./scripts:/app/scripts:ro
+      - ./enabled_engines.json:/app/enabled_engines.json
+      - ./maai_assets:/app/maai_assets
+      - ./voicevox_runtime_linux:/app/voicevox_runtime
+      # ホストの WAV。既定は ./input_wav。別フォルダなら INPUT_WAV_HOST。Web の「PCから選ぶ」がここに書く。
+      - ${INPUT_WAV_HOST:-./input_wav}:/app/input_wav
+      - ./logs:/app/logs
+      # MMDAgent-EX の素材。既定 ./mmdagent_assets（Web UI の MDF 参照・編集で使用）。
+      - ${MMDAGENT_ASSETS_HOST:-./mmdagent_assets}:/app/mmdagent_assets:ro
+      - maai-sds-venv:/app/.venv
+      - maai-sds-venv-irodori:/app/.venv_irodori
+      - maai-sds-venv-nemotron:/app/.venv_nemotron
+      - huggingface-cache:/root/.cache/huggingface
+    ports:
+      # ループバックに固定する。この UI には認証が無く（web/server.py の main() 参照）、
+      # 設定書き換えからファイル読み書き・対話プロセス起動までできてしまう。
+      # `"8000:8000"` と書くと Docker は 0.0.0.0 に publish するので、同一 LAN の
+      # 誰でも無認証で全 API を叩けた。コンテナ内の bind が 0.0.0.0 なのは
+      # ポート公開に必要なだけで、外部へ開く意図ではない。
+      # 別ホストから使いたい場合は SSH ポートフォワード等でトンネルすること。
+      - "127.0.0.1:8000:8000" # Web UI
+      # WebSocket（MDF: EnableServer=false / EnableClient=false）:
+      #   Host=localhost, Port=MMDAGENT_REMOTE_WS_PORT, Directory は任意（例 /chat）。
+      - "127.0.0.1:${MMDAGENT_REMOTE_WS_PORT:-8080}:${MMDAGENT_REMOTE_WS_PORT:-8080}"
+      # TCP server（MDF: EnableClient=true。MMDAgent-EX が client）:
+      #   Hostname=localhost, Port=MMDAGENT_REMOTE_TCP_PORT。
+      - "127.0.0.1:${MMDAGENT_REMOTE_TCP_PORT:-60001}:${MMDAGENT_REMOTE_TCP_PORT:-60001}"
+      # MDF: EnableServer=true（MMDAgent-EX が TCP server）の場合は publish 不要。
+      # コンテナから host.docker.internal:Plugin_Remote_ListenPort へ接続する。
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["qt"]
+    entrypoint: ["/usr/local/bin/maai-web-entrypoint.sh"]
+    command:
+      - --config
+      - /app/controller_config.json
+      - --assume-mmd-running
+      - --listen
+      - 0.0.0.0:8765
+    environment:
+      MAAI_SDS_ENTRYPOINT_MODULE: "maai_sds.dialog.worker"
+      MAAI_SDS_MMD_ASSETS: "/app/mmdagent_assets"
+      MAAI_SDS_DATA_ROOT: "/host_repo"
+      MAAI_SDS_VOICEVOX_RUNTIME: "/app/voicevox_runtime"
+      MAAI_SDS_ALWAYS_EXTRAS: "web,asr-faster-whisper,asr-sherpa,asr-chirp3,tts-voicevox,tts-kokoro,tts-cartesia,tts-tsukasa"
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+      HF_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - .:/host_repo
+      - ./controller_config.docker.json:/app/controller_config.json
+      - ./src:/app/src:ro
+      - ./web:/app/web:ro
+      - ./scripts:/app/scripts:ro
+      - ./enabled_engines.json:/app/enabled_engines.json
+      - ./maai_assets:/app/maai_assets
+      - ./voicevox_runtime_linux:/app/voicevox_runtime
+      - ${INPUT_WAV_HOST:-./input_wav}:/app/input_wav
+      - ./logs:/app/logs
+      - ${MMDAGENT_ASSETS_HOST:-./mmdagent_assets}:/app/mmdagent_assets:ro
+      - maai-sds-venv:/app/.venv
+      - maai-sds-venv-irodori:/app/.venv_irodori
+      - maai-sds-venv-nemotron:/app/.venv_nemotron
+      - huggingface-cache:/root/.cache/huggingface
+    ports:
+      # Qt JSON-line control endpoint. Host port may be changed without changing the container command.
+      - "127.0.0.1:${MAAI_SDS_QT_ORCHESTRATOR_PORT:-8765}:8765"
+      # These are intentionally identical to web and therefore mutually exclusive with it.
+      - "127.0.0.1:${MMDAGENT_REMOTE_WS_PORT:-8080}:${MMDAGENT_REMOTE_WS_PORT:-8080}"
+      - "127.0.0.1:${MMDAGENT_REMOTE_TCP_PORT:-60001}:${MMDAGENT_REMOTE_TCP_PORT:-60001}"
+
+  maai-sds-headless:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["headless"]
+    environment:
+      MAAI_SDS_DATA_ROOT: "/host_repo"
+      MAAI_SDS_VOICEVOX_RUNTIME: "/app/voicevox_runtime"
+    volumes:
+      - .:/host_repo:ro
+      - ./controller_config.docker.json:/app/controller_config.json:ro
+      - ./maai_assets:/app/maai_assets
+      - ./voicevox_runtime_linux:/app/voicevox_runtime
+      - ${INPUT_WAV_HOST:-./input_wav}:/app/input_wav
+      - ./logs:/app/logs
+    ports:
+      - "15601:15601" # TCP audio output verification
+      - "60001:60001" # MMD remote TCP server
+    command: ["--config", "/app/controller_config.json", "--assume-mmd-running", "voice_dialog"]
+
+  nemotron-asr:
+    build:
+      context: .
+      dockerfile: docker/nemotron-asr/Dockerfile
+    profiles: ["nemotron"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "19091:19091"
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+    command: ["--port", "19091"]
+
+  qwen3-asr:
+    image: qwenllm/qwen3-asr:latest
+    profiles: ["qwen3"]
+    # ローカル用の scripts/start_qwen3_asr.ps1 が立てる qwen3-asr とぶつからない名前にする（GUI がログを追う名前）
+    container_name: maai-sds-qwen3-asr
+    restart: unless-stopped
+    # web の 8000 とぶつからないようホスト側は 18000。コンテナ間は qwen3-asr:80。
+    ports:
+      - "18000:80"
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+      VLLM_ALLOW_LONG_MAX_MODEL_LEN: "1"
+      QWEN_ASR_ENFORCE_EAGER: ${QWEN_ASR_ENFORCE_EAGER:-}
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+      - ./:/data/shared/Qwen3-ASR
+    shm_size: "4gb"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - --model
+      - ${QWEN_ASR_MODEL:-Qwen/Qwen3-ASR-0.6B}
+      - --served-model-name
+      - ${QWEN_ASR_SERVED_MODEL_NAME:-Qwen3-ASR-0.6B}
+      - --gpu-memory-utilization
+      - "${QWEN_ASR_GPU_MEMORY_UTILIZATION:-0.8}"
+      - --host
+      - 0.0.0.0
+      - --port
+      - "80"
+      - --max-model-len
+      - "${QWEN_ASR_MAX_MODEL_LEN:-4096}"
+      - --session-timeout-sec
+      - "${QWEN_ASR_SESSION_TIMEOUT_SEC:-60}"
+      - --default-chunk-size-sec
+      - "${QWEN_ASR_CHUNK_SEC:-2.0}"
+    entrypoint:
+      - python
+      - /data/shared/Qwen3-ASR/tools/qwen_ws_server.py
+
+  audiocpp:
+    image: ghcr.io/0xshug0/audio.cpp:full-cuda12
+    profiles: ["audiocpp"]
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "18081:8080"
+    volumes:
+      - ./audio.cpp/models:/models:ro
+      - ./docker/audiocpp-server.json:/app/server.json:ro
+    command: ["server", "--config", "/app/server.json"]
+
+volumes:
+  huggingface-cache:
+  maai-sds-venv:
+  maai-sds-venv-irodori:
+  maai-sds-venv-nemotron:

@@ -1,0 +1,886 @@
+/* Web UI の操作面。空き領域はクリックを通す。 */
+:root {
+  color-scheme: dark;
+  --bg: #14171d;
+  --panel: #1b212bcc;
+  --panel-solid: #1b212b;
+  --panel-2: #232b38;
+  --line: #333d4d;
+  --text: #e6e9ef;
+  --muted: #97a3b6;
+  --accent: #4f9cf9;
+  --ok: #55c98a;
+  --warn: #e6b455;
+  --err: #e2685f;
+  font-family: system-ui, "Segoe UI", "Yu Gothic UI", sans-serif;
+  font-size: 13px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
+button { font: inherit; }
+
+#hud {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+#btn-settings,
+#btn-plot,
+#mmd-card,
+#stage-hud,
+#chat-dock { pointer-events: auto; }
+
+/* MMDAgent 起動操作の中身（配置は下の #main-screen 側で決める） */
+#mmd-card:empty { display: none; }
+.mmd-card-pill { padding: .12rem .5rem; border-radius: 999px; font-size: 12px; }
+.mmd-card-pill.ok { color: var(--ok); background: #173426; }
+.mmd-card-pill.off { color: #e7b0a8; background: #3a2020; }
+.mmd-card-row { display: grid; grid-template-columns: 5.5rem 1fr; gap: .45rem; margin: .18rem 0; }
+.mmd-card-label { color: var(--muted); }
+.mmd-card-value { overflow-wrap: anywhere; }
+.mmd-card-note { margin-top: .5rem; color: #c5cfdd; }
+.mmd-card-cmd { display: flex; align-items: center; gap: .45rem; margin-top: .35rem; }
+.mmd-card-cmd code { flex: 1; min-width: 0; padding: .35rem .45rem; background: #0e141d; border-radius: 4px; font-family: ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
+.mmd-card-actions { display: flex; align-items: center; gap: .45rem; margin-bottom: .35rem; }
+.mmd-card-actions .mmd-card-pill { margin-left: auto; }
+.mmd-card-proc { color: var(--muted); font-size: 12px; margin-left: .3rem; }
+.mmd-card-hint { margin-top: .55rem; color: var(--muted); font-size: 12px; }
+.hud-error { max-width: 100%; padding: .35rem .55rem; border-radius: 4px; color: #f3c6c0; background: #3a2020; overflow-wrap: anywhere; }
+.hud-error.hidden { display: none; }
+
+button {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .32rem .7rem;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: #2c3646; }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: #1d4c86; border-color: #2a6ab8; }
+button.primary:hover:not(:disabled) { background: #245c9f; }
+.plot-popout {
+  display: inline-block;
+  padding: .32rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--text);
+  line-height: normal;
+  text-decoration: none;
+}
+.plot-popout:hover { background: #2c3646; }
+
+.badge {
+  padding: .15rem .5rem;
+  border-radius: 999px;
+  background: #2a3342;
+  color: var(--muted);
+  font-size: 12px;
+}
+.badge.running { background: #1e3b2c; color: var(--ok); }
+.badge.starting, .badge.stopping { background: #3a3420; color: var(--warn); }
+.badge.error { background: #3b2020; color: var(--err); }
+
+.save-state { color: var(--muted); font-size: 12px; }
+.conn { display: flex; align-items: center; gap: .45rem; color: var(--muted); font-size: 12px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex: 0 0 auto; }
+.dot.ok { background: var(--ok); }
+.dot.err { background: var(--err); }
+.dot.idle { background: #5b6577; }
+
+/* ---- 左上: 設定を開く ---- */
+#btn-settings {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 4;
+  font-weight: 600;
+  background: rgba(27, 33, 43, 0.92);
+  backdrop-filter: blur(10px);
+}
+#btn-plot {
+  position: absolute;
+  top: 12px;
+  left: 76px;
+  z-index: 4;
+  font-weight: 600;
+  background: rgba(27, 33, 43, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+/* ---- 設定ドロワー（項目ごとタブ） ---- */
+#settings-drawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 3;
+  width: min(46rem, 94vw);
+  display: flex;
+  flex-direction: column;
+  background: rgba(20, 24, 32, 0.96);
+  border-right: 1px solid var(--line);
+  box-shadow: 12px 0 40px #0008;
+  transform: translateX(-105%);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .18s ease, visibility .18s;
+}
+#settings-drawer.open {
+  transform: none;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#plot-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 3;
+  width: min(87.5rem, 96vw);
+  display: flex;
+  flex-direction: column;
+  background: rgba(16, 20, 28, 0.96);
+  border-right: 1px solid var(--line);
+  box-shadow: 12px 0 40px #0008;
+  transform: translateX(-105%);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .18s ease, visibility .18s;
+}
+#plot-overlay.open {
+  transform: none;
+  visibility: visible;
+  pointer-events: auto;
+}
+.plot-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+  padding: 4px;
+  background: #000;
+}
+.plot-col {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.plot-row {
+  flex: 1 1 0;
+  min-height: 2.2rem;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+.plot-label {
+  min-height: 14px;
+  overflow: hidden;
+  color: #d8d8d8;
+  font: 10px/14px system-ui, sans-serif;
+  text-align: center;
+  white-space: nowrap;
+}
+.plot-row canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 1.6rem;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+}
+
+.plot-connection {
+  color: #ff8e84;
+  font-size: 12px;
+}
+.plot-connection.ok { color: #55c98a; }
+
+body.plot-page {
+  overflow: hidden;
+  background: #000;
+}
+#plot-standalone {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+}
+#plot-standalone .plot-body { min-height: 0; }
+#plot-standalone .drawer-head {
+  min-height: 36px;
+  padding: 4px 8px;
+  background: #10141c;
+}
+#plot-standalone:not(.open) { visibility: hidden; }
+
+.plot-body.one-column {
+  grid-template-columns: minmax(0, 1fr);
+  overflow-y: auto;
+}
+.plot-body.one-column .plot-col:empty { display: none; }
+
+@media (max-width: 720px) {
+  #plot-overlay { width: 100%; }
+  .plot-body { grid-template-columns: 1fr; }
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .65rem .85rem;
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+.drawer-head h2 { margin: 0; font-size: 15px; font-weight: 600; flex: 1; }
+.drawer-head .save-state { margin-left: auto; }
+.drawer-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(8.5rem, 11rem) 1fr;
+}
+
+.settings-tabs {
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  padding: .4rem;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  background: rgba(16, 19, 26, 0.5);
+}
+.settings-tabs button {
+  text-align: left;
+  padding: .4rem .55rem;
+  background: transparent;
+  border-color: transparent;
+}
+.settings-tabs button[aria-selected="true"] {
+  background: #1d4c86;
+  border-color: #2a6ab8;
+}
+
+.settings-views {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.view { display: none; height: 100%; }
+.view.active {
+  display: block;
+  overflow-y: auto;
+  padding: .7rem .8rem;
+}
+
+/* ---- メイン HUD（モジュール + 開始/終了） ---- */
+#stage-hud {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  max-width: min(28rem, calc(100vw - 7rem));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .45rem;
+  padding: .55rem .7rem;
+  background: rgba(20, 24, 32, 0.88);
+  border: 1px solid rgba(51, 61, 77, 0.7);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+}
+.stage-meta { display: flex; align-items: center; gap: .6rem; }
+.voice-actions { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+.latency { color: var(--muted); font-size: 11.5px; }
+.mic-status {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  color: var(--muted);
+  font-size: 12px;
+}
+.mic-status.hidden { display: none; }
+#mic-meter {
+  width: 72px;
+  height: 8px;
+  background: #2a3342;
+  border-radius: 4px;
+  overflow: hidden;
+}
+#mic-meter i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--ok);
+  transition: width 80ms linear;
+}
+
+.modules {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  width: 100%;
+}
+.module {
+  display: grid;
+  grid-template-columns: 8px 3.2rem 2.6rem 26px 26px minmax(0, 1fr);
+  align-items: center;
+  gap: .35rem;
+  background: #202836cc;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .2rem .45rem;
+  font-size: 12px;
+}
+.module .lamp {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #5a6578;
+  flex: 0 0 auto;
+}
+.module.running .lamp { background: var(--ok); }
+.module.starting .lamp, .module.stopping .lamp { background: var(--warn); }
+.module.error .lamp { background: var(--err); }
+.module .m-name { color: var(--muted); }
+.module .m-state { font-variant-numeric: tabular-nums; }
+.module .m-summary {
+  color: var(--muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.module-btn {
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  line-height: 1;
+  font-size: 11px;
+}
+.module.running { border-color: #2f6b4b; }
+.module.error { border-color: #6b3630; }
+
+/* ---- 下側: LLM ストリーム + 履歴 ---- */
+#chat-dock {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+  height: min(28vh, 16rem);
+  min-height: 8.5rem;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: .4rem;
+  padding: .5rem .7rem .6rem;
+  background: rgba(16, 20, 28, 0.86);
+  border: 1px solid rgba(51, 61, 77, 0.7);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+}
+.chat-pane { min-height: 0; display: flex; flex-direction: column; }
+.chat-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: .15rem;
+  letter-spacing: .02em;
+}
+.llm-stream, .dialog-history {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, Consolas, "Yu Gothic UI", monospace;
+  font-size: 12.5px;
+  line-height: 1.45;
+  overflow-y: auto;
+}
+.llm-stream {
+  max-height: 4.2rem;
+  color: #c9d6ea;
+  background: #12182166;
+  border: 1px solid #2a3342;
+  border-radius: 4px;
+  padding: .3rem .45rem;
+}
+.dialog-history { flex: 1; color: var(--text); }
+
+@media (max-width: 720px) {
+  #stage-hud {
+    top: auto;
+    right: 12px;
+    left: 12px;
+    bottom: calc(12px + min(32vh, 18rem) + 8px);
+    max-width: none;
+    align-items: stretch;
+  }
+  .modules, .voice-actions, .stage-meta { justify-content: flex-start; }
+  #chat-dock { height: min(32vh, 18rem); }
+  #settings-drawer { width: 100%; }
+  .drawer-body { grid-template-columns: minmax(6.5rem, 8.5rem) 1fr; }
+}
+
+/* ---- グループ（PyQt の QGroupBox に対応） ---- */
+.group { background: var(--panel-solid); border: 1px solid var(--line); border-radius: 6px; margin-bottom: .9rem; }
+.group > h3 {
+  margin: 0; padding: .45rem .8rem; font-size: 12.5px; font-weight: 600; color: #c7d0de;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); border-radius: 6px 6px 0 0;
+  cursor: pointer; user-select: none; display: flex; justify-content: space-between;
+}
+.group > h3::after { content: "−"; color: var(--muted); }
+.group.collapsed > h3::after { content: "+"; }
+.group.collapsed > .group-body { display: none; }
+.group-body { padding: .55rem .8rem; }
+.view .group:last-child { margin-bottom: 0; }
+
+.row { display: grid; grid-template-columns: minmax(7rem, 34%) 1fr; gap: .6rem; align-items: center; padding: .18rem 0; }
+.row > label { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.row-fields { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+.row-fields > input[type=text], .row-fields > select { flex: 1 1 8rem; min-width: 0; }
+input[type=text], select, textarea {
+  background: #121821; color: var(--text); border: 1px solid var(--line);
+  border-radius: 4px; padding: .28rem .4rem; font: inherit;
+}
+input[type=text]:focus, select:focus, textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+input[type=checkbox] { accent-color: var(--accent); }
+textarea { width: 100%; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.field-dirty { border-color: var(--warn) !important; }
+.hint { color: #6f7c8f; font-size: 11px; margin-left: .3rem; }
+
+.console { width: 100%; height: 18rem; }
+.engine-table { width: 100%; border-collapse: collapse; }
+.engine-table td, .engine-table th { padding: .3rem .5rem; border-bottom: 1px solid var(--line); text-align: left; font-size: 12.5px; }
+.engine-table th { color: var(--muted); font-weight: 600; }
+.tag { font-size: 11px; padding: .1rem .4rem; border-radius: 3px; background: #2a3342; color: var(--muted); }
+.tag.on { background: #1e3b2c; color: var(--ok); }
+.notice { background: #2a2418; border: 1px solid #4d411f; color: #e3cf9a; padding: .5rem .7rem; border-radius: 4px; margin-bottom: .8rem; }
+.mmdagent-host-guide {
+  margin-top: .55rem;
+  padding: .65rem .7rem;
+  border: 1px solid #3a4658;
+  border-radius: 5px;
+  background: #151c26;
+  font-size: 12px;
+}
+.mmdagent-guide-title { margin-bottom: .4rem; color: #d7e0ed; font-weight: 650; }
+.mmdagent-remote-state { display: inline-block; margin-bottom: .55rem; padding: .15rem .45rem; border-radius: 999px; }
+.mmdagent-remote-state.connected { color: var(--ok); background: #173426; }
+.mmdagent-remote-state.disconnected { color: #e7b0a8; background: #3a2020; }
+.mmdagent-guide-row { display: grid; grid-template-columns: 6.5rem 1fr; gap: .45rem; margin: .22rem 0; }
+.mmdagent-guide-label { color: var(--muted); }
+.mmdagent-guide-value { overflow-wrap: anywhere; }
+.mmdagent-guide-row.mono .mmdagent-guide-value,
+.mmdagent-command-row code { font-family: ui-monospace, Consolas, monospace; }
+.mmdagent-command-row { display: flex; align-items: center; gap: .45rem; margin: .25rem 0 .45rem; }
+.mmdagent-command-row code { flex: 1; padding: .35rem .45rem; background: #0e141d; border-radius: 4px; overflow-wrap: anywhere; }
+.mmdagent-guide-warning,
+.mmdagent-guide-readonly { margin-top: .45rem; padding: .4rem .5rem; border-radius: 4px; }
+.mmdagent-guide-warning { color: #f0d38a; background: #302814; }
+.mmdagent-guide-readonly { color: #c5cfdd; background: #202a38; }
+.nod-chart {
+  width: 100%;
+  height: 22rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.browse-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: #0008;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+.browse-modal.open { display: flex; }
+.browse-card {
+  width: min(36rem, 94vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-solid);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.browse-card header, .browse-card footer {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--line);
+}
+.browse-card footer { border-bottom: 0; border-top: 1px solid var(--line); }
+.browse-card h3 { margin: 0; flex: 1; font-size: 14px; }
+.browse-path { padding: .35rem .75rem; color: var(--muted); font-size: 12px; word-break: break-all; }
+.browse-roots, .browse-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  padding: .35rem .75rem;
+  max-height: 16rem;
+  overflow: auto;
+}
+.browse-roots button, .browse-list button {
+  font-size: 12px;
+}
+.browse-list { flex-direction: column; flex-wrap: nowrap; }
+.browse-list button { text-align: left; background: transparent; }
+.browse-file { flex: 1; }
+
+/* ---- Qt メインウィンドウ準拠レイアウト ---- */
+#hud {
+  pointer-events: auto;
+  background:
+    radial-gradient(circle at 18% -10%, rgba(79, 156, 249, .12), transparent 34rem),
+    linear-gradient(180deg, #171c24 0%, var(--bg) 48%);
+}
+
+.app-header {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(18, 22, 29, .94);
+  box-shadow: 0 6px 22px #0003;
+}
+.app-identity { flex: 0 0 auto; min-width: 10rem; }
+.app-identity h1 { margin: 0; font-size: 18px; line-height: 1.05; font-weight: 680; letter-spacing: .01em; }
+.app-kicker,
+.dialog-kicker,
+.basic-actions-label {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.1;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.basic-actions {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  min-width: 0;
+  padding-left: 1rem;
+  border-left: 1px solid var(--line);
+}
+.basic-actions-label { color: #bdc8d8; }
+.app-header .save-state {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+#btn-settings,
+#btn-plot {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  font-weight: 600;
+  background: var(--panel-2);
+  backdrop-filter: none;
+}
+
+#hud-error {
+  position: absolute;
+  z-index: 8;
+  top: 70px;
+  left: 50%;
+  width: min(58rem, calc(100vw - 28px));
+  transform: translateX(-50%);
+  box-shadow: 0 8px 28px #0008;
+}
+
+#main-screen {
+  position: absolute;
+  inset: 76px 12px 12px;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  /* 右は Qt のメイン画面に当たる操作列。モジュール行が収まる幅を確保する。 */
+  /* 会話の欄は縦長に（幅の上限 560px）。広い画面では 2 列をまとめて中央に寄せる。 */
+  grid-template-columns: minmax(0, 560px) 420px;
+  justify-content: center;
+  gap: 12px;
+}
+.main-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(27, 33, 43, .96);
+  box-shadow: 0 8px 24px #0003;
+}
+.card-title-row {
+  min-height: 35px;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .45rem .7rem;
+  border-bottom: 1px solid var(--line);
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, #273140, #222a36);
+}
+.card-title-row h2 {
+  margin: 0;
+  flex: 1;
+  color: #d9e2ef;
+  font-size: 13px;
+  font-weight: 650;
+}
+.card-subtitle { color: var(--muted); font-size: 10.5px; }
+.control-card { flex: 0 0 auto; }
+.control-card > :not(.card-title-row) { margin-left: .7rem; margin-right: .7rem; }
+.control-card > :last-child { margin-bottom: .65rem; }
+
+.control-column {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 3px;
+  scrollbar-color: #465266 transparent;
+}
+
+#chat-dock {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+  background: rgba(22, 28, 37, .96);
+  border-color: var(--line);
+  border-radius: 8px;
+  backdrop-filter: none;
+  overflow: hidden;
+}
+.chat-pane { padding: .65rem .75rem; }
+.chat-stream-pane { border-top: 1px solid var(--line); }
+.chat-history-pane { min-height: 0; display: flex; flex-direction: column; }
+.chat-log {
+  flex: 1;
+  min-height: 12rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  padding: .8rem .9rem;
+  border: 1px solid #303b4c;
+  border-radius: 8px;
+  background: #11161e;
+}
+.chat-empty { margin: auto; color: #6b778a; }
+.chat-row { display: flex; }
+.chat-row-user { justify-content: flex-end; }
+.chat-row-system { justify-content: center; }
+.chat-bubble { max-width: 78%; padding: .42rem .75rem .55rem; border-radius: 12px; overflow-wrap: anywhere; }
+.chat-name { color: var(--muted); font-size: 11px; margin-bottom: .1rem; }
+.chat-text { white-space: pre-wrap; font-size: 13.5px; line-height: 1.5; }
+.chat-bubble-user { background: #1d4c86; border: 1px solid #2a6ab8; }
+.chat-bubble-user_partial { background: #17304f; border: 1px dashed #2a6ab8; }
+.chat-bubble-assistant { background: var(--panel-2); border: 1px solid var(--line); }
+.chat-bubble-assistant_streaming { background: var(--panel-solid); border: 1px dashed #46536a; }
+.chat-bubble-user_partial .chat-text, .chat-bubble-assistant_streaming .chat-text { color: #b9c4d4; }
+.chat-live {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: .8rem;
+  row-gap: .2rem;
+  margin-top: .55rem;
+  padding: .5rem .8rem;
+  border: 1px dashed #46536a;
+  border-radius: 8px;
+  background: var(--panel-solid);
+}
+.chat-live-label { color: var(--muted); font-size: 11.5px; }
+.chat-live-text { color: #b9c4d4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-live-text.empty { color: #5f6b7d; }
+.chat-label { margin-bottom: .35rem; color: #aeb9ca; font-size: 11.5px; }
+.llm-stream,
+.dialog-history {
+  border: 1px solid #303b4c;
+  border-radius: 5px;
+  background: #111721;
+  padding: .55rem .65rem;
+}
+.llm-stream { min-height: 4.5rem; max-height: 7rem; }
+.dialog-history { min-height: 12rem; }
+
+.window-launchers {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: .6rem;
+  row-gap: .35rem;
+  padding-top: .45rem;
+}
+.launcher-caption { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.launcher-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.2rem, 1fr)); gap: .3rem .4rem; }
+/* 右の列をスクロールなしで収めるため、テストは 4 列・ツールは 3 列で 1 行に（Qt と同じ） */
+.launcher-row.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.launcher-row.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.launcher-row.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.window-launchers button { min-width: 0; padding: .36rem .42rem; font-size: 11.5px; }
+.window-launchers #btn-plot { color: #cfe2ff; border-color: #3d5f88; }
+
+#stage-hud {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  max-width: none;
+  align-items: stretch;
+  gap: .55rem;
+  padding: 0;
+  background: rgba(27, 33, 43, .96);
+  border-color: var(--line);
+  border-radius: 8px;
+  backdrop-filter: none;
+}
+#stage-hud > :not(.card-title-row) { margin-left: .7rem; margin-right: .7rem; }
+#stage-hud > :last-child { margin-bottom: .65rem; }
+.stage-meta { justify-content: space-between; }
+.stage-meta .badge { flex: 0 0 auto; }
+.voice-actions { justify-content: flex-start; }
+.voice-actions .spacer { flex: 1; }
+#btn-start.large { display: block; width: calc(100% - 1.4rem); margin-top: .6rem; padding: .62rem 1rem; font-size: 14px; font-weight: 650; }
+#btn-start { margin-bottom: .45rem; }
+.latency { padding: .35rem .5rem; border-radius: 4px; background: #141a23; font-size: 11.5px; }
+/* 遅延とマイクは 1 行に（右の列をスクロールなしで収める） */
+.voice-status-row { display: flex; align-items: center; gap: .6rem; }
+.voice-status-row .latency { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.voice-status-row .mic-status { flex: 0 0 auto; }
+#mic-meter { width: 48px; }
+
+/* 旧 HUD の width:100% に左右の余白が足されて横にはみ出していた。 */
+.modules { width: auto; gap: .2rem; padding-top: .45rem; }
+.module {
+  grid-template-columns: 8px 3.3rem 3.2rem 26px 26px minmax(0, 1fr);
+  min-height: 24px;
+  padding-top: .1rem;
+  padding-bottom: .1rem;
+  background: #1a222e;
+}
+.module .m-detail { min-width: 0; overflow: hidden; }
+/* 対話サーバーの行は名前が長いので、名前の列だけ広げる（下のモジュールとは区切る） */
+.module.server { grid-template-columns: 8px 5.4rem 3.2rem 26px 26px minmax(0, 1fr); margin-bottom: .2rem; }
+.module .server-detail { display: flex; justify-content: flex-end; overflow: visible; }
+.module select.server-mode { width: auto; min-width: 6.5rem; padding: .1rem .4rem; font-size: 12px; }
+.module .m-summary,
+.module .m-error { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.module .m-error { color: #f0a69d; font-size: 10.5px; }
+button.compact { padding: .24rem .55rem; font-size: 11px; }
+
+#mmd-card {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  width: auto;
+  padding: .6rem 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+.mmd-card-row { grid-template-columns: 6.5rem minmax(0, 1fr); }
+.mmd-card-note { padding: .42rem .5rem; border-radius: 4px; background: #151c26; }
+.mmd-card-cmd { align-items: stretch; }
+.mmd-card-cmd code { max-height: 5.5rem; overflow: auto; }
+.mmd-card-actions { margin-bottom: .2rem; }
+.mmd-card > .mmd-card-label { display: block; margin-top: .45rem; }
+.mmd-card-details { margin-top: .5rem; color: var(--muted); }
+.mmd-card-details summary { cursor: pointer; font-size: 12px; }
+.mmd-card-details[open] summary { margin-bottom: .35rem; }
+.mmd-card-details .mmd-card-value { color: var(--text); }
+.mmd-card-hint { margin-top: .45rem; padding-top: .45rem; border-top: 1px solid #2c3543; }
+
+/* Manifest windows now open as one selected Qt-like sub-window, not a tab drawer. */
+#settings-drawer {
+  position: fixed;
+  inset: 4vh auto auto 50%;
+  z-index: 12;
+  width: min(74rem, calc(100vw - 32px));
+  height: min(88vh, 56rem);
+  border: 1px solid #465266;
+  border-radius: 9px;
+  background: rgba(20, 24, 32, .985);
+  box-shadow: 0 18px 70px #000c;
+  transform: translate(-50%, 12px) scale(.985);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .16s ease, opacity .16s ease, visibility .16s;
+}
+#settings-drawer.open {
+  transform: translate(-50%, 0) scale(1);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+#settings-drawer .drawer-head { min-height: 54px; padding: .55rem .8rem; }
+#settings-drawer .drawer-head > div { flex: 1; }
+#settings-drawer .drawer-head h2 { margin-top: .1rem; font-size: 15px; }
+#settings-drawer .drawer-body { display: grid; grid-template-columns: 12.5rem minmax(0, 1fr); min-height: 0; }
+.settings-nav-caption { margin: .55rem .55rem .15rem; color: var(--muted); font-size: 11px; }
+.settings-nav-caption:first-child { margin-top: .2rem; }
+#settings-drawer .settings-views { height: 100%; }
+#settings-drawer .view.active { padding: .75rem .85rem 1rem; }
+
+@media (max-width: 1080px) {
+  #main-screen { grid-template-columns: minmax(0, 1fr) minmax(23rem, 42%); }
+  .card-subtitle { display: none; }
+  .window-launchers { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 860px) {
+  html, body { height: auto; min-height: 100%; overflow: auto; }
+  #hud { position: relative; min-height: 100vh; }
+  .app-header { position: sticky; top: 0; z-index: 6; flex-wrap: wrap; height: auto; min-height: 64px; }
+  .app-header .save-state { flex-basis: 100%; text-align: left; }
+  .basic-actions { margin-left: auto; }
+  #main-screen { position: static; display: flex; flex-direction: column; padding: 12px; margin-top: 0; }
+  #chat-dock { min-height: 30rem; }
+  .control-column { overflow: visible; padding-right: 0; }
+  .window-launchers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #hud-error { position: fixed; top: 72px; }
+  #settings-drawer { top: 2vh; height: 94vh; width: calc(100vw - 20px); }
+  #plot-overlay { position: fixed; width: 100%; }
+}
+
+@media (max-width: 540px) {
+  .app-identity { min-width: auto; }
+  .basic-actions-label { display: none; }
+  .basic-actions { padding-left: .55rem; gap: .4rem; }
+  .conn { display: none; }
+  .window-launchers { grid-template-columns: 1fr; }
+  .module { grid-template-columns: 8px 3rem 3rem 26px 26px minmax(0, 1fr); }
+  .mmd-card-row { grid-template-columns: 5.5rem minmax(0, 1fr); }
+}

@@ -1,0 +1,45 @@
+{
+  "host": "0.0.0.0",
+  "port": 8080,
+  "backend": "cuda",
+  "device": 0,
+  "threads": 8,
+  "lazy_load": true,
+  "models": [
+    {
+      "id": "qwen3-tts-customvoice",
+      "family": "qwen3_tts",
+      "path": "/models/Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF/qwen3-tts-12hz-1.7b-customvoice-q8_0.gguf",
+      "task": "tts",
+      "mode": "streaming"
+    },
+    {
+      "id": "supertonic-3",
+      "family": "supertonic",
+      "path": "/models/Supertonic-3-GGUF/supertonic-3-orig.gguf",
+      "task": "tts",
+      "mode": "offline"
+    },
+    {
+      "id": "lfm2.5-audio-jp",
+      "family": "lfm2_audio",
+      "path": "/models/LFM2.5-Audio-1.5B-JP-GGUF",
+      "task": "tts",
+      "mode": "streaming"
+    },
+    {
+      "id": "irodori-tts-500m-v3",
+      "family": "irodori_tts",
+      "path": "/models/Irodori-TTS-500M-v3-GGUF/irodori-tts-500m-v3-q8_0.gguf",
+      "task": "tts",
+      "mode": "streaming"
+    },
+    {
+      "id": "irodori-tts-600m-v3-voicedesign",
+      "family": "irodori_tts",
+      "path": "/models/Irodori-TTS-600M-v3-VoiceDesign-GGUF/irodori-tts-600m-v3-voicedesign-q8_0.gguf",
+      "task": "tts",
+      "mode": "streaming"
+    }
+  ]
+}

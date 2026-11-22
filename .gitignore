@@ -1,0 +1,226 @@
+# ===== Secrets / local config =====
+.env
+.env.*
+!.env.example
+# 実APIキー・絶対パスを含むためコミット禁止（example のみ配布）
+controller_config.json
+enabled_engines.json
+!controller_config.example.json
+*.key
+*.pem
+gcloud-credentials*.json
+service-account*.json
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# ===== Virtual environments =====
+.venv/
+.venv_sub/
+.venv_nemotron/
+.venv_irodori/
+.venv_qwen3tts/
+venv/
+env/
+ENV/
+
+# ===== Logs / temp =====
+logs/
+logs_old/
+tmp/
+temp/
+*.log
+maai_stderr_debug.log
+
+# ===== Model weights / large binaries =====
+*.onnx
+*.whl
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+checkpoint-*/
+pretrained_models/
+kokoro_models/
+# setup_assets.ps1 が取ってくる Tsukasa の TTS のモデル（約 4.7 GB）
+Tsukasa-HF/
+onnx/
+sherpa-onnx-*/
+maai_assets/onnxruntime-linux-x64-*/
+voicevox_runtime/
+voicevox_runtime_linux/
+smart-turn*.onnx
+# Nemotron 3.5 ASR の共通前処理 ONNX は学習済み重みを含まないため追跡する。
+!assets/nemotron-3.5-asr-streaming-preprocessor/
+!assets/nemotron-3.5-asr-streaming-preprocessor/README.md
+!assets/nemotron-3.5-asr-streaming-preprocessor/preprocessor.onnx
+!assets/nemotron-3.5-asr-streaming-preprocessor/preprocessor.export.onnx.data
+# ネイティブ拡張・DLL（sherpa-onnx / onnxruntime のビルド成果物）。
+# ルート直下に置かれるが git 管理対象にしない。
+*.dll
+*.pyd
+flash_attn-*.whl
+
+# ===== Bundled third-party projects (depend via pip/uv instead) =====
+vendor/sherpa-onnx/
+.sherpa_onnx_git_built
+CosyVoice/
+Kokoro-FastAPI/
+Qwen3-ASR/
+Qwen3-TTS/
+RealtimeTTS/
+kokoro-onnx/
+
+# ===== Local scratch / diagnostics (not app runtime) =====
+_asr_debug_dumps/
+_verify_sherpa.py
+_sherpa_probe.txt
+*_report.txt
+*-report.txt
+reports/
+smoke_test_out.txt
+upgrade_sherpa_result.txt
+AItalk.json
+Chirp3-HD.json
+nod_para_series_correlation_*.json
+docs/bug-audit-*.md
+# 研究・診断用スクリプト（セットアップ系は追跡継続）
+scripts/*
+# 環境構築に必要なものだけ許可する（他は解析・実験用のローカルスクリプト）
+!scripts/setup_env.ps1
+!scripts/setup_nemotron_venv.ps1
+!scripts/setup_qwen3_tts_venv.ps1
+!scripts/setup_irodori_venv.ps1
+# .sh 版も必須。engine_manager の _platform_script が POSIX ではこちらを探すので、
+# 追跡していないとクローンした Linux/macOS で専用 venv 系 3 エンジンが
+# 「このプラットフォーム向けが未提供」として飛ばされる。
+!scripts/setup_nemotron_venv.sh
+!scripts/setup_qwen3_tts_venv.sh
+!scripts/setup_irodori_venv.sh
+!scripts/start_qwen3_asr.ps1
+!scripts/stop_qwen3_asr.ps1
+!scripts/start_qt_docker.ps1
+!scripts/verify_sherpa_import.py
+!scripts/setup_assets.ps1
+!scripts/extract_web_ui_manifest.py
+!scripts/setup_assets.sh
+# Qwen3-ASR ONNX の fp32 / 1.7B は GitHub に無い。setup_assets の
+# Qwen3AsrOnnxFp32Model / Qwen3AsrOnnx17BModel が ModelScope 取得に使う。
+!scripts/download_qwen3_onnx.py
+!scripts/vendor_three.py
+# カスタム sherpa-onnx のビルド一式。プリビルドを配布していない環境（他プラットフォーム、
+# sherpa を上げたい保守作業）ではここから再現する必要があるので追跡する。
+!scripts/upgrade_sherpa_onnx.ps1
+!scripts/build_sherpa_prebuilt_linux.sh
+# TTS=OFF ビルドで .pyd/.so から落ちるシンボルを __init__.py から外す。
+# これが無いと import 時に必ず ImportError になるので、ビルドに必須。
+!scripts/fix_sherpa_onnx_init.py
+!scripts/patch_sherpa_nemo_max_symbols.py
+!scripts/patch_sherpa_nemo_greedy_doublefeed.py
+!scripts/patch_sherpa_nemo_mel_params.py
+# Nemotron 前処理 ONNX の生成・読込と Windows ビルドに必要なスクリプト。
+!scripts/patch_sherpa_nemo_preprocessor.py
+!scripts/patch_sherpa_msvc_parallel.py
+!scripts/export_nemotron_preprocessor_onnx.py
+# sherpa_patches は patch_sherpa_nemo_greedy_doublefeed.py が読むテンプレート
+# （#3785 より古い木に当てる .cc の差し替え元）。無いとクリーンクローンで
+# カスタム sherpa のビルドが落ちるので追跡する。
+!scripts/sherpa_patches
+!scripts/sherpa_patches/**
+# speech.cpp の CUDA 版をソースから作るときに ggml へ当てるパッチ（setup_assets.sh の build_speechcpp_cuda）
+!scripts/speechcpp_patches
+!scripts/speechcpp_patches/**
+!scripts/patch_sherpa_nemo_online_normalize.py
+tests/
+backchannel_forms.txt
+obs.py
+
+# ===== Research / capture data =====
+good/
+compare/
+final/
+testwav/
+# 音声・動画・アノテーション（被験者データを誤コミットしないよう拡張子でも弾く）
+*.wav
+*.mp3
+*.flac
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.eaf
+# データ出力（*.csv/*.jsonl/*.tsv は正規の設定の可能性があるため拡張子では弾かず、
+# 上記データディレクトリと logs/ の除外でカバーする方針）
+
+# ===== Archives =====
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.bz2
+*.tar.bz2
+*.7z
+*.rar
+
+# ===== ML / data caches =====
+.cache/
+wandb/
+runs/
+outputs/
+*.gguf
+*.npy
+*.npz
+*.h5
+*.hdf5
+
+# ===== Test / coverage =====
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+
+# ===== Databases =====
+*.sqlite
+*.sqlite3
+*.db
+
+# ===== OS / editor =====
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.cursor/
+*.swp
+*~
+# Docker にアップロードした入力 WAV（ホストの input_wav/ に残る）
+input_wav/*.wav
+!input_wav/.gitkeep
+# ブラウザからコンテナへ上げたホストファイル（MaAI の .pt など）
+host_uploads/*
+!host_uploads/.gitkeep
+# scripts/setup_env.ps1 が uv sync の前にカスタム sherpa-onnx を待避する先（約 340MB）。
+vendor/sherpa_onnx_prebuilt/
+# speech.cpp の実行ファイル（setup_assets の SpeechCppRuntime）とモデル（speech.cpp が取ってくる）
+vendor/speechcpp/
+speechcpp_models/
+
+# GPU 構成 / CPU 構成の選択（scripts/setup_env.ps1 の -Device が書く）。
+# そのマシンで何を入れたかの記録なので追跡しない。
+.device_extra
+
+# Docker 用の手元設定。テンプレートは controller_config.docker.example.json
+controller_config.docker.json
+# compose の既定のホスト側フォルダ（.env で別の場所を指せる）
+/mmdagent_assets/

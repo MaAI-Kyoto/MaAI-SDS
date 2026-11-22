@@ -1,0 +1,15 @@
+# シェルスクリプトは必ず LF。CRLF が混ざると bash が
+# `syntax error near unexpected token $'in\r'` で落ちる（Windows 上で作成して実際に踏んだ）。
+# Docker イメージや Engine Manager の Linux 経路はこれらを直接実行する。
+*.sh text eol=lf
+
+# ONNX 本体と external data は改行変換しない。
+*.onnx binary
+*.onnx.data binary
+
+# Dockerfile と compose も Linux 側で読まれるので揃えておく。
+Dockerfile text eol=lf
+*.yml text eol=lf
+
+# speech.cpp の CUDA 版のビルドで ggml に git apply するパッチ。CRLF になると当たらない。
+*.patch text eol=lf

@@ -1,0 +1,23 @@
+# GPU を使う構成。docker-compose.yml と重ねて使う:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
+services:
+  web:
+    # ビルドするサービス名が cpu/gpu で同じなので、image を明示しないと
+    # どちらも <project>-web になり、後から建てた方が前のタグを奪う。
+    image: maai-sds-gpu-web:latest
+    gpus: all
+  orchestrator:
+    # web と中身が同じイメージ（起動するモジュールだけが違う）。同じタグにして
+    # 二重に建てない・二重に置かない。
+    image: maai-sds-gpu-web:latest
+    gpus: all
+  maai-sds-headless:
+    image: maai-sds-gpu-headless:latest
+    gpus: all
+  nemotron-asr:
+    image: maai-sds-gpu-nemotron-asr:latest
+    gpus: all
+  qwen3-asr:
+    gpus: all
+  audiocpp:
+    gpus: all

@@ -1,0 +1,51 @@
+--- a/src/ggml-cuda/ssm-conv.cu
++++ b/src/ggml-cuda/ssm-conv.cu
+@@ -123,13 +123,47 @@
+     }
+ }
+ 
++// MaAI-SDS: どんな形でも動く素直な版。速い版（上の 2 つ）はチャンネル数（d_inner）が 128 の倍数で、
++// カーネルの大きさが 3/4/5/9/15 のときしか動かず、それ以外は GGML_ASSERT / GGML_ABORT で止まる。
++// speech.cpp の FastConformer（Haas-ja・ReazonSpeech NeMo v2・Parakeet）はこの条件に当てはまらないので、
++// そのときだけこちらを使う。1 スレッドが 1 チャンネル・1 トークンを計算する。
++template <bool apply_silu>
++static __global__ void ssm_conv_any_f32(const float * __restrict__ src0, const float * __restrict__ src1,
++                                        const float * __restrict__ bias,
++                                        const int src0_nb1, const int src0_nb2, const int src1_nb1,
++                                        float * __restrict__ dst, const int dst_nb1, const int dst_nb2,
++                                        const int64_t nc, const int64_t nr, const int64_t n_t) {
++    const int64_t r = (int64_t) blockIdx.x * blockDim.x + threadIdx.x;
++    const int64_t s = blockIdx.z;
++    if (r >= nr) {
++        return;
++    }
++    const float * x = (const float *) ((const char *) src0 + s * src0_nb2 + r * src0_nb1);
++    const float * w = (const float *) ((const char *) src1 + r * src1_nb1);
++    const float   b = bias != nullptr ? bias[r] : 0.0f;
++    for (int64_t t = blockIdx.y; t < n_t; t += gridDim.y) {
++        float sumf = 0.0f;
++        for (int64_t j = 0; j < nc; j++) {
++            sumf += x[t + j] * w[j];
++        }
++        sumf += b;
++        float * y = (float *) ((char *) dst + s * dst_nb2 + t * dst_nb1) + r;
++        *y = apply_silu ? ggml_cuda_op_silu_single(sumf) : sumf;
++    }
++}
++
+ template <bool apply_silu>
+ static void ssm_conv_f32_cuda(const float * src0, const float * src1, const float * bias, const int src0_nb0, const int src0_nb1,
+                               const int src0_nb2, const int src1_nb1, float * dst, const int dst_nb0, const int dst_nb1,
+                               const int dst_nb2, const int64_t nc, const int64_t nr, const int64_t n_t,
+                               const int64_t n_s, cudaStream_t stream) {
+     const int threads = 128;
+-    GGML_ASSERT(nr % threads == 0);
++    if (nr % threads != 0 || !(nc == 3 || nc == 4 || nc == 5 || nc == 9 || nc == 15)) {
++        const dim3 blocks((nr + threads - 1) / threads, (unsigned) std::min<int64_t>(n_t, 65535), n_s);
++        ssm_conv_any_f32<apply_silu><<<blocks, threads, 0, stream>>>(src0, src1, bias, src0_nb1, src0_nb2, src1_nb1,
++                                                                     dst, dst_nb1, dst_nb2, nc, nr, n_t);
++        return;
++    }
+ 
+     auto launch_kernel = [&](auto NC) {
+         constexpr int kNC = decltype(NC)::value;

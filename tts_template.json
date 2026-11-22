@@ -1,0 +1,46 @@
+{
+  "base_url": "http://{{input.host}}:{{input.port}}{{input.base_path}}",
+  "auth": {
+    "type": "{{input.auth_mode}}",
+    "env": "{{input.auth_env}}",
+    "header": "{{input.auth_header}}",
+    "prefix": "{{input.auth_prefix}}"
+  },
+  "steps": [
+    {
+      "name": "audio_query",
+      "method": "POST",
+      "path": "/audio_query",
+      "query": {
+        "text": "{{input.text}}",
+        "speaker": "{{input.voice}}"
+      },
+      "request_mode": "none",
+      "response_extract": {
+        "type": "json",
+        "store_as": "audio_query"
+      }
+    },
+    {
+      "name": "synthesis",
+      "method": "POST",
+      "path": "/synthesis",
+      "query": {
+        "speaker": "{{input.voice}}"
+      },
+      "request_mode": "json",
+      "body_template": "{{step.audio_query}}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "response_extract": {
+        "type": "bytes",
+        "store_as": "audio_wav"
+      }
+    }
+  ],
+  "final_response": {
+    "type": "wav_to_l16be",
+    "from": "step.audio_wav"
+  }
+}

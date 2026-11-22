@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <title>MaAI-SDS</title>
+  <link rel="stylesheet" href="/app.css?v=ui33">
+</head>
+<body>
+  <div id="hud">
+    <header class="app-header">
+      <div class="app-identity">
+        <span class="app-kicker">音声対話システム</span>
+        <h1>MaAI-SDS</h1>
+      </div>
+      <div class="basic-actions" aria-label="接続と設定">
+        <div class="conn" title="ASR・LLM・TTS・MaAI を動かして音声対話を進める裏のプロセスです。この画面はそこにつないで操作します。"><span id="conn-dot" class="dot"></span><span id="conn-text">対話サーバー：接続中…</span></div>
+        <div class="conn"><span id="chip-mmd-dot" class="dot idle"></span><span id="chip-mmd-text">MMDAgent-EX：未接続</span></div>
+        <div class="conn"><span id="chip-voice-dot" class="dot idle"></span><span id="chip-voice-text">音声対話：停止</span></div>
+        <button id="btn-settings" type="button" aria-expanded="false" aria-controls="settings-drawer">設定</button>
+      </div>
+      <span id="save-state" class="save-state" aria-live="polite"></span>
+    </header>
+
+    <div id="hud-error" class="hud-error hidden" role="alert"></div>
+
+    <main id="main-screen">
+      <section id="chat-dock" class="main-card conversation-card" aria-labelledby="conversation-title">
+        <div class="card-title-row">
+          <h2 id="conversation-title">会話</h2>
+        </div>
+        <div class="chat-pane chat-history-pane">
+          <div id="dialog-history" class="chat-log" aria-live="polite"></div>
+          <div class="chat-live" aria-label="進行中">
+            <span class="chat-live-label">認識中</span><span id="live-user" class="chat-live-text empty">—</span>
+            <span class="chat-live-label">生成中</span><span id="live-assistant" class="chat-live-text empty">—</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="control-column" aria-label="操作パネル">
+        <section class="main-card control-card" aria-labelledby="mmd-title">
+          <div class="card-title-row"><h2 id="mmd-title">MMDAgent-EX</h2></div>
+          <div id="mmd-card" aria-label="MMDAgent-EX"></div>
+        </section>
+
+        <section id="stage-hud" class="main-card control-card" aria-labelledby="voice-title">
+          <div class="card-title-row stage-meta">
+            <h2 id="voice-title">音声対話</h2>
+            <span id="voice-state" class="badge">停止</span>
+          </div>
+          <button id="btn-start" class="primary large" type="button" title="開始すると、ASR・LLM・TTS・MaAIを自動で起動します。">音声対話開始</button>
+          <div class="voice-actions">
+            <button id="btn-stop" type="button" disabled>音声対話終了</button>
+            <button id="btn-interrupt" type="button">割り込み</button>
+            <span class="spacer"></span>
+            <button type="button" data-view-id="voice_dialog_settings">詳細設定</button>
+          </div>
+          <div class="voice-status-row">
+            <div id="latency" class="latency">遅延　ASR：- / LLM：- / TTS：-</div>
+            <div id="mic-status" class="mic-status hidden">
+              <span id="mic-label">マイク: 停止</span>
+              <span id="mic-meter"><i></i></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="main-card control-card" aria-labelledby="modules-title">
+          <div class="card-title-row">
+            <h2 id="modules-title">モジュール状態</h2>
+            <button id="btn-start-all" class="compact" type="button">一括起動</button>
+            <button id="btn-stop-all" class="compact" type="button" disabled>一括停止</button>
+          </div>
+          <div id="modules" class="modules"></div>
+        </section>
+
+        <section class="main-card control-card" aria-labelledby="window-title">
+          <div class="card-title-row"><h2 id="window-title">設定・テスト</h2></div>
+          <div id="window-launchers" class="window-launchers">
+            <span class="launcher-caption">テスト</span>
+            <div class="launcher-row cols-4">
+              <button type="button" data-view-id="asr_test_window">ASRテスト</button>
+              <button type="button" data-view-id="llm_test_window">LLMテスト</button>
+              <button type="button" data-view-id="tts_test_window">TTSテスト</button>
+              <button type="button" data-view-id="maai_test_window">MaAIテスト</button>
+            </div>
+            <span class="launcher-caption">設定</span>
+            <div class="launcher-row cols-2">
+              <button type="button" data-view-id="settings_window">MMDAgent-EX起動設定</button>
+              <button type="button" data-view-id="audio_input_settings_window">音声入力の設定</button>
+              <button type="button" data-view-id="audio_output_settings_window">音声出力の設定</button>
+              <button type="button" data-view-id="maai_settings_window">MaAIモデル設定</button>
+              <button type="button" data-view-id="obs_settings_window">OBS録画設定</button>
+            </div>
+            <span class="launcher-caption">ツール</span>
+            <div class="launcher-row cols-3">
+              <button type="button" data-view-id="console">プロセスコンソール</button>
+              <button type="button" data-view-id="engine_manager_web">エンジン管理</button>
+              <button id="btn-plot" type="button" aria-expanded="false" aria-controls="plot-overlay">MaAIプロット</button>
+            </div>
+          </div>
+        </section>
+
+
+      </aside>
+    </main>
+
+    <aside id="settings-drawer" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <header class="drawer-head">
+        <div>
+          <span class="dialog-kicker">設定・テスト</span>
+          <h2 id="settings-title">設定</h2>
+        </div>
+        <button id="btn-settings-close" type="button">閉じる</button>
+      </header>
+      <div class="drawer-body">
+        <nav id="settings-nav" class="settings-tabs" aria-label="設定・テストの一覧"></nav>
+        <div id="views" class="settings-views"></div>
+      </div>
+    </aside>
+
+    <aside id="plot-overlay" aria-label="MaAIプロット"></aside>
+  </div>
+
+  <script src="/app.js?v=ui68" type="module"></script>
+</body>
+</html>

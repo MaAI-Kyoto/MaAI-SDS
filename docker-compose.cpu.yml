@@ -1,0 +1,61 @@
+# GPU を使わない構成。docker-compose.yml と重ねて使う:
+#   docker compose -f docker-compose.yml -f docker-compose.cpu.yml up
+#
+# GPU を要求しないだけでなく、イメージ自体を CPU 版で建てる。CUDA 版のまま GPU 無しで
+# 動かすと nvidia-* 一式（cudnn 1.0GB / nvjitlink 1.0GB / cublas 0.8GB など）が無駄に
+# 載るうえ、CUDA を要求したエンジンが例外で落ちる。
+#
+# サービスごとに事情が違うので、一律に build args を足すのではなく個別に書いてある。
+services:
+  # 自前 Dockerfile。素の ubuntu ベース + CPU 版 torch/onnxruntime で建てる。
+  web:
+    # ビルドするサービス名が cpu/gpu で同じなので、image を明示しないと
+    # どちらも <project>-web になり、後から建てた方が前のタグを奪う。
+    image: maai-sds-cpu-web:latest
+    build:
+      args:
+        BASE_IMAGE: ubuntu:22.04
+        DEVICE_EXTRA: cpu
+    # イメージ内の /app/.device_extra でも同じ値になるが、env を明示しておくと
+    # GPU 版イメージをそのまま CPU で動かす（建て直したくない）場合にも効く。
+    environment:
+      MAAI_SDS_DEVICE_EXTRA: cpu
+
+  orchestrator:
+    # web と中身が同じイメージ（起動するモジュールだけが違う）。同じタグにして
+    # 二重に建てない・二重に置かない。build args も web と同じにしておく。
+    image: maai-sds-cpu-web:latest
+    build:
+      args:
+        BASE_IMAGE: ubuntu:22.04
+        DEVICE_EXTRA: cpu
+    environment:
+      MAAI_SDS_DEVICE_EXTRA: cpu
+
+  maai-sds-headless:
+    image: maai-sds-cpu-headless:latest
+    build:
+      args:
+        BASE_IMAGE: ubuntu:22.04
+        DEVICE_EXTRA: cpu
+    environment:
+      MAAI_SDS_DEVICE_EXTRA: cpu
+
+  # nemotron-asr も自前 Dockerfile（docker/nemotron-asr/Dockerfile）。
+  # そちらも BASE_IMAGE / TORCH_INDEX_URL を受けるようにしてある。
+  nemotron-asr:
+    image: maai-sds-cpu-nemotron-asr:latest
+    build:
+      args:
+        BASE_IMAGE: ubuntu:22.04
+        TORCH_INDEX_URL: https://download.pytorch.org/whl/cpu
+
+  # audio.cpp は配布イメージを差し替える。上流が CPU ビルドを公開している。
+  audiocpp:
+    image: ghcr.io/0xshug0/audio.cpp:full-cpu
+
+  # qwen3-asr は **CPU では動かせない**。中身が vLLM で、CUDA を前提に
+  # --gpu-memory-utilization まで受け取る設計のため、イメージを差し替えても成立しない。
+  # `--profile qwen3` を付けなければ起動しないので、CPU 構成では単に使わないこと。
+  # Qwen3-ASR を CPU で試したい場合は、sherpa-onnx 版の qwen3-asr-onnx エンジンを使う
+  # （ASR 設定のエンジン一覧にある。モデルは Engine Manager が取得する）。

@@ -1,0 +1,27 @@
+# Deny-all + allow-list: this repo root holds many multi-GB model/vendor
+# directories (sherpa-onnx models, voicevox_runtime, vendor/sherpa-onnx build,
+# .venv*, various vendored engine clones under evaluation, etc.) that must
+# never enter the Docker build context. Only the files the image actually
+# needs are re-included below. New top-level directories added later are
+# excluded by default, which is the safe direction for this repo.
+*
+
+!src
+!src/**
+# Web UI の静的ファイル。maai_sds.web.server が
+# リポジトリルート基準で配信するので、イメージにも同じ位置で入れる必要がある。
+!web
+!web/**
+# エンジン管理が Linux で setup_assets.sh を叩く。deny-all のままだと
+# setup_is_supported() が False になり、Web の「適用」が最初から無効になる。
+!scripts
+!scripts/**
+# web-entrypoint.sh / audiocpp-server.json / nemotron-asr Dockerfile
+!docker
+!docker/**
+# Nemotron 3.5 の共通前処理 ONNX。setup_assets.sh が各 chunk フォルダへ配置する元。
+!assets
+!assets/**
+!pyproject.toml
+!uv.lock
+!README.md

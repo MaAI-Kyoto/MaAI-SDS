@@ -1,0 +1,223 @@
+[project]
+name = "maai-sds"
+version = "0.1.0"
+description = "Real-time Japanese spoken dialogue system with MaAI turn-taking, backchannels and nods for an MMDAgent-EX avatar"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Kazushi Kato" }]
+requires-python = ">=3.11"
+dependencies = [
+    "maai",
+    "numpy>=2.4.3",
+    "onnx==1.20.1",
+    # onnxruntime-gpu 本体は cu128 / cpu 両方に入れる（下の extra）。**同じ配布物**を使い、
+    # CUDA 実行プロバイダが要る `[cuda,cudnn]` extra を GPU 構成でだけ付ける。
+    # 素の `onnxruntime` に入れ替えないのは、両者が site-packages/onnxruntime/ を
+    # 奪い合って dist-info を壊した過去があるため（下の override の注記参照）。
+    "silero-vad",
+    "sounddevice>=0.5.5",
+    # torch / torchaudio は base に置かない。GPU 無しのマシンでは cu128 ビルドが
+    # 引き込む nvidia-* 一式（実測 3.3GB）が丸ごと無駄になるので、`cu128` / `cpu`
+    # の排他 extra で選ばせる。渡さなければ maai / silero-vad 経由で PyPI 版
+    # （このプラットフォームでは CPU 専用）が入るので、それだけでも動く。
+    #
+    # **`uv run` は使わないこと。** 既定で extra 無しの exact sync をするため、
+    # `uv run python main.py` は PySide6 を削除し torch も素の版へ戻す（実測）。
+    # 起動は .venv の python を直接叩くか、`uv run --no-sync` を使う。
+    "transformers",
+    "websocket-client",
+    # mmd/remote_bridge.py の WebSocket サーバモード（ネイティブ MMDAgent-EX の
+    # Plugin_Remote が接続する）が
+    # import する。これまでは uvicorn[standard] / cartesia[websockets] 経由で"たまたま"
+    # 入っていただけで、どちらも optional へ移した時点でヘッドレス構成から消えた。
+    # コア機能が使うので base に置く（別パッケージの websocket-client とは無関係）。
+    "websockets",
+    "librosa>=0.11.0",
+    "openai",
+    "pyaudio",
+    "pyarrow>=23.0.1",
+    "pyworld>=0.3.5",
+    "livekit>=1.1.3",
+    # OBS の遠隔録画（obs/remote.py）は websocket-client で OBS WebSocket v5 を直接話す。
+    # obsws-python は GPL-3.0-only なので使わない。
+]
+
+[project.optional-dependencies]
+# GPU を使う場合だけ渡す。渡さなければ maai / silero-vad 経由で PyPI 版（無印）の
+# torch が入る。無印はこのプラットフォームでは CPU 専用なので、CPU 構成は
+# **これだけで足りる**（+cpu ビルドは用意しない。無印との差が無く、extra を
+# 増やすと排他管理と入れ替えの往復が発生するだけだった）。
+#
+# cu128 との排他相手として置く。これが無いと uv は「全 extra を同時に満たす単一解」を作り、
+# extra を渡していなくても index 指定が効いて +cu128 になってしまう（実測）。
+# Linux の PyPI の無印 torch は CUDA 版で nvidia-*-cu13（数 GB）を引くので、Linux だけ
+# CPU 版の配布元（[tool.uv.sources] の torch-cpu）から取る。Windows / macOS は無印のまま（CPU 版）。
+cpu = [
+    "torch==2.11.0",
+    "torchaudio==2.11.0",
+]
+cu128 = [
+    "torch==2.11.0+cu128",
+    "torchaudio==2.11.0+cu128",
+    # `[cuda,cudnn]` が nvidia-cuda-nvrtc / cuda-runtime / cufft / curand / cudnn を引く。
+    # 実測でこの 5 つと cuda-toolkit 経由の分が nvidia-* の大半を占める。
+    "onnxruntime-gpu[cuda,cudnn]==1.25.1",
+]
+# GUI の起動に必要。**`uv run` を使わないこと** —— 既定で extra 無しの exact sync を
+# するので、これが消えて GUI が起動しなくなる。起動は .venv の python を直接叩く。
+gui = [
+    # QtCore / QtGui / QtWidgets しか使わないので essentials だけにする。
+    # 無印の pyside6 は addons（WebEngine・PDF ほか数百 MB）まで引き込む。
+    "pyside6-essentials==6.12.0",
+    "pyqtgraph>=0.14.0",
+]
+# maai-sds-web（web/server.py）だけが使う。GUI 利用者にもヘッドレスの Docker
+# イメージにも要らないので、gui と同じく optional にしてある。
+web = [
+    "fastapi",
+    "uvicorn[standard]",
+]
+asr-faster-whisper = ["faster-whisper==1.2.0"]
+# sherpa-onnx-core を明示するのは、sherpa-onnx の **wheel だけ** が
+# `Requires-Dist: sherpa-onnx-core==<同版>` を宣言し、sdist の PKG-INFO には
+# 依存が 1 つも書かれていないため。uv は sdist のメタデータで解決するのでこれを
+# 取りこぼし、lock に core が入らない。PyPI 版 sherpa-onnx の wheel は DLL を
+# 一切含まない薄い wheel なので、core が無いとランタイムが見つからず、Windows では
+# `C:\Windows\System32\onnxruntime.dll`（OS 同梱の 1.17 系）に結び付いて
+# "The requested API version [24] is not available" で落ちる。
+# フレッシュクローンで実際に踏んだ（sherpa 系 ASR 7 エンジンが全滅する）。
+# カスタムビルドを使う環境では自前 ORT を同梱した sherpa_onnx/ が
+# スナップショット復元で上書きされ、ort_windows_preload がそちらを先に
+# DLL 探索パスへ入れるので、core が併存しても影響しない。
+# 版を揃えて固定するのは、wheel が `sherpa-onnx-core==<同版>` を要求しているため。
+# 無指定だと uv は core だけ最新（1.13.6）に上げ、sherpa-onnx 本体（1.13.2）と
+# 食い違う。実測ではその組でも動いたが、上流が `==` で縛っている以上、
+# ABI が合う保証は無い。片方を上げるときはもう片方も必ず同じ版へ。
+asr-sherpa = ["sherpa-onnx==1.13.2", "sherpa-onnx-core==1.13.2"]
+# chirp3-asr エンジン。以前はコードが「手動 pip install」を要求していた。
+asr-chirp3 = ["google-cloud-speech"]
+tts-voicevox = [
+    "voicevox-core @ https://github.com/VOICEVOX/voicevox_core/releases/download/0.17.0/voicevox_core-0.17.0-cp310-abi3-manylinux_2_34_x86_64.whl ; sys_platform == 'linux'",
+    "voicevox-core @ https://github.com/VOICEVOX/voicevox_core/releases/download/0.17.0/voicevox_core-0.17.0-cp310-abi3-win_amd64.whl ; sys_platform == 'win32'",
+]
+tts-kokoro = [
+    "realtimetts[kokoro]==0.5.7",
+    "kokoro-onnx[gpu]==0.4.9",
+    "misaki[ja]>=0.9.4",
+    "unidic>=1.1.0",
+    "fugashi[unidic]>=1.5.2",
+    "x-transformers>=2.16.2",
+]
+tts-cartesia = ["cartesia[websockets]"]
+# Tsukasa-HF（TsukasaEngine）の importable.py / Utils/phonemize.py が import する
+# 隠れ依存。requirements.txt には無いものも含む（実際に import chain を通して
+# 1 つずつ確認した）。nltk は importable.py が先頭で import する。kokoro extra
+# （stream2sentence）経由では入るが、Tsukasa 単独では入らない。
+tts-tsukasa = [
+    "munch",
+    "nltk",
+    "sentencepiece",
+    "konoha",
+    "unidic-lite",
+    "cutlet",
+    "einops-exts",
+    "a-unet",
+    "xlstm",
+    "monotonic-align",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# src レイアウト。`uv sync` でこのプロジェクト自身が editable install され、
+# `maai_sds` が import 可能になる（ワーカーを `python -m maai_sds.asr.worker` で起動するため）。
+# voicevox-core は URL 直接参照（wheel の直リンク）なので明示的に許可する。
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/maai_sds"]
+
+# GUI / ヘッドレスのエントリポイント。リポジトリ直下の main.py / headless_main.py は
+# 従来のコマンド（`uv run python main.py`）を壊さないための薄いシムとして残す。
+[project.scripts]
+maai-sds = "maai_sds.main:main"
+maai-sds-headless = "maai_sds.headless_main:main"
+maai-sds-web = "maai_sds.web.server:main"
+
+# maai (git) は独自の GuiPlot デバッグ機能のために PyQt5 一式（pyqt5/pyqt5-qt5/pyqt5-sip）を
+# 必須依存として要求する（本アプリのコードからは一切 import しない、無害な未使用依存）。
+# pyqt5-qt5 は無指定だと最新版（5.15.19 等）に解決され、Windows 向け wheel が無いため
+# Windows でも入る 5.15.2 に固定する。本アプリの GUI は PySide6 を使う。
+[tool.uv]
+# torch を base 依存から外すと、maai / silero-vad / kokoro など **無指定で torch を引く
+# 依存**（12 パッケージある）が上位版を勝手に選ぶ。実測で torch 2.13.0 + nvidia-*-cu13 が
+# 入り込んだ。版だけをここで固定し、CPU/CUDA どちらのビルドを使うかは extra に委ねる。
+# `==2.11.0` は PEP 440 上 `2.11.0+cpu` / `2.11.0+cu128` の両方に一致する。
+constraint-dependencies = [
+    "torch==2.11.0",
+    "torchaudio==2.11.0",
+]
+# torch のビルド違いは同居できない。
+conflicts = [
+    [
+        { extra = "cpu" },
+        { extra = "cu128" },
+    ],
+]
+override-dependencies = [
+    "pyqt5-qt5==5.15.2",
+    # asr-faster-whisper / tts-kokoro depend on plain `onnxruntime`, which installs into the
+    # SAME site-packages/onnxruntime/ dir as the base dep `onnxruntime-gpu[cuda,cudnn]` above
+    # (identical import name, overlapping files — the two are mutually exclusive upstream).
+    # Toggling those extras on/off previously corrupted onnxruntime's dist-info (missing
+    # RECORD/METADATA); pinning both to co-install "fixed" that but let the plain CPU-only
+    # build silently win the shared directory over the GPU build (CUDAExecutionProvider
+    # disappeared). This always-false marker makes uv treat `onnxruntime` as never required,
+    # so it's never installed at all — `import onnxruntime` still resolves fine at runtime via
+    # onnxruntime-gpu's files (same importable module, pip/uv distribution bookkeeping aside).
+    "onnxruntime ; python_version < '0'",
+]
+
+[tool.uv.sources]
+# **commit で固定する**。branch 参照はブランチが進むと環境が変わり再現できない。
+# 95ba113d6（2026-11-09、0.2.27）は upstream main。Maai / MaaiMultiple 両方の
+# inference_chunk_frames、BcDetGPT / BcDetGPT_mono、Mimi encoder ONNX、RTF の perf ログ、
+# MaaiBatch、MaaiMultiple の nod_para 出力の整理を含む。113efb752 から上げたときに、ワーカー
+# （相槌・頷き・VAP のマルチ、inference_chunk_frames=2）と ASR の VAP で出力が変わらないことを確かめた。
+# 変更したら uv lock を実行する。
+maai = { git = "https://github.com/MaAI-Kyoto/MaAI", rev = "95ba113d6317c02c9953fec30e8bce84e5b69c14" }
+# Tsukasa-HF が要求する monotonic alignment search。PyPI 未収録。commit で固定する。
+monotonic-align = { git = "https://github.com/resemble-ai/monotonic_align.git", rev = "c6e5e6cb19882164027eb6e35118e841eed9298e" }
+# irodori-tts (tts-irodori-pytorch) はここに載せない。transformers の版が本体と両立しないため
+# （irodori-tts は transformers>=5.12.1 要求、maai は transformers==5.5.3 固定）、
+# 同一プロセスに同居できない。
+# nemotron と同じ専用 venv 方式（scripts/setup_irodori_venv.ps1 が作った venv でサーバを起動し、
+# tts/venv_rpc.py 経由で RPC する）なので、本体 venv には一切入れない。
+# cpu は Linux だけ CPU 版の配布元から取る。PyPI の Linux 版 torch は CUDA 版で、nvidia-*（数 GB）を
+# 引き込む（CPU 版の Docker イメージに入っていた）。Windows / macOS の PyPI 版は最初から CPU 版。
+torch = [
+    { index = "torch-cuda", extra = "cu128" },
+    { index = "torch-cpu", extra = "cpu", marker = "sys_platform == 'linux'" },
+]
+torchaudio = [
+    { index = "torch-cuda", extra = "cu128" },
+    { index = "torch-cpu", extra = "cpu", marker = "sys_platform == 'linux'" },
+]
+# Multilingual Nemotron: vendor Git build of official v1.13.5 + MaAI quality patches
+# (max_symbols=30, NeMo mel). Do not leave path enabled during plain `uv sync`.
+# Restore with: scripts/upgrade_sherpa_onnx.ps1
+# sherpa-onnx = { path = "vendor/sherpa-onnx" }
+
+[[tool.uv.index]]
+name = "torch-cuda"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "torch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+

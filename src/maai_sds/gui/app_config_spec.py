@@ -1,0 +1,218 @@
+"""`controller_config.json` の平坦なフィールドの宣言テーブル（Phase 1-4）。
+
+同じキー名と既定値が `_load_app_config`（cfg→ウィジェット）と
+`_collect_app_config_payload`（ウィジェット→cfg）の 2 箇所に手書きされていたのを、
+ここ 1 箇所に集約する。**既存コードから AST で機械抽出して生成**したので、
+既定値を目で判断して写し間違える余地はない。
+
+エンジン切替のマイグレーション、`tts_template` の JSON、`CONFLICT_CHECKBOX_PAIRS`、
+`MAAI_PLOT_VISIBILITY_SPECS` などの特殊ケースはここに載せず、controller 側の
+明示コードに残している（無理に宣言化すると読みにくくなるため）。
+
+各要素:
+  0 config キー
+  1 ウィジェット属性名
+  2 種別 "text"（QLineEdit / QPlainTextEdit）・"bool"（チェック）・"combo"（QComboBox。保存値は itemData）
+  3 hasattr ガード有無（ウィジェットが存在しないことがある）
+  4 保存時の代替値（**ウィジェットが存在しないときだけ**使う。空欄用ではない）
+  5 読込時の既定（`cfg.get(key, これ)`）
+  6 setter 名（setText / setPlainText）
+  7 読込時に「空文字なら既定へ」落とすか（None なら落とさない）
+"""
+
+from __future__ import annotations
+
+from ..mmd.blink import DEFAULT_BLINK_INTERVAL_MEAN_SEC
+
+# LLM: OpenAI 直結と Custom（互換ゲートウェイ）はモデル名の既定を分ける。
+# controller.py から移設（config の読み書きと controller 本体の両方が使うため、
+# ここに置かないと controller <-> gui/config_io が循環 import になる）。
+_LLM_OPENAI_DEFAULT_MODEL = "gpt-4o-mini"
+_LLM_CUSTOM_DEFAULT_MODEL = "Qwen/Qwen3.5-35B-A3B"
+
+APP_CONFIG_FIELDS: tuple[tuple[str, str, str, bool, object, object, str, object], ...] = (
+    ('asr_chirp_location', 'asr_chirp_location_edit', 'text', False, None, 'global', 'setText', None),
+    ('asr_chirp_model', 'asr_chirp_model_edit', 'text', False, None, 'chirp_3', 'setText', None),
+    ('asr_chirp_project_id', 'asr_chirp_project_id_edit', 'text', False, None, '', 'setText', None),
+    ('asr_chirp_recognizer', 'asr_chirp_recognizer_edit', 'text', False, None, '_', 'setText', None),
+    ('asr_cohere_onnx_dir', 'asr_cohere_onnx_dir_edit', 'text', False, None, 'sherpa-onnx-cohere-transcribe-14-lang-int8-2026-04-01', 'setText', None),
+    ('asr_cohere_onnx_language', 'asr_cohere_onnx_language_edit', 'text', False, None, 'ja', 'setText', None),
+    ('asr_cohere_onnx_num_threads', 'asr_cohere_onnx_num_threads_edit', 'text', False, None, '8', 'setText', None),
+    ('asr_speechcpp_model', 'asr_speechcpp_model_combo', 'combo', False, None, 'haas-ja-v1.0', 'setCurrentIndex', None),
+    ('asr_speechcpp_device', 'asr_speechcpp_device_combo', 'combo', False, None, 'gpu', 'setCurrentIndex', None),
+    ('asr_speechcpp_threads', 'asr_speechcpp_threads_edit', 'text', False, None, '0', 'setText', None),
+    ('asr_external_audio_host', 'asr_external_audio_host_edit', 'text', False, None, '127.0.0.1', 'setText', None),
+    ('asr_external_audio_port', 'asr_external_audio_port_edit', 'text', False, None, '14600', 'setText', None),
+    ('asr_external_host', 'asr_external_host_edit', 'text', False, None, '127.0.0.1', 'setText', None),
+    ('asr_external_port', 'asr_external_port_edit', 'text', False, None, '19090', 'setText', None),
+    ('asr_external_start_script_path', 'asr_external_start_script_edit', 'text', False, None, '', 'setText', None),
+    ('asr_funasr_nano_onnx_dir', 'asr_funasr_nano_onnx_dir_edit', 'text', False, None, 'sherpa-onnx-funasr-nano-int8-2025-12-30', 'setText', None),
+    ('asr_funasr_nano_onnx_language', 'asr_funasr_nano_onnx_language_edit', 'text', False, None, 'ja', 'setText', None),
+    ('asr_funasr_nano_onnx_max_new_tokens', 'asr_funasr_nano_onnx_max_new_tokens_edit', 'text', False, None, '128', 'setText', None),
+    ('asr_funasr_nano_onnx_num_threads', 'asr_funasr_nano_onnx_num_threads_edit', 'text', False, None, '8', 'setText', None),
+    ('asr_maai_turn_threshold', 'asr_maai_turn_threshold_edit', 'text', False, None, '0.5', 'setText', None),
+    ('asr_min_segment_sec', 'asr_min_segment_sec_edit', 'text', False, None, '0.5', 'setText', None),
+    ('asr_nemotron_lang', 'asr_nemotron_lang_edit', 'text', False, None, 'ja-JP', 'setText', None),
+    ('asr_nemotron_max_symbols', 'asr_nemotron_max_symbols_edit', 'text', False, None, '30', 'setText', None),
+    ('asr_nemotron_model', 'asr_nemotron_model_edit', 'text', False, None, 'nvidia/nemotron-3.5-asr-streaming-0.6b', 'setText', None),
+    ('asr_nemotron_onnx_decoder', 'asr_nemotron_onnx_decoder_edit', 'text', False, None, '', 'setText', None),
+    ('asr_nemotron_onnx_encoder', 'asr_nemotron_onnx_encoder_edit', 'text', False, None, '', 'setText', None),
+    ('asr_nemotron_onnx_joiner', 'asr_nemotron_onnx_joiner_edit', 'text', False, None, '', 'setText', None),
+    ('asr_nemotron_onnx_language', 'asr_nemotron_onnx_language_edit', 'text', False, None, 'auto', 'setText', None),
+    ('asr_nemotron_onnx_tokens', 'asr_nemotron_onnx_tokens_edit', 'text', False, None, '', 'setText', None),
+    ('asr_nemotron_python', 'asr_nemotron_python_edit', 'text', False, None, '.venv_nemotron/Scripts/python.exe', 'setText', None),
+    ('asr_nemotron_window_sec', 'asr_nemotron_window_sec_edit', 'text', False, None, '15.0', 'setText', None),
+    ('asr_parakeet_onnx_dir', 'asr_parakeet_onnx_dir_edit', 'text', False, None, 'sherpa-onnx-nemo-parakeet-tdt_ctc-0.6b-ja-35000-int8', 'setText', None),
+    ('asr_parakeet_onnx_num_threads', 'asr_parakeet_onnx_num_threads_edit', 'text', False, None, '8', 'setText', None),
+    ('asr_qwen3_onnx_conv_frontend', 'asr_qwen3_onnx_conv_frontend_edit', 'text', False, None, 'sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/conv_frontend.onnx', 'setText', None),
+    ('asr_qwen3_onnx_decoder', 'asr_qwen3_onnx_decoder_edit', 'text', False, None, 'sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/decoder.int8.onnx', 'setText', None),
+    ('asr_qwen3_onnx_encoder', 'asr_qwen3_onnx_encoder_edit', 'text', False, None, 'sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/encoder.int8.onnx', 'setText', None),
+    ('asr_qwen3_onnx_language', 'asr_qwen3_onnx_language_edit', 'text', False, None, 'Japanese', 'setText', None),
+    ('asr_qwen3_onnx_tokenizer', 'asr_qwen3_onnx_tokenizer_edit', 'text', False, None, 'sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/tokenizer', 'setText', None),
+    ('asr_qwen_chunk_sec', 'asr_qwen_chunk_sec_edit', 'text', False, None, '2.0', 'setText', None),
+    ('asr_qwen_custom_model_path', 'asr_qwen_custom_model_path_edit', 'text', False, None, '', 'setText', None),
+    ('asr_qwen_gpu_memory_utilization', 'asr_qwen_gpu_util_edit', 'text', False, None, '0.8', 'setText', None),
+    ('asr_qwen_host', 'asr_qwen_host_edit', 'text', False, None, '127.0.0.1', 'setText', None),
+    ('asr_qwen_max_model_len', 'asr_qwen_max_model_len_edit', 'text', False, None, '4096', 'setText', None),
+    ('asr_qwen_min_return_audio_sec', 'asr_qwen_min_return_audio_sec_edit', 'text', False, None, '0', 'setText', None),
+    ('asr_qwen_no_text_flush_sec', 'asr_qwen_no_text_flush_sec_edit', 'text', False, None, '0', 'setText', None),
+    ('asr_qwen_port', 'asr_qwen_port_edit', 'text', False, None, '8000', 'setText', None),
+    ('asr_qwen_session_timeout_sec', 'asr_qwen_session_timeout_edit', 'text', False, None, '60', 'setText', None),
+    ('asr_qwen_timeout_sec', 'asr_qwen_timeout_sec_edit', 'text', False, None, '30', 'setText', None),
+    ('asr_qwen_ws_path', 'asr_qwen_ws_path_edit', 'text', False, None, '/ws', 'setText', None),
+    ('asr_sherpa_decoder', 'asr_sherpa_decoder_edit', 'text', False, None, 'sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01/decoder-epoch-99-avg-1.onnx', 'setText', None),
+    ('asr_sherpa_encoder', 'asr_sherpa_encoder_edit', 'text', False, None, 'sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01/encoder-epoch-99-avg-1.int8.onnx', 'setText', None),
+    ('asr_sherpa_joiner', 'asr_sherpa_joiner_edit', 'text', False, None, 'sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01/joiner-epoch-99-avg-1.int8.onnx', 'setText', None),
+    ('asr_sherpa_num_threads', 'asr_sherpa_num_threads_edit', 'text', True, '2', '2', 'setText', None),
+    ('asr_sensevoice_onnx_dir', 'asr_sensevoice_onnx_dir_edit', 'text', False, None, 'sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17', 'setText', None),
+    ('asr_sensevoice_onnx_language', 'asr_sensevoice_onnx_language_edit', 'text', False, None, 'ja', 'setText', None),
+    ('asr_sensevoice_onnx_num_threads', 'asr_sensevoice_onnx_num_threads_edit', 'text', False, None, '8', 'setText', None),
+    ('asr_sherpa_tokens', 'asr_sherpa_tokens_edit', 'text', False, None, 'sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01/tokens.txt', 'setText', None),
+    ('asr_smart_turn_model', 'asr_smart_turn_model_edit', 'text', False, None, 'smart-turn-v3.2-gpu.onnx', 'setText', None),
+    ('asr_smart_turn_threshold', 'asr_smart_turn_threshold_edit', 'text', False, None, '0.5', 'setText', None),
+    ('asr_smart_turn_num_threads', 'asr_smart_turn_num_threads_edit', 'text', True, '2', '2', 'setText', None),
+    ('asr_torch_cpu_intra_threads', 'asr_torch_cpu_intra_threads_edit', 'text', True, '2', '2', 'setText', None),
+    ('asr_vad_off_sec', 'asr_vad_off_sec_edit', 'text', False, None, '0.1', 'setText', None),
+    ('asr_vad_off_threshold', 'asr_vad_off_threshold_edit', 'text', False, None, '0.2', 'setText', None),
+    ('asr_vad_on_sec', 'asr_vad_on_sec_edit', 'text', False, None, '0.1', 'setText', None),
+    ('asr_vad_on_threshold', 'asr_vad_on_threshold_edit', 'text', False, None, '0.1', 'setText', None),
+    ('asr_whisper_hf', 'asr_whisper_hf_edit', 'text', False, None, 'deepdml/faster-whisper-large-v3-turbo-ct2', 'setText', None),
+    ('asr_whisper_model', 'asr_whisper_model_edit', 'text', False, None, 'large-v3', 'setText', None),
+    ('asr_whisper_model_path', 'asr_whisper_model_path_edit', 'text', False, None, '', 'setText', None),
+    ('audio_input_gain', 'audio_input_gain_edit', 'text', True, '1.0', '1.0', 'setText', '1.0'),
+    ('audio_input_tcp_host', 'audio_input_tcp_host_edit', 'text', True, '127.0.0.1', '127.0.0.1', 'setText', None),
+    ('audio_input_tcp_port', 'audio_input_tcp_port_edit', 'text', True, '15600', '15600', 'setText', None),
+    ('audio_input_wav_end_sec', 'audio_input_wav_end_sec_edit', 'text', True, '', '', 'setText', None),
+    ('audio_input_wav_path', 'audio_input_wav_path_edit', 'text', True, '', '', 'setText', None),
+    ('audio_input_wav_start_sec', 'audio_input_wav_start_sec_edit', 'text', True, '0', '0', 'setText', None),
+    ('audio_output_tcp_host', 'audio_output_tcp_host_edit', 'text', True, '127.0.0.1', '127.0.0.1', 'setText', None),
+    ('audio_output_tcp_port', 'audio_output_tcp_port_edit', 'text', True, '15601', '15601', 'setText', None),
+    ('aivisspeech_host', 'aivisspeech_host_edit', 'text', False, None, '127.0.0.1', 'setText', None),
+    ('aivisspeech_exe_path', 'aivisspeech_exe_edit', 'text', False, None, '%LOCALAPPDATA%\\Programs\\AivisSpeech\\AivisSpeech-Engine\\run.exe', 'setText', None),
+    ('aivisspeech_port', 'aivisspeech_port_edit', 'text', False, None, '10104', 'setText', None),
+    ('cartesia_tts_api_key', 'cartesia_tts_api_key_edit', 'text', False, None, '', 'setText', None),
+    ('cartesia_tts_api_key_env', 'cartesia_tts_api_key_env_edit', 'text', False, None, 'CARTESIA_API_KEY', 'setText', None),
+    ('cartesia_tts_model_id', 'cartesia_tts_model_id_edit', 'text', False, None, 'sonic-3', 'setText', None),
+    ('cartesia_tts_sample_rate', 'cartesia_tts_sample_rate_edit', 'text', False, None, '16000', 'setText', None),
+    ('irodori_checkpoint', 'irodori_checkpoint_edit', 'text', False, None, 'Aratako/Irodori-TTS-v4.1-Small', 'setText', None),
+    ('irodori_reference_audio', 'irodori_reference_audio_edit', 'text', False, None, '', 'setText', None),
+    ('irodori_python', 'irodori_python_edit', 'text', False, None, '.venv_irodori/Scripts/python.exe', 'setText', None),
+    ('irodori_steps', 'irodori_steps_edit', 'text', False, None, '16', 'setText', None),
+    ('irodori_backend', 'irodori_backend_combo', 'combo', False, None, 'speechcpp', 'setCurrentIndex', None),
+    ('irodori_speechcpp_device', 'irodori_speechcpp_device_combo', 'combo', False, None, 'gpu', 'setCurrentIndex', None),
+    ('irodori_speechcpp_steps', 'irodori_speechcpp_steps_edit', 'text', False, None, '4', 'setText', None),
+    ('irodori_seed', 'irodori_seed_edit', 'text', False, None, '1', 'setText', None),
+    ('irodori_audiocpp_model', 'irodori_audiocpp_model_combo', 'combo', False, None, '500m-v3', 'setCurrentIndex', None),
+    ('irodori_audiocpp_host', 'irodori_audiocpp_host_edit', 'text', False, None, '127.0.0.1', 'setText', None),
+    ('irodori_audiocpp_port', 'irodori_audiocpp_port_edit', 'text', False, None, '18083', 'setText', None),
+    ('lfm2_audio_host', 'lfm2_audio_host_edit', 'text', False, None, '127.0.0.1', 'setText', None),
+    ('lfm2_audio_port', 'lfm2_audio_port_edit', 'text', False, None, '18082', 'setText', None),
+    ('lfm2_audio_model_id', 'lfm2_audio_model_id_edit', 'text', False, None, 'lfm2.5-audio-jp', 'setText', None),
+    ('lfm2_audio_model_path', 'lfm2_audio_model_path_edit', 'text', False, None, 'audio.cpp/models/LFM2.5-Audio-1.5B-JP-GGUF', 'setText', None),
+    ('lfm2_audio_server_exe', 'lfm2_audio_server_exe_edit', 'text', False, None, 'audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe', 'setText', None),
+    ('llm_api_key', 'llm_api_key_edit', 'text', False, None, '', 'setText', None),
+    ('llm_api_key_env', 'llm_api_key_env_edit', 'text', False, None, 'OPENAI_API_KEY', 'setText', None),
+    ('llm_context_len', 'llm_context_len_edit', 'text', False, None, '10', 'setText', None),
+    ('llm_custom_api_key', 'llm_custom_api_key_edit', 'text', True, '', '', 'setText', None),
+    ('llm_custom_api_key_env', 'llm_custom_api_key_env_edit', 'text', True, '', 'CUSTOM_LLM_API_KEY', 'setText', None),
+    ('llm_custom_base_url', 'llm_custom_base_url_edit', 'text', True, '', 'http://127.0.0.1:8000', 'setText', None),
+    ('llm_custom_temperature', 'llm_custom_temperature_edit', 'text', True, '0.7', '0.7', 'setText', None),
+    ('llm_host', 'llm_host_edit', 'text', False, None, 'http://127.0.0.1:1234', 'setText', None),
+    ('llm_max_tokens', 'llm_max_tokens_edit', 'text', False, None, '128', 'setText', None),
+    ('llm_system_prompt', 'llm_system_prompt_edit', 'text', False, None, 'あなたは簡潔で丁寧なアシスタントです。', 'setPlainText', None),
+    ('maai_inference_chunk_frames', 'maai_inference_chunk_frames_edit', 'text', True, '1', '1', 'setText', None),
+    ('maai_mimi_onnx_cpu_inter_threads', 'maai_mimi_onnx_inter_threads_edit', 'text', True, '1', '1', 'setText', None),
+    ('maai_mimi_onnx_cpu_intra_threads', 'maai_mimi_onnx_intra_threads_edit', 'text', True, '8', '8', 'setText', None),
+    ('maai_torch_cpu_intra_threads', 'maai_torch_intra_threads_edit', 'text', True, '1', '1', 'setText', None),
+    ('maai_torch_cpu_interop_threads', 'maai_torch_interop_threads_edit', 'text', True, '1', '1', 'setText', None),
+    ('voicevox_core_cpu_num_threads', 'voicevox_core_cpu_threads_edit', 'text', True, '16', '16', 'setText', None),
+    ('voicevox_core_speed_scale', 'voicevox_core_speed_scale_edit', 'text', True, '1.0', '1.0', 'setText', None),
+    ('maai_multi_frame_rate', 'maai_multi_frame_rate_edit', 'text', True, '10', '10', 'setText', None),
+    ('maai_plot_asr_scroll_interval_ms', 'maai_plot_asr_scroll_ms_edit', 'text', True, '200', '200', 'setText', None),
+    ('maai_plot_flush_interval_ms', 'maai_plot_flush_ms_edit', 'text', False, None, '200', 'setText', None),
+    ('maai_test_bc_frame_rate', 'maai_test_bc_frame_rate_edit', 'text', True, '10', '10', 'setText', None),
+    ('maai_test_bc_lang', 'maai_test_bc_lang_edit', 'text', True, 'jp', 'jp', 'setText', None),
+    ('maai_test_bc_local_model', 'maai_test_bc_local_model_edit', 'text', True, '', '', 'setText', None),
+    ('maai_test_nod_count_t0', 'maai_test_nod_count_t0_edit', 'text', True, '1.0', '1.0', 'setText', None),
+    ('maai_test_nod_count_t1', 'maai_test_nod_count_t1_edit', 'text', True, '1.0', '1.0', 'setText', None),
+    ('maai_test_nod_count_t2', 'maai_test_nod_count_t2_edit', 'text', True, '1.0', '1.0', 'setText', None),
+    ('maai_test_nod_frame_rate', 'maai_test_nod_frame_rate_edit', 'text', True, '12.5', '12.5', 'setText', None),
+    ('maai_test_nod_lang', 'maai_test_nod_lang_edit', 'text', True, 'jp', 'jp', 'setText', None),
+    ('maai_test_nod_swing_threshold', 'maai_test_nod_swing_threshold_edit', 'text', True, '0.5', '0.5', 'setText', None),
+    ('maai_test_turn_vap_local_model', 'maai_test_turn_vap_local_model_edit', 'text', True, '', '', 'setText', None),
+    ('mmd_blink_enable', 'mmd_blink_enable_check', 'bool', False, None, True, 'setChecked', None),
+    ('mmd_blink_interval_mean_sec', 'mmd_blink_interval_mean_sec_edit', 'text', False, None, str(DEFAULT_BLINK_INTERVAL_MEAN_SEC), 'setText', None),
+    ('mmd_blink_morph', 'mmd_blink_morph_edit', 'text', False, None, 'まばたき', 'setText', None),
+    ('obs_remote_host', 'obs_remote_host_edit', 'text', True, '127.0.0.1', '127.0.0.1', 'setText', None),
+    ('obs_remote_port', 'obs_remote_port_edit', 'text', True, '4455', '4455', 'setText', None),
+    ('qwen3_tts_cpp_do_sample', 'qwen3_tts_cpp_do_sample_check', 'bool', False, None, True, 'setChecked', None),
+    ('qwen3_tts_cpp_host', 'qwen3_tts_cpp_host_edit', 'text', False, None, '127.0.0.1', 'setText', None),
+    ('qwen3_tts_cpp_instruct', 'qwen3_tts_cpp_instruct_edit', 'text', False, None, '', 'setText', None),
+    ('qwen3_tts_cpp_language', 'qwen3_tts_cpp_language_edit', 'text', False, None, 'japanese', 'setText', None),
+    ('qwen3_tts_cpp_model_id', 'qwen3_tts_cpp_model_id_edit', 'text', False, None, 'qwen3-tts-customvoice', 'setText', None),
+    ('qwen3_tts_cpp_model_path', 'qwen3_tts_cpp_model_path_edit', 'text', False, None, 'audio.cpp/models/Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF/qwen3-tts-12hz-1.7b-customvoice-q8_0.gguf', 'setText', None),
+    ('qwen3_tts_cpp_port', 'qwen3_tts_cpp_port_edit', 'text', False, None, '18081', 'setText', None),
+    ('qwen3_tts_cpp_repetition_penalty', 'qwen3_tts_cpp_repetition_penalty_edit', 'text', False, None, '1.05', 'setText', None),
+    ('qwen3_tts_cpp_seed', 'qwen3_tts_cpp_seed_edit', 'text', False, None, '', 'setText', None),
+    ('qwen3_tts_cpp_server_exe', 'qwen3_tts_cpp_server_exe_edit', 'text', False, None, 'audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe', 'setText', None),
+    ('qwen3_tts_cpp_speaker', 'qwen3_tts_cpp_speaker_edit', 'text', False, None, 'Vivian', 'setText', None),
+    ('qwen3_tts_cpp_temperature', 'qwen3_tts_cpp_temperature_edit', 'text', False, None, '0.9', 'setText', None),
+    ('qwen3_tts_cpp_top_k', 'qwen3_tts_cpp_top_k_edit', 'text', False, None, '50', 'setText', None),
+    ('qwen3_tts_cpp_top_p', 'qwen3_tts_cpp_top_p_edit', 'text', False, None, '1.0', 'setText', None),
+    ('tts_auth_env', 'tts_auth_env_edit', 'text', False, None, '', 'setText', None),
+    ('tts_auth_header', 'tts_auth_header_edit', 'text', False, None, 'X-API-Key', 'setText', None),
+    ('tts_auth_prefix', 'tts_auth_prefix_edit', 'text', False, None, 'Bearer ', 'setText', None),
+    ('tts_base_path', 'tts_base_path_edit', 'text', False, None, '', 'setText', None),
+    ('tts_host', 'tts_host_edit', 'text', False, None, '127.0.0.1', 'setText', None),
+    ('tts_model', 'tts_model_edit', 'text', False, None, '', 'setText', None),
+    ('tts_port', 'tts_port_edit', 'text', False, None, '50021', 'setText', None),
+    ('tts_segment_gap_silence_sec', 'tts_segment_gap_silence_sec_edit', 'text', True, '0', '0', 'setText', '0'),
+    ('supertonic_host', 'supertonic_host_edit', 'text', False, None, '127.0.0.1', 'setText', None),
+    ('supertonic_model_id', 'supertonic_model_id_edit', 'text', False, None, 'supertonic-3', 'setText', None),
+    ('supertonic_model_path', 'supertonic_model_path_edit', 'text', False, None, 'audio.cpp/models/Supertonic-3-GGUF/supertonic-3-orig.gguf', 'setText', None),
+    ('supertonic_port', 'supertonic_port_edit', 'text', False, None, '18080', 'setText', None),
+    ('supertonic_steps', 'supertonic_steps_edit', 'text', False, None, '8', 'setText', None),
+    ('supertonic_server_exe', 'supertonic_server_exe_edit', 'text', False, None, 'audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe', 'setText', None),
+    ('tsukasa_alpha', 'tsukasa_alpha_edit', 'text', False, None, '0.3', 'setText', None),
+    ('tsukasa_beta', 'tsukasa_beta_edit', 'text', False, None, '0.7', 'setText', None),
+    ('tsukasa_reference_audio', 'tsukasa_reference_audio_edit', 'text', False, None, '', 'setText', None),
+    ('tsukasa_root', 'tsukasa_root_edit', 'text', False, None, 'Tsukasa-HF', 'setText', None),
+    ('tsukasa_steps', 'tsukasa_steps_edit', 'text', False, None, '5', 'setText', None),
+    ('tts_test_text', 'tts_test_text_edit', 'text', False, None, 'MMDAgent通信テストです。', 'setText', None),
+    ('voice_dialog_opening_utterance', 'voice_dialog_opening_utterance_edit', 'text', True, '', '', 'setText', None),
+    ('voicevox_core_onnxruntime_file', 'voicevox_core_onnxruntime_edit', 'text', False, None, 'voicevox_runtime/onnxruntime/lib/voicevox_onnxruntime.dll', 'setText', None),
+    ('voicevox_core_openjtalk_dict', 'voicevox_core_openjtalk_dict_edit', 'text', False, None, 'voicevox_runtime/dict/open_jtalk_dic_utf_8-1.11', 'setText', None),
+    ('voicevox_core_vvm_path', 'voicevox_core_vvm_edit', 'text', False, None, 'voicevox_runtime/models/vvms/0.vvm', 'setText', None),
+    ('voicevox_exe_path', 'voicevox_exe_edit', 'text', False, None, '', 'setText', None),
+    # MaAI の 3 つの有効化トグル。読込・保存ともに同じ QGroupBox を見るので spec で表せる。
+    # spec に載せると tests/test_default_consistency.py が
+    # 「GUI の初期値 == headless の既定」を恒久的に照合する（この 3 つは実際に食い違っていた）。
+    ('maai_enable_bc', 'maai_enable_bc_box', 'bool', True, False, True, 'setChecked', None),
+    ('maai_enable_nod', 'maai_enable_nod_box', 'bool', True, False, True, 'setChecked', None),
+    ('maai_enable_turn_vap', 'maai_enable_turn_vap_box', 'bool', True, False, True, 'setChecked', None),
+)
+
+# キー → 定義 の索引（controller から引くため）
+APP_CONFIG_FIELD_BY_KEY: dict[str, tuple[str, str, str, bool, object, object, str, object]] = {
+    row[0]: row for row in APP_CONFIG_FIELDS
+}

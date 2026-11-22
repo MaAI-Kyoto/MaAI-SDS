@@ -1,0 +1,40 @@
+services:
+  qwen3-asr:
+    image: qwenllm/qwen3-asr:latest
+    container_name: qwen3-asr
+    restart: unless-stopped
+    ports:
+      - "${QWEN_ASR_HOST_PORT:-8000}:80"
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+      VLLM_ALLOW_LONG_MAX_MODEL_LEN: "1"
+      # WSL 等で torch.compile / CUDA graph が落ちるとき 1 にする（GUI の enforce-eager でも設定可）
+      QWEN_ASR_ENFORCE_EAGER: ${QWEN_ASR_ENFORCE_EAGER:-}
+    volumes:
+      - qwen3_asr_cache:/root/.cache/huggingface
+      - ./:/data/shared/Qwen3-ASR
+    shm_size: "4gb"
+    command:
+      - --model
+      - ${QWEN_ASR_MODEL:-Qwen/Qwen3-ASR-0.6B}
+      - --served-model-name
+      - ${QWEN_ASR_SERVED_MODEL_NAME:-Qwen3-ASR-0.6B}
+      - --gpu-memory-utilization
+      - "${QWEN_ASR_GPU_MEMORY_UTILIZATION:-0.8}"
+      - --host
+      - 0.0.0.0
+      - --port
+      - "80"
+      - --max-model-len
+      - "${QWEN_ASR_MAX_MODEL_LEN:-4096}"
+      - --session-timeout-sec
+      - "${QWEN_ASR_SESSION_TIMEOUT_SEC:-60}"
+      - --default-chunk-size-sec
+      - "${QWEN_ASR_CHUNK_SEC:-2.0}"
+    entrypoint:
+      - python
+      - /data/shared/Qwen3-ASR/tools/qwen_ws_server.py
+    gpus: all
+
+volumes:
+  qwen3_asr_cache:
