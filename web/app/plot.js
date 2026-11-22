@@ -72,15 +72,15 @@ const ROWS = [
   { id: 'x2', label: '入力波形2', kind: 'wave', ymin: -1, ymax: 1, color: '#50a0f0', col: 'left' },
   { id: 'p_now', label: 'p_now（緑：ターン取得／赤：割り込み）', kind: 'prob', ymin: 0, ymax: 1, invert: true, col: 'left' },
   { id: 'p_future', label: '出力p_future（長期ターン予測）', kind: 'prob', ymin: 0, ymax: 1, invert: true, col: 'left' },
-  { id: 'p_bins', label: 'p_bins（現在時刻の区間別確率）', kind: 'bins', ymin: 0, ymax: 2, col: 'left' },
+  { id: 'p_bins', label: 'p_bins（現在時刻の区間別確率）', kind: 'bins', ymin: 0, ymax: 2, col: 'left', hiddenByDefault: true },
   { id: 'vad', label: '音声活動検出（VAD）', kind: 'vad', ymin: -1, ymax: 1, col: 'left' },
-  { id: 'silero_vad_score', label: 'Silero VAD（緑：開始／青：終了／赤：割り込み）', kind: 'line', ymin: 0, ymax: 1, color: '#ec7063', fill: true, col: 'left' },
+  { id: 'silero_vad_score', label: 'Silero VAD（緑：開始／青：終了／赤：割り込み）', kind: 'line', ymin: 0, ymax: 1, color: '#ec7063', fill: true, col: 'left', hiddenByDefault: true },
   { id: 'p_bc', label: 'p_bc', kind: 'line', ymin: 0, ymax: 1, color: '#50c878', fill: true, col: 'right' },
   { id: 'p_nod', label: 'p_nod', kind: 'line', ymin: 0, ymax: 1, color: '#50c878', fill: true, col: 'right' },
-  { id: 'nod_range', label: 'nod_range（0.035～0.15）', kind: 'line', ymin: 0.035, ymax: 0.15, color: '#b48cdc', ticks: [0.035, 0.093, 0.15], col: 'right' },
-  { id: 'nod_speed', label: 'nod_speed（0.08～0.25）', kind: 'line', ymin: 0.08, ymax: 0.25, color: '#64c8dc', ticks: [0.08, 0.165, 0.25], col: 'right' },
-  { id: 'nod_count', label: 'nod_count（クラス1／2／3以上）', kind: 'line', ymin: -0.15, ymax: 2.15, color: '#ffaa32', ticks: [0, 1, 2], tickLabels: ['1', '2', '3+'], col: 'right' },
-  { id: 'nod_swing_up', label: 'nod_swing_up（確率）', kind: 'line', ymin: 0, ymax: 1, color: '#f064a0', fill: true, col: 'right' },
+  { id: 'nod_range', label: 'nod_range（0.035～0.15）', kind: 'line', ymin: 0.035, ymax: 0.15, color: '#b48cdc', ticks: [0.035, 0.093, 0.15], col: 'right', hiddenByDefault: true },
+  { id: 'nod_speed', label: 'nod_speed（0.08～0.25）', kind: 'line', ymin: 0.08, ymax: 0.25, color: '#64c8dc', ticks: [0.08, 0.165, 0.25], col: 'right', hiddenByDefault: true },
+  { id: 'nod_count', label: 'nod_count（クラス1／2／3以上）', kind: 'line', ymin: -0.15, ymax: 2.15, color: '#ffaa32', ticks: [0, 1, 2], tickLabels: ['1', '2', '3+'], col: 'right', hiddenByDefault: true },
+  { id: 'nod_swing_up', label: 'nod_swing_up（確率）', kind: 'line', ymin: 0, ymax: 1, color: '#f064a0', fill: true, col: 'right', hiddenByDefault: true },
 ];
 
 export function createMaaiPlot(root, options = {}) {
@@ -118,7 +118,8 @@ export function createMaaiPlot(root, options = {}) {
     nodSwing: 0.5,
   };
   let asrArrivalAlign = false;
-  const vis = Object.fromEntries(ROWS.map((r) => [r.id, true]));
+  // 設定に値が無いパネルは hiddenByDefault に従う（maai/plot_window.py の MAAI_PLOT_HIDDEN_BY_DEFAULT と揃える）
+  const vis = Object.fromEntries(ROWS.map((r) => [r.id, !r.hiddenByDefault]));
   const canvases = new Map();
   let open = false;
   let raf = 0;
@@ -784,7 +785,7 @@ export function createMaaiPlot(root, options = {}) {
   function setVisibilityFromConfig(cfg) {
     for (const row of ROWS) {
       const key = `maai_plot_show_${row.id}`;
-      vis[row.id] = cfg[key] === undefined ? true : configBool(cfg[key]);
+      vis[row.id] = cfg[key] === undefined ? !row.hiddenByDefault : configBool(cfg[key]);
     }
     const n = (k, d) => {
       const v = Number(cfg[k]);

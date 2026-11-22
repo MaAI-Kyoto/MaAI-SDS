@@ -30,7 +30,7 @@ from ..utils import to_bool
 from .. import engine_manager
 from .. import speechcpp
 
-from ..maai.plot_window import MAAI_PLOT_VISIBILITY_SPECS
+from ..maai.plot_window import MAAI_PLOT_VISIBILITY_SPECS, maai_plot_default_visible
 from ..mmd.blink import DEFAULT_BLINK_INTERVAL_MEAN_SEC
 
 from ..maai.nod_motion_chart_widget import NodMotionChartWidget
@@ -3456,7 +3456,7 @@ def build_ui(controller) -> None:
     maai_plot_visibility_grid.setContentsMargins(4, 4, 4, 4)
     for _vi, (_panel_id, _panel_lbl) in enumerate(MAAI_PLOT_VISIBILITY_SPECS):
         _vis_cb = QCheckBox(_panel_lbl)
-        _vis_cb.setChecked(True)
+        _vis_cb.setChecked(maai_plot_default_visible(_panel_id))
         _vr, _vc = divmod(_vi, 2)
         maai_plot_visibility_grid.addWidget(_vis_cb, _vr, _vc)
         setattr(controller, f"maai_plot_visibility_{_panel_id}_check", _vis_cb)

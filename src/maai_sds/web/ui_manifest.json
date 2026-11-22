@@ -4335,7 +4335,7 @@
                   "scope": "app",
                   "tooltip": null,
                   "kind": "check",
-                  "value": true,
+                  "value": false,
                   "text": "区間別確率（p_bins）"
                 }
               ]
@@ -4363,7 +4363,7 @@
                   "scope": "app",
                   "tooltip": null,
                   "kind": "check",
-                  "value": true,
+                  "value": false,
                   "text": "Silero VAD"
                 }
               ]
@@ -4405,7 +4405,7 @@
                   "scope": "app",
                   "tooltip": null,
                   "kind": "check",
-                  "value": true,
+                  "value": false,
                   "text": "頷き幅（nod_range）"
                 }
               ]
@@ -4419,7 +4419,7 @@
                   "scope": "app",
                   "tooltip": null,
                   "kind": "check",
-                  "value": true,
+                  "value": false,
                   "text": "頷き速度（nod_speed）"
                 }
               ]
@@ -4433,7 +4433,7 @@
                   "scope": "app",
                   "tooltip": null,
                   "kind": "check",
-                  "value": true,
+                  "value": false,
                   "text": "頷き回数（nod_count）"
                 }
               ]
@@ -4447,7 +4447,7 @@
                   "scope": "app",
                   "tooltip": null,
                   "kind": "check",
-                  "value": true,
+                  "value": false,
                   "text": "頷き上振り確率（nod_swing_up）"
                 }
               ]

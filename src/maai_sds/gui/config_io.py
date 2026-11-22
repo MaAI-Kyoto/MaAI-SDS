@@ -24,7 +24,7 @@ from .app_config_spec import (
     _LLM_CUSTOM_DEFAULT_MODEL,
     _LLM_OPENAI_DEFAULT_MODEL,
 )
-from ..maai.plot_window import MAAI_PLOT_VISIBILITY_SPECS
+from ..maai.plot_window import MAAI_PLOT_VISIBILITY_SPECS, maai_plot_default_visible
 from ..utils import json_config_bool, to_bool
 
 
@@ -679,7 +679,9 @@ class AppConfigIOMixin:
             for panel_id, _label in MAAI_PLOT_VISIBILITY_SPECS:
                 cb = getattr(self, f"maai_plot_visibility_{panel_id}_check", None)
                 if cb is not None:
-                    cb.setChecked(json_config_bool(cfg, f"maai_plot_show_{panel_id}", True))
+                    cb.setChecked(
+                        json_config_bool(cfg, f"maai_plot_show_{panel_id}", maai_plot_default_visible(panel_id))
+                    )
             self._sync_maai_plot_panel_visibility_from_ui()
             self._on_asr_engine_changed(self.asr_engine_combo.currentText().strip() or "sherpa-onnx")
             self._on_asr_compare_mode_changed()
@@ -965,7 +967,9 @@ class AppConfigIOMixin:
         )
         for _pid, _ in MAAI_PLOT_VISIBILITY_SPECS:
             _cb = getattr(self, f"maai_plot_visibility_{_pid}_check", None)
-            payload[f"maai_plot_show_{_pid}"] = bool(_cb.isChecked()) if _cb is not None else True
+            payload[f"maai_plot_show_{_pid}"] = (
+                bool(_cb.isChecked()) if _cb is not None else maai_plot_default_visible(_pid)
+            )
         return payload
 
     def _apply_whisper_fields_from_cfg(self, cfg: dict) -> None:

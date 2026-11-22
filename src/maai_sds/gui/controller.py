@@ -40,7 +40,7 @@ from ..ipc.process_service import (
 )
 from .ui import apply_device_choice_limits, build_ui
 from ..utils import apply_maai_nod_para_prediction_aliases, json_config_bool, to_bool
-from ..maai.plot_window import MAAI_PLOT_VISIBILITY_SPECS, MaaiPlotWindow
+from ..maai.plot_window import MAAI_PLOT_VISIBILITY_SPECS, MaaiPlotWindow, maai_plot_default_visible
 from ..llm import s2s_preview as llm_s2s_preview
 from ..llm import admin_http as _llm_admin_http
 from ..obs import remote as obs_remote
@@ -868,7 +868,7 @@ class MMDAgentController(
         vis: dict[str, bool] = {}
         for panel_id, _label in MAAI_PLOT_VISIBILITY_SPECS:
             cb = getattr(self, f"maai_plot_visibility_{panel_id}_check", None)
-            vis[panel_id] = bool(cb.isChecked()) if cb is not None else True
+            vis[panel_id] = bool(cb.isChecked()) if cb is not None else maai_plot_default_visible(panel_id)
         w.configure_maai_plot_panel_visibility(vis)
         self._save_app_config()
 

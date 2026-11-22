@@ -40,6 +40,16 @@ MAAI_PLOT_VISIBILITY_SPECS: tuple[tuple[str, str], ...] = (
     ("voice_latency", "音声対話レイテンシ"),
 )
 
+# 既定（設定ファイルに値が無いとき）で非表示にするパネル。区間別確率と、Silero VAD・頷きのパラメータ。
+# web/app/plot.js の hiddenByDefault と揃える。
+MAAI_PLOT_HIDDEN_BY_DEFAULT: frozenset[str] = frozenset(
+    {"p_bins", "silero_vad_score", "nod_range", "nod_speed", "nod_count", "nod_swing_up"}
+)
+
+
+def maai_plot_default_visible(panel_id: str) -> bool:
+    return panel_id not in MAAI_PLOT_HIDDEN_BY_DEFAULT
+
 
 class MaaiPlotWindow(QWidget):
     def __init__(
