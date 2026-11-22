@@ -97,6 +97,11 @@ class NodAndBlinkSendTest(unittest.TestCase):
         texts = [p["text"] for p in sent[1:]]
         self.assertTrue(texts and all(t.startswith("KEYVALUE_SET|MaAI_HeadPitch|") for t in texts))
         self.assertEqual(texts[-1], "KEYVALUE_SET|MaAI_HeadPitch|0.0000\n")
+        # 30 Hz の系列を時間で補間し、60 Hz で送る（系列の約 2 倍の回数）
+        from maai_sds.maai.nod_motion import generate_natural_nod
+
+        series, _t = generate_natural_nod(range_rad=0.1, count=1, use_pre_rise=False, velocity=2.0, fps=30)
+        self.assertGreaterEqual(len(texts) - 1, int(1.5 * (len(series) - 1)))
 
     def test_blinker_sends_blink_keyvalues(self) -> None:
         sent: list[str] = []

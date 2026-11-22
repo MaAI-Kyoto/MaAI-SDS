@@ -979,7 +979,9 @@ Audio Output ワーカー内にあり、頷きの制御（`MmdRuntime`）は対�
   左目・右目を KeyValue `MaAI_HeadPitch` に `MODEL_BINDBONE` で結び付け、目は頭と逆向きに `nod_para_eye_scale` 倍だけ回して
   視線を保つ。まばたきのモーフ（`mmd_blink_morph`）は KeyValue `MaAI_Blink`（0〜1）に `MODEL_BINDFACE` で結び付ける。
 - 対話サーバーの `MmdRuntime` は頷きの開始時に `mmd_bind_head` を送り、その後は別スレッドで `KEYVALUE_SET|MaAI_HeadPitch|<角度>` を
-  毎フレーム `mmd_send_text` で Audio Output ワーカーへ送る。途中で止めたときは角度 0 を送って頭を正面へ戻す。
+  `mmd_send_text` で Audio Output ワーカーへ送る。系列（`nod_para_fps`、既定 30）を時間で線形補間し、60 Hz で送る
+  （MMDAgent-EX は結び付けたボーンを受け取った値そのものにするので、30 Hz のままだと段々に見える）。途中で止めたときは
+  角度 0 を送って頭を正面へ戻す。
 - 結び付けたボーンはモーションの動きを上書きするため、待機モーションの頭の揺れは止まる。
 
 ---

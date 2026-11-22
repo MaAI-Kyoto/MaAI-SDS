@@ -14,12 +14,19 @@ import threading
 import time
 from typing import Callable
 
+import numpy as np
+
 from ..maai.nod_motion import generate_natural_nod
 from .avatar_keys import head_pitch_command
 
 
 class MmdRuntime:
     """MMD ブリッジを保持しない `MmdRuntime`（音声・Remote は別プロセス側）。"""
+
+    # 頷きの角度を送る頻度。頷きの系列は nod_para_fps（既定 30）で作られるが、MMDAgent-EX は描画のたびに
+    # 結び付けたボーンを受け取った値そのものにするので、30 Hz のままだと値が 4 フレームずつ止まって段々に
+    # 見える。系列を時間で線形補間し、この頻度で送る。
+    _NOD_SEND_HZ = 60.0
 
     def __init__(
         self,
@@ -114,26 +121,34 @@ class MmdRuntime:
             ),
         })
 
+        times = np.asarray(time_axis, dtype=float) / speed_scale
+        values = np.asarray(motion, dtype=float) * scale
+        end_sec = float(times[-1])
+        tick = 1.0 / self._NOD_SEND_HZ
         start_time = time.perf_counter()
         last_pitch = 0.0
-        for i in range(len(motion)):
+        n = 0
+        while True:
             if self._nod_cancel_event.is_set():
                 self._emit({"type": "log", "message": "[NodMotion] cancelled"})
                 break
-            t = float(time_axis[i]) / speed_scale
-            pitch = float(motion[i]) * scale
-            target = start_time + t
-            sleep_dur = target - time.perf_counter()
-            if sleep_dur > 0:
-                if self._nod_cancel_event.wait(timeout=sleep_dur):
-                    self._emit({"type": "log", "message": "[NodMotion] cancelled"})
-                    break
+            sleep_dur = start_time + n * tick - time.perf_counter()
+            if sleep_dur > 0 and self._nod_cancel_event.wait(timeout=sleep_dur):
+                self._emit({"type": "log", "message": "[NodMotion] cancelled"})
+                break
+            # 送る時点の経過時間で補間する（待ちが遅れても角度は時刻どおり）
+            elapsed = min(time.perf_counter() - start_time, end_sec)
+            pitch = float(np.interp(elapsed, times, values))
             try:
                 self._send_head_pitch(pitch)
                 last_pitch = pitch
             except Exception as ex:
                 self._emit({"type": "log", "message": f"[NodMotion] send error: {ex}"})
                 break
+            if elapsed >= end_sec:
+                break
+            # 遅れたぶんの送信は飛ばす
+            n = max(n + 1, int((time.perf_counter() - start_time) / tick))
         if last_pitch != 0.0:
             # 途中で止めたときも頭を正面へ戻す（結び付けたボーンは最後の値のまま止まるため）
             try:
