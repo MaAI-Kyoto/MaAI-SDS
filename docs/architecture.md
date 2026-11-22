@@ -185,9 +185,9 @@ MMDAgent-EX（`MMDProcessService`）と Qwen3-ASR のコンテナである。VOI
 
 | サービス | profile | 内容 | 公開ポート |
 |---|---|---|---|
-| `web` | （既定） | Web UI。`OrchestratorBridge` が対話ワーカーを起動 | `127.0.0.1:8000`（Web UI）、MMDAgent-EX Remote 用の `MMDAGENT_REMOTE_WS_PORT`（既定 8080）・`MMDAGENT_REMOTE_TCP_PORT`（既定 60001） |
+| `web` | （既定） | Web UI。`OrchestratorBridge` が対話ワーカーを起動 | `127.0.0.1:8000`（Web UI）、MMDAgent-EX Remote 用の `MMDAGENT_REMOTE_WS_PORT`（既定 8080）・`MMDAGENT_REMOTE_TCP_PORT`（既定 39001） |
 | `orchestrator` | `qt` | `MAAI_SDS_ENTRYPOINT_MODULE=maai_sds.dialog.worker` で Orchestrator を `--listen 0.0.0.0:8765` で単独起動。Qt アプリ（`scripts\start_qt_docker.ps1`）や Web UI が接続 | `127.0.0.1:${MAAI_SDS_QT_ORCHESTRATOR_PORT:-8765}`、Remote 用のポートは `web` と同じ |
-| `maai-sds-headless` | `headless` | イメージの既定の ENTRYPOINT（`python -m maai_sds.headless_main`）で `--config /app/controller_config.json --assume-mmd-running voice_dialog` を実行 | `15601`（TCP 音声出力の検証）、`60001`（MMD Remote TCP サーバー） |
+| `maai-sds-headless` | `headless` | イメージの既定の ENTRYPOINT（`python -m maai_sds.headless_main`）で `--config /app/controller_config.json --assume-mmd-running voice_dialog` を実行 | `15601`（TCP 音声出力の検証）、`39001`（MMD Remote TCP サーバー） |
 | `qwen3-asr` | `qwen3` | Qwen3-ASR（vLLM） | `18000` |
 | `nemotron-asr` | `nemotron` | Nemotron ASR | `19091` |
 | `audiocpp` | `audiocpp` | audio.cpp のサーバー | `18081` |

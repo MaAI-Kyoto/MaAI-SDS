@@ -136,25 +136,36 @@ API キーはコードや設定ファイルに書かず、環境変数で渡し�
 
 ### 3. MMDAgent-EX とアバター
 
-MMDAgent-EX の本体と、アバターの入った公式のサンプル集を用意します。
-
-1. [MMDAgent-EX の Releases](https://github.com/mmdagent-ex/MMDAgent-EX/releases) から Windows 版
-   （`MMDAgent-EX-x64-v2.1.zip`）を取得し、中身を `C:\MMDAgent-EX` に展開します（`C:\MMDAgent-EX\MMDAgent-EX.exe` になるように）。
-2. 公式のサンプル集 [mmdagent-ex/example](https://github.com/mmdagent-ex/example) を取得します。アバター（ジェネ・ウカ）は
-   サブモジュールなので、`--recursive` を付けます（約 420 MB）。
-
-3. このリポジトリの `assets\mmdagent\maai_sds`（MaAI-SDS 用の MDF と FST）を、サンプル集の中へフォルダーごとコピーします。
+アバターの表示には [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX)（公式の Windows 版 v2.1）と、
+アバターの入った公式のサンプル集 [mmdagent-ex/example](https://github.com/mmdagent-ex/example) を使います。
+PowerShell で次を実行すると、MMDAgent-EX が `C:\MMDAgent-EX` に入り、MaAI-SDS 用の MDF と FST がサンプル集の中に置かれます
+（`<MaAI-SDS のフォルダー>` は、このリポジトリを clone した場所に置き換えます）。
 
 ```powershell
-cd C:\MMDAgent-EX
-git clone --recursive https://github.com/mmdagent-ex/example
-Copy-Item -Recurse <MaAI-SDS のフォルダー>ssets\mmdagent\maai_sds C:\MMDAgent-EX\example```
+# 1. 本体（Releases の MMDAgent-EX-x64-v2.1.zip）。ZIP の中の MMDAgent-EX-x64-v2.1 フォルダーを C:\MMDAgent-EX にする
+Invoke-WebRequest https://github.com/mmdagent-ex/MMDAgent-EX/releases/download/v2.1/MMDAgent-EX-x64-v2.1.zip -OutFile $env:TEMP\MMDAgent-EX.zip
+Expand-Archive $env:TEMP\MMDAgent-EX.zip -DestinationPath C:\
+Rename-Item C:\MMDAgent-EX-x64-v2.1 MMDAgent-EX
+
+# 2. サンプル集。アバター（ジェネ・ウカ）はサブモジュールなので --recursive を付ける（約 470 MB）
+git clone --recursive https://github.com/mmdagent-ex/example C:\MMDAgent-EX\example
+
+# 3. MaAI-SDS 用の MDF と FST をサンプル集の中へコピーする
+Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMDAgent-EX\example\
+```
 
 この配置にすると、設定画面の「MMDAgent-EX起動設定」に、実行ファイル（`C:\MMDAgent-EX\MMDAgent-EX.exe`）と MDF
-（`C:\MMDAgent-EX\example\maai_sds\maai_sds.mdf`）が自動で入ります。別の場所に置いた場合は「ファイル設定」で
-指定してください。`maai_sds.mdf` は WebSocket（`ws://localhost:9001/chat`）で対話サーバーに接続し、サンプル集のジェネを
-上半身のカメラで表示します。待機モーションは、頷きが見やすいように体の揺れが小さいもの（`01_Wait.vmd`）にしてあります。
-TCP で接続する場合や MDF の書き方は [docs/running.md](docs/running.md) を参照してください。
+（`C:\MMDAgent-EX\example\maai_sds\maai_sds.mdf`）が自動で入ります。別の場所に置いた場合は「ファイル設定」で指定してください。
+
+`maai_sds.mdf` の内容：
+
+- 対話サーバーへ TCP で接続します（MMDAgent-EX がクライアントになり、対話サーバーが `localhost:39001` で待ち受けます）。
+  ポートを Windows の動的ポート（49152 以上）の外にしてあるのは、Hyper-V・WSL・Docker Desktop が動的ポートの一部を予約し、
+  そこに当たると待ち受けに失敗するためです。WebSocket で接続する場合や MDF の書き方は [docs/running.md](docs/running.md) を参照してください。
+- サンプル集のジェネを、上半身のカメラ・1024×1024 のウィンドウで表示します。待機モーションは、頷きが見やすいように
+  体の揺れが小さいもの（`01_Wait.vmd`）にしてあります。
+- 口パクは MMDAgent-EX が受け取った音声から作り、頷き（首）・視線・まばたきは MaAI-SDS が送ります。首を頷きに使うため、
+  待機モーションの首の動きは止まります。
 
 > [!NOTE]
 > アバター「ジェネ」は CC BY 4.0 で公開されていますが、商標権・意匠権は名古屋工業大学が保持しており、営利・商用の利用には

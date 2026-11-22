@@ -32,7 +32,7 @@ MMDAgent-EX の本体とアバターの取得は [README](../README.md#3-mmdagen
    `controller_config.docker.json` の `mdf_path` も確認します（[Docker の準備](#docker-の準備)）。
    - 実行ファイル：`C:\MMDAgent-EX\MMDAgent-EX.exe`（ソースからビルドした場合は `...\Release\MMDAgent-EX.exe`）
    - MDF：使用する `.mdf`（例：サンプル集に入れた MaAI-SDS 用の `C:\MMDAgent-EX\example\maai_sds\maai_sds.mdf`。
-     WebSocket・ポート 9001）
+     TCP サーバー方式・ポート 39001）
 2. MDF の `Plugin_Remote_*` で Remote の通信方式を 1 つだけ選び、保存します。`EnableServer` と `EnableClient` を
    同時に `true` にしないでください。通信方式は MDF の設定から自動で選択されます。
 
@@ -55,24 +55,29 @@ Plugin_Remote_Websocket_Directory=/chat
 ```
 
 MMDAgent-EX は `ws://localhost:8080/chat` に接続します。Docker では `.env` の `MMDAGENT_REMOTE_WS_PORT=8080`（既定 8080）と
-一致させます。ディレクトリは設定した値（`/chat` など）を指定します。`.env.example` の `MMDAGENT_REMOTE_WS_PORT` は、
-MaAI-SDS 用の `maai_sds.mdf` に合わせて 9001 にしてあります（compose の既定は 8080）。
+一致させます。ディレクトリは設定した値（`/chat` など）を指定します。`maai_sds.mdf` を WebSocket にする場合は、
+`Plugin_Remote_EnableClient=false` にして上の `Plugin_Remote_Websocket_*` の 3 行を足します（`.env.example` の
+`MMDAGENT_REMOTE_WS_PORT` は 9001 にしてあるので、ポートは 9001 にそろえます）。
 
 #### TCP サーバー（対話サーバーがサーバー、MMDAgent-EX がクライアント）
 
-TCP を使う場合は、`maai_sds.mdf` と `maai_sds.fst` を同じフォルダーに別名
-（例：`maai_sds_tcp.mdf` と `maai_sds_tcp.fst`。MMDAgent-EX は MDF と同じ名前の FST を読みます）でコピーし、MDF の
-`Plugin_Remote_Websocket_*` の行を次の行に置き換えます。
+MaAI-SDS 用の `maai_sds.mdf` の既定です。
 
 ```text
-Plugin_Remote_EnableServer=false
 Plugin_Remote_EnableClient=true
 Plugin_Remote_Hostname=localhost
-Plugin_Remote_Port=60001
+Plugin_Remote_Port=39001
+Plugin_Remote_RetryCount=1000
 ```
 
-MMDAgent-EX は `localhost:60001` に接続します。Docker では `.env` の `MMDAGENT_REMOTE_TCP_PORT=60001` と一致させます。
-MMDAgent-EX はループバックに公開されたコンテナのポートへ接続します。
+MMDAgent-EX は `localhost:39001` に接続します（対話サーバーより先に起動しても、つながるまで再試行します）。
+Docker では `.env` の `MMDAGENT_REMOTE_TCP_PORT=39001` と一致させます。MMDAgent-EX はループバックに公開された
+コンテナのポートへ接続します。ホストの対話サーバーは `127.0.0.1` で待ち受けます（LAN に公開する場合だけ MDF に
+`Plugin_Remote_Bind_Host=0.0.0.0` を書きます。認証は無いので、信頼できるネットワークに限ってください）。
+
+ポートは Windows の動的ポート（49152〜65535）の外にします。Hyper-V・WSL・Docker Desktop が動的ポートの一部を予約する
+ことがあり、予約された範囲のポートは待ち受けられません（`WinError 10013`）。予約された範囲は
+`netsh interface ipv4 show excludedportrange protocol=tcp` で確認できます。
 
 #### TCP クライアント（対話サーバーがクライアント、MMDAgent-EX がサーバー）
 
@@ -80,11 +85,11 @@ MMDAgent-EX はループバックに公開されたコンテナのポートへ�
 Plugin_Remote_EnableServer=true
 Plugin_Remote_EnableClient=false
 Plugin_Remote_Hostname=localhost
-Plugin_Remote_ListenPort=60001
+Plugin_Remote_ListenPort=39001
 ```
 
 Docker では、この方式に compose でのポートの公開は不要です。コンテナは `localhost` を `host.docker.internal` に読み替え、
-`host.docker.internal:60001`（`host.docker.internal:Plugin_Remote_ListenPort`）に接続します。選択したポートでの待ち受けが、
+`host.docker.internal:39001`（`host.docker.internal:Plugin_Remote_ListenPort`）に接続します。選択したポートでの待ち受けが、
 プライベートネットワークに対して Windows ファイアウォールで許可されていることを確認してください。
 
 ### 音声の設定
@@ -335,7 +340,7 @@ python main.py --remote-orchestrator 127.0.0.1:8765 --config controller_config.d
 この構成では、TCP サーバー方式（コンテナが TCP サーバー）を推奨します。方式ごとの MDF の設定は
 [MMDAgent-EX と MDF](#mmdagent-ex-と-mdf) を参照してください。
 
-1. MDF に TCP サーバー方式の値（`Plugin_Remote_Port` は `60001` または `MMDAGENT_REMOTE_TCP_PORT` の値）を設定し、
+1. MDF に TCP サーバー方式の値（`Plugin_Remote_Port` は `39001` または `MMDAGENT_REMOTE_TCP_PORT` の値）を設定し、
    Qt で MDF を保存します。
 2. 「MMDAgent-EXを起動」を押します。MMDAgent-EX が TCP クライアントとなり、ループバックに公開された
    コンテナのポートへ接続します。
@@ -466,7 +471,7 @@ Qt アプリでは、対話サーバーの行の右端で「ローカル」/「D
 |---|---|
 | 「未接続」のまま変わらない | 画面に表示された MDF 名・方式・接続先と、実際に起動した MDF を照合する。特に WebSocket の `Directory` と各 `Port` |
 | MDF が見つからない（Docker） | `.env` の `MMDAGENT_ASSETS_HOST` が MDF を含むフォルダーか、`mdf_path` が `/app/mmdagent_assets/<そのフォルダーからの相対パス>` か |
-| `port is already allocated` / `address already in use` | 使用中の 8080 / 60001 を解放するか、`.env` と MDF の両方を同じ空きポートに変更。compose の `web` と `orchestrator` を同時に起動していないかも確認 |
+| `port is already allocated` / `address already in use` | 使用中の 8080 / 39001 を解放するか、`.env` と MDF の両方を同じ空きポートに変更。compose の `web` と `orchestrator` を同時に起動していないかも確認 |
 | TCP クライアント方式だけ接続できない | Windows Defender ファイアウォールで MMDAgent-EX の待ち受けが遮断されていないか。`host.docker.internal` はコンテナから見た Windows ホスト |
 | MDF の保存が 403 になる（Docker の Web UI） | 仕様（読み取り専用）。Windows 側の MDF を編集し、Web UI の「MDFから読込」で再読み込み |
 | Qt が対話サーバーにつながらない（Docker） | コンテナの起動途中は `[DockerBackend][WARN] ...` を表示して 1.5 秒ごとに再試行する。`docker compose ps orchestrator` でサービスの状態を確認 |

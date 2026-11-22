@@ -67,7 +67,7 @@ services:
       - "127.0.0.1:${MMDAGENT_REMOTE_WS_PORT:-8080}:${MMDAGENT_REMOTE_WS_PORT:-8080}"
       # TCP server（MDF: EnableClient=true。MMDAgent-EX が client）:
       #   Hostname=localhost, Port=MMDAGENT_REMOTE_TCP_PORT。
-      - "127.0.0.1:${MMDAGENT_REMOTE_TCP_PORT:-60001}:${MMDAGENT_REMOTE_TCP_PORT:-60001}"
+      - "127.0.0.1:${MMDAGENT_REMOTE_TCP_PORT:-39001}:${MMDAGENT_REMOTE_TCP_PORT:-39001}"
       # MDF: EnableServer=true（MMDAgent-EX が TCP server）の場合は publish 不要。
       # コンテナから host.docker.internal:Plugin_Remote_ListenPort へ接続する。
 
@@ -114,7 +114,7 @@ services:
       - "127.0.0.1:${MAAI_SDS_QT_ORCHESTRATOR_PORT:-8765}:8765"
       # These are intentionally identical to web and therefore mutually exclusive with it.
       - "127.0.0.1:${MMDAGENT_REMOTE_WS_PORT:-8080}:${MMDAGENT_REMOTE_WS_PORT:-8080}"
-      - "127.0.0.1:${MMDAGENT_REMOTE_TCP_PORT:-60001}:${MMDAGENT_REMOTE_TCP_PORT:-60001}"
+      - "127.0.0.1:${MMDAGENT_REMOTE_TCP_PORT:-39001}:${MMDAGENT_REMOTE_TCP_PORT:-39001}"
 
   maai-sds-headless:
     build:
@@ -133,7 +133,7 @@ services:
       - ./logs:/app/logs
     ports:
       - "15601:15601" # TCP audio output verification
-      - "60001:60001" # MMD remote TCP server
+      - "39001:39001" # MMD remote TCP server
     command: ["--config", "/app/controller_config.json", "--assume-mmd-running", "voice_dialog"]
 
   nemotron-asr:

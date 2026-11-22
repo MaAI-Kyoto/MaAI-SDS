@@ -1,6 +1,12 @@
-# MaAI-SDS 用の MDF。対話サーバーへ WebSocket（ws://localhost:9001/chat）で接続する。
-# 同じフォルダーの maai_sds.fst（同じ名前の FST）を読む。
+# MaAI-SDS 用の MDF。同じフォルダーの maai_sds.fst（同じ名前の FST）を読む。
+# 対話サーバーへ TCP で接続する（MMDAgent-EX がクライアント、対話サーバーが localhost:39001 で待ち受ける）。
+# ポートは Windows の動的ポート（49152 以上）の外にする。Hyper-V・WSL・Docker Desktop が動的ポートの一部を予約するため。
+# WebSocket にする場合は、Plugin_Remote_EnableClient=false にして、次の 3 行を足す：
+#   Plugin_Remote_Websocket_Host=localhost
+#   Plugin_Remote_Websocket_Port=9001
+#   Plugin_Remote_Websocket_Directory=/chat
 window_size=1024,1024
-Plugin_Remote_Websocket_Host=localhost
-Plugin_Remote_Websocket_Port=9001
-Plugin_Remote_Websocket_Directory=/chat
+Plugin_Remote_EnableClient=true
+Plugin_Remote_Hostname=localhost
+Plugin_Remote_Port=39001
+Plugin_Remote_RetryCount=1000

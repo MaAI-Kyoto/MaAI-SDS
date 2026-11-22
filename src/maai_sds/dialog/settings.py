@@ -938,7 +938,7 @@ def build_remote_plugin_tcp_settings_dict(
         "ws_directory": ws_dir,
         "tcp_port": cfg_int(cfg, "Plugin_Remote_Port", 60001),
         "tcp_listen_port": cfg_int(cfg, "Plugin_Remote_ListenPort", 60001),
-        "tcp_server_host": cfg_str(cfg, "Plugin_Remote_Bind_Host", "0.0.0.0"),
+        "tcp_server_host": cfg_str(cfg, "Plugin_Remote_Bind_Host", "127.0.0.1"),
         # Native の従来動作は常に loopback 接続。Docker の TCP client モードだけ、
         # MDF の Hostname を接続先指定として使い loopback を Windows ホストへ読み替える。
         "tcp_client_host": "127.0.0.1",

@@ -34,6 +34,17 @@ class AvatarModelAliasTest(unittest.TestCase):
         built = vds.build_audio_output_worker_config_dict(cfg, output_mode="mmd", assume_mmd_running=True)
         self.assertEqual(built["remote_plugin_settings"]["model_alias"], "gene")
 
+    def test_bundled_mdf_is_tcp_on_loopback_outside_dynamic_ports(self) -> None:
+        # 同梱の maai_sds.mdf：TCP サーバー方式、ホストでは loopback で待ち受け、ポートは動的ポート（49152〜）の外
+        mdf = Path(__file__).resolve().parents[1] / "assets" / "mmdagent" / "maai_sds" / "maai_sds.mdf"
+        cfg = vds.merge_plugin_remote_from_mdf_into_cfg({"mdf_path": str(mdf)})
+        rs = vds.build_remote_plugin_tcp_settings_dict(cfg, running_in_docker=False)
+        self.assertTrue(rs["tcp_enable_client"])
+        self.assertFalse(rs["tcp_enable_server"])
+        self.assertEqual(rs["tcp_server_host"], "127.0.0.1")
+        self.assertLess(rs["tcp_port"], 49152)
+        self.assertEqual(rs["model_alias"], "gene")
+
     def test_missing_fst_falls_back_to_zero(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             mdf = Path(tmp) / "none.mdf"
