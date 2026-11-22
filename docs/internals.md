@@ -880,7 +880,8 @@ Controller の `_on_tts_ipc_event()` は、`ready` / `log` / `fatal` / `bridge_*
 
 1. LLM ワーカーが応答を受信し、蓄積したテキストを区切り文字で分割した `tts_segment` を対話サーバーに送信
 2. `VoiceDialogRuntime._llm_play_tts_segment()` がセグメントを合成（`TtsRouter.synthesize_l16be()`）
-3. `Cartesia-Realtime`・`Kokoro-RealtimeTTS`（`BINARY_STREAM_ENGINES`）は合成しながらチャンクを受信して逐次送出。その他のエンジンは合成結果をまとめて送出
+3. `Cartesia-Realtime`・`Kokoro-RealtimeTTS`・`Qwen3-TTS-CPP`・`Irodori-v4`・`LFM2.5-Audio`（`BINARY_STREAM_ENGINES`）は合成しながらチャンクを受信して逐次送出
+   （`Irodori-v4` は speech.cpp 版・audio.cpp 版のみ。PyTorch 版は 1 文をまとめて返す）。その他のエンジンは合成結果をまとめて送出
 4. PCM は `tts_play_chunk` として音声出力ワーカーへ送られ、MMDAgent-EX へ逐次送出
 5. セグメントの区切りで `tts_play_break` を送信
 
@@ -975,7 +976,7 @@ Audio Output ワーカー内にあり、頷きの制御（`MmdRuntime`）は対�
 
 - 頷きモーションの入力は、対話サーバーが MaAI の連続した nod 予測をバッファに集計して決定する（単一の経路）。
 - `generate_natural_nod` が自然な頷きの角度系列（ラジアン、正が上向き）を生成する。
-- 頷きとまばたきは公式 MMDAgent-EX の仕組みで動かす（`mmd/avatar_keys.py`）。頭のボーン（`nod_para_bone`、既定は `頭`）と
+- 頷きとまばたきは公式 MMDAgent-EX の仕組みで動かす（`mmd/avatar_keys.py`）。頭のボーン（`nod_para_bone`。設定に値が無いときは `頭`、見本の設定 `controller_config.example.json` は `首`）と
   左目・右目を KeyValue `MaAI_HeadPitch` に `MODEL_BINDBONE` で結び付け、目は頭と逆向きに `nod_para_eye_scale` 倍だけ回して
   視線を保つ。まばたきのモーフ（`mmd_blink_morph`）は KeyValue `MaAI_Blink`（0〜1）に `MODEL_BINDFACE` で結び付ける。
 - 対話サーバーの `MmdRuntime` は頷きの開始時に `mmd_bind_head` を送り、その後は別スレッドで `KEYVALUE_SET|MaAI_HeadPitch|<角度>` を
@@ -1096,13 +1097,13 @@ MMD 出力時のペーシング（`MmdAudioPacer`）は AudioOutput ワーカー
 
 - `_collect_app_config_payload()`（`gui/config_io.py`）がウィジェットの値を `payload` dict にまとめ、`config_store.save` で保存
 - 保存後に `_push_dialog_orchestrator_settings()` を実行し、実行中の対話サーバーへ `update_settings` を送信
-- 平坦なフィールド（178 キー）は `gui/app_config_spec.py` の宣言テーブルを唯一の定義元とし、キー名と既定値の二重管理を回避
+- 平坦なフィールド（176 キー）は `gui/app_config_spec.py` の宣言テーブルを唯一の定義元とし、キー名と既定値の二重管理を回避
   （[`gui/app_config_spec.py`](#guiapp_config_specpy平坦なフィールドの宣言テーブル)）。エンジン切り替え時のマイグレーションや
   `tts_template` の JSON など特殊なものは、明示的なコードとして記述
 
 #### ワーカー設定の組み立て（`dialog/settings.py` への一本化）
 
-`_build_asr_config_dict`・`_build_maai_worker_config`・`_build_tts_inputs` などの 12 個のビルダーは、`dialog/settings.py` の
+`_build_asr_config_dict`・`_build_maai_worker_config`・`_build_tts_inputs` などの 10 個のビルダーは、`dialog/settings.py` の
 `build_*(cfg)`（Controller 内では `vds` として import）へ委譲する。GUI と Web UI で同じ変換を共有するためである。
 GUI 側は `_widget_config_snapshot()` でウィジェットの現在値を cfg dict にしてから渡す。
 
@@ -1160,7 +1161,7 @@ GUI 固有の事情は、引数や前処理として明示的に渡す。
 
 ### `gui/app_config_spec.py`（平坦なフィールドの宣言テーブル）
 
-`controller_config.json` の平坦なフィールド 178 キーについて、
+`controller_config.json` の平坦なフィールド 176 キーについて、
 `(キー, ウィジェット属性, 種別, hasattr ガード, 保存時の代替値, 読み込み時の既定値, setter, 空文字を既定値に戻すか)`
 を 1 か所で定義する。`gui/config_io.py` の `_read_app_config_field` / `_apply_app_config_field` がこれを参照し、cfg とウィジェットの間で値を変換する。
 

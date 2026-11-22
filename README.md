@@ -111,10 +111,11 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1 -Device cpu  # CP
 
 | オプション | 説明 |
 |---|---|
-| `-Device cuda` / `cpu` | 既定は `cuda`（PyTorch cu128・CUDA 版 ONNX Runtime）。`cpu` では NVIDIA のライブラリ（約 1.8 GB）を導入しない。選択は `.device_extra` に記録され、エンジン管理もこれに従う |
+| `-Device cuda` / `cpu` | 既定は `cuda`（PyTorch cu128・CUDA 版 ONNX Runtime）。`cpu` では NVIDIA のライブラリ（`nvidia-*` で約 3.3 GB）と CUDA 版 PyTorch を導入しない。選択は `.device_extra` に記録され、エンジン管理もこれに従う |
 | `-WithNemotron` | `nemotron-asr` 用の環境 `.venv_nemotron`（約 8 GB）も作成する |
 | `-SkipAssets` | エンジン資産を取得しない |
 | `-SkipSherpa` | パッチ適用済み sherpa-onnx を導入しない（PyPI 版のままになり、`nemotron-onnx` の精度が下がる） |
+| `-ForceSherpaBuild` | ビルド済みの sherpa-onnx を使わず、ソースからビルドする（Git・CMake・MSVC Build Tools の C++ が必要。[docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md)） |
 | `-VerifyOnly` | 導入せず検証のみ行う |
 
 既定で取得するのは、既定の設定（ASR：ReazonSpeech〔sherpa-onnx〕、TTS：VOICEVOX Core）で対話できる最小限の資産です。
@@ -126,13 +127,15 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1 -Device cpu  # CP
 
 ### 2. API キー
 
-API キーはコードや設定ファイルに書かず、環境変数で渡します（`.env.example` 参照）。
+API キーはコードや設定ファイルに書かず、環境変数で渡します（`.env.example` 参照）。読む環境変数の名前は設定画面で変えられます。
 
 | 用途 | 環境変数 |
 |---|---|
 | OpenAI（LLM） | `OPENAI_API_KEY` |
 | Cartesia（TTS） | `CARTESIA_API_KEY` |
-| OBS の録画操作 | `OBS_WEBSOCKET_PASSWORD` |
+
+OBS の録画操作に使う WebSocket のパスワードは、環境変数ではなく設定画面の「OBS録画設定」で入力します。
+入力した値は `controller_config.json`（Git 管理外）に保存されます。
 
 ### 3. MMDAgent-EX とアバター
 
@@ -259,7 +262,8 @@ Docker の対話サーバーに同時に接続できる設定画面は 1 つで�
 | `nemotron-asr` | 専用環境（NeMo） | `.venv_nemotron` をエンジン管理または `setup_env.ps1 -WithNemotron` で作成 |
 | `external-asr-tcp` | 外部 | TCP で外部の ASR に接続 |
 
-音声区間検出は `maai` / `silero`、ターン検出は `maai` / `smart-turn` から選択できます（既定はいずれも `maai`）。
+音声区間検出は `maai` / `silero`、ターン検出は `maai` / `smart-turn` から選択できます（既定の設定では、音声区間検出が `silero`、
+ターン検出が `maai`）。
 各エンジンの実測値と既定値の根拠は [docs/asr-engine-notes.md](docs/asr-engine-notes.md) にまとめています。
 
 ### TTS（音声合成）

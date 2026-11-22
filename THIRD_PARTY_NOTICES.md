@@ -37,7 +37,6 @@ GUI には PySide6（LGPL-3.0）を使用しており、PyQt6（GPL）は使用�
 | パッケージ | ライセンス | 導入元 |
 |---|---|---|
 | PySide6（pyside6-essentials）/ Qt 6 | LGPL-3.0 | `gui` extra |
-| pygame | LGPL-2.1 | `maai` |
 | soxr | LGPL-2.1 以降 | `librosa` |
 | num2words | LGPL-2.1 | `tts-kokoro` extra（misaki） |
 | frozendict | LGPL-3.0 | `tts-kokoro` extra（x-transformers → einx） |
@@ -104,6 +103,17 @@ GUI には PySide6（LGPL-3.0）を使用しており、PyQt6（GPL）は使用�
 | audio.cpp | audio-cpp/audio.cpp-gguf | 独自（要確認） |
 | VOICEVOX / VOICEVOX Core | 本体・音声モデル | 本体は MIT ほか。音声ライブラリはキャラクターごとの利用規約に従う（クレジット表記「VOICEVOX:キャラ名」など） |
 | Cartesia | 商用クラウド API | Cartesia の利用規約 |
+
+### アバター（MMDAgent-EX）
+
+MMDAgent-EX 本体・アバター・モーションはリポジトリに含めていません。README の手順で各配布元から取得します。
+同梱の `assets/mmdagent/maai_sds/`（MDF・FST）は、それらのファイル名を指す設定だけです。
+
+| 対象 | ライセンス | 備考 |
+|---|---|---|
+| MMDAgent-EX（mmdagent-ex/MMDAgent-EX） | Apache-2.0 | 公式の Windows 版 v2.1 |
+| CG-CA ジェネ（mmdagent-ex/gene） | **CC BY 4.0（クレジット表記が必要）** | 商標権・意匠権は名古屋工業大学。学術活動と個人の非営利の利用は許諾不要、それ以外の営利・商用の利用は別途許諾が必要。クレジット：`CG-CA Gene (c) 2023 by Nagoya Institute of Technology, Moonshot R&D Goal 1 Avatar Symbiotic Society` |
+| サンプル集のモーション・画像（mmdagent-ex/example） | 表記なし（要確認） | `maai_sds.fst` が使う `motions/wait/01_Wait.vmd`・`images/floor_block.png`・`images/back_white.png` など |
 
 ## 4. 確認中のもの
 

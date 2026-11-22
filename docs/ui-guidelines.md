@@ -7,7 +7,9 @@ Qt アプリ（PySide6）と Web UI に共通する、画面の設計方針と�
 
 ### 色
 
-`src/maai_sds/gui/theme.py` の `TOKENS` と `web/app/app.css` の `:root` は同じ値とする。一方を変更した場合は、もう一方も合わせて変更する。
+`src/maai_sds/gui/theme.py` の `TOKENS` と `web/app/app.css` は同じ色の値を使う。Web では多くを `:root` の変数に置き、
+input と idle は該当するルールに直接書いている（panel は `:root` の `--panel` が半透明で、不透明の値は `--panel-solid`）。
+一方を変更した場合は、もう一方も合わせて変更する。
 
 | 名前 | 値 | 用途 |
 | --- | --- | --- |
