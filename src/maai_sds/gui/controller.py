@@ -2041,8 +2041,8 @@ class MMDAgentController(
             "wav_start_sec": wav_start_sec,
             "wav_end_sec": wav_end_sec,
             "maai_worker_config": dict(self._build_maai_worker_config()),
-            "nod_para_scale_ref": float(self._get_nod_para_float("nod_para_scale_edit", 1.0)),
-            "nod_para_speed_scale_ref": float(self._get_nod_para_float("nod_para_speed_scale_edit", 1.0)),
+            "nod_para_scale_ref": float(self._get_nod_para_float("nod_para_scale_edit", 3.0)),
+            "nod_para_speed_scale_ref": float(self._get_nod_para_float("nod_para_speed_scale_edit", 1.2)),
             "nod_para_eye_scale_ref": float(self._get_nod_para_float("nod_para_eye_scale_edit", 1.0)),
             "note": (
                 "表出行は Dialog Orchestrator 経由のイベントのみ。"

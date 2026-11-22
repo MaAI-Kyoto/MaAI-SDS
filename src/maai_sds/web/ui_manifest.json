@@ -5224,7 +5224,7 @@
                   "scope": "app",
                   "tooltip": "2回目以降の頷きの振幅減衰率（0～1）です。",
                   "kind": "line",
-                  "value": "0.6",
+                  "value": "0.8",
                   "password": false
                 }
               ]
@@ -5341,7 +5341,7 @@
                   "scope": "app",
                   "tooltip": "最終ピッチに掛ける倍率",
                   "kind": "line",
-                  "value": "1.0",
+                  "value": "3.0",
                   "password": false
                 }
               ]
@@ -5355,7 +5355,7 @@
                   "scope": "app",
                   "tooltip": "再生速度スケールです（1より大きいと高速化）。",
                   "kind": "line",
-                  "value": "1.0",
+                  "value": "1.2",
                   "password": false
                 }
               ]
