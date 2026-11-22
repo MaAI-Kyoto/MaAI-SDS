@@ -4,13 +4,15 @@ param(
     [string]$SherpaTag = "v1.13.5",
     [string]$SherpaCommit = "3dc7c569f31ca2cd4a20ed6f7db780327e6714c5",
     [string]$FallbackPyPiVersion = "1.13.5",
-    # GPU build: fetches onnxruntime-win-x64-gpu-1.24.4 and bundles the CUDA execution
-    # provider. nemotron-onnx fp32 encoder on CPU is ~165ms/chunk vs ~27ms on GPU.
-    # Requires an NVIDIA GPU + CUDA 12 / cuDNN 9 at runtime (resolved via
-    # ort_windows_preload._add_cuda_dll_dirs from the venv nvidia-* / torch wheels).
-    # Set -EnableGpu:$false for a CPU-only build.
-    [bool]$EnableGpu = $true
+    # GPU build: links against the onnxruntime-gpu already installed in the venv (CUDA 12)
+    # and bundles its CUDA execution provider. nemotron-onnx fp32 encoder on CPU is
+    # ~165ms/chunk vs ~27ms on GPU. Requires an NVIDIA GPU + CUDA 12 / cuDNN 9 at runtime
+    # (resolved via ort_windows_preload._add_cuda_dll_dirs from the venv nvidia-* / torch wheels).
+    # Use -CpuOnly (or -EnableGpu:$false when dot-sourcing) for a CPU-only build.
+    [bool]$EnableGpu = $true,
+    [switch]$CpuOnly
 )
+if ($CpuOnly) { $EnableGpu = $false }
 
 # Upgrade sherpa-onnx in the project venv to official v1.13.5 plus MaAI quality patches.
 # PyPI 1.13.5 already has prompt_index and the greedy double-feed fix; Git build is
@@ -38,12 +40,15 @@ if (-not (Test-Path $venvPython)) {
 # Prefer venv cmake/ninja (kaldi-native-fbank needs cmake>=4.3.2)
 $env:PATH = "$venvScripts;$env:PATH"
 
-# Short UV cache only (optional; keeps wheel/git cache paths shorter)
-$shortCache = "D:\uv-bld\cache"
-if (-not (Test-Path $shortCache)) {
-    New-Item -ItemType Directory -Force -Path $shortCache | Out-Null
+# Short UV cache (keeps wheel/git cache paths shorter). Respect an existing UV_CACHE_DIR;
+# the build itself runs with --no-cache, so this only affects the build-dep install.
+if (-not $env:UV_CACHE_DIR) {
+    $shortCache = Join-Path $env:LOCALAPPDATA "uv-bld\cache"
+    if (-not (Test-Path $shortCache)) {
+        New-Item -ItemType Directory -Force -Path $shortCache | Out-Null
+    }
+    $env:UV_CACHE_DIR = $shortCache
 }
-$env:UV_CACHE_DIR = $shortCache
 
 # Skip CLI/TTS/etc. — Python extension only (MSVC C1083 workaround)
 # OpenFST MSVC build is unstable with -m:2; cmake_extension.py reads this.
@@ -57,10 +62,69 @@ $cmakeArgsList = @(
     "-DPYTHON_EXECUTABLE=$venvPythonCmake"
 )
 if ($EnableGpu) {
-    # Selects cmake/onnxruntime-win-x64-gpu.cmake -> onnxruntime-win-x64-gpu-1.24.4 (CUDA 12 / cuDNN 9).
+    # The onnxruntime used is the one Initialize-GpuOnnxRuntime stages below
+    # (SHERPA_ONNXRUNTIME_LIB_DIR / _INCLUDE_DIR), not cmake/onnxruntime-win-x64-gpu.cmake.
     $cmakeArgsList += "-DSHERPA_ONNX_ENABLE_GPU=ON"
 }
 $env:SHERPA_ONNX_CMAKE_ARGS = $cmakeArgsList -join " "
+
+function Initialize-GpuOnnxRuntime {
+    # sherpa v1.13.5 の cmake/onnxruntime-win-x64-gpu.cmake は
+    # github.com/microsoft/onnxruntime の Release（onnxruntime-win-x64-gpu_cuda12-1.27.1.zip）を
+    # 取りに行くが、そのリポジトリは GitHub から消えていて 404 になる。NuGet の 1.27.1 は CUDA 13 向けで、
+    # この venv（torch cu128 / nvidia-*-cu12）では動かない。
+    # そこで venv に入っている onnxruntime-gpu（CUDA 12 向け）の DLL を使い、同じ版の NuGet パッケージから
+    # ヘッダーと onnxruntime.lib（インポートライブラリ）だけを取る。Python の onnxruntime と
+    # sherpa の onnxruntime が同じ版になるので、同じプロセスに 2 つの版が載ることもない。
+    $capi = Join-Path $projectRoot ".venv\Lib\site-packages\onnxruntime\capi"
+    $ver = (& $venvPython -c "import importlib.metadata as m; print(m.version('onnxruntime-gpu'))" 2>$null | Select-Object -Last 1)
+    if ($LASTEXITCODE -ne 0 -or -not $ver -or -not (Test-Path (Join-Path $capi "onnxruntime_providers_cuda.dll"))) {
+        throw "onnxruntime-gpu (with the CUDA provider) is not installed in the venv. Run 'uv sync --extra cu128' first."
+    }
+    $ver = $ver.Trim()
+    $stage = Join-Path $projectRoot "vendor\onnxruntime-gpu-$ver"
+    $incDir = Join-Path $stage "include"
+    $libDir = Join-Path $stage "lib"
+    $ready = (Test-Path (Join-Path $incDir "onnxruntime_cxx_api.h")) -and (Test-Path (Join-Path $libDir "onnxruntime.lib"))
+    if (-not $ready) {
+        $pkg = "microsoft.ml.onnxruntime.gpu.windows"
+        $url = "https://api.nuget.org/v3-flatcontainer/$pkg/$ver/$pkg.$ver.nupkg"
+        $nupkg = Join-Path $env:TEMP "$pkg.$ver.nupkg"
+        Write-Host "[sherpa-onnx] Fetching onnxruntime $ver headers and import lib from NuGet ($url) ..."
+        $prevProgress = $ProgressPreference
+        $ProgressPreference = "SilentlyContinue"   # 5.1 の進捗表示は大きなファイルで極端に遅くなる
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $nupkg -UseBasicParsing
+        } finally {
+            $ProgressPreference = $prevProgress
+        }
+        if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
+        New-Item -ItemType Directory -Force -Path $incDir, $libDir | Out-Null
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $zip = [System.IO.Compression.ZipFile]::OpenRead($nupkg)
+        try {
+            foreach ($e in $zip.Entries) {
+                if ($e.FullName -match '^(build|buildTransitive)/native/include/[^/]+\.h$') {
+                    [System.IO.Compression.ZipFileExtensions]::ExtractToFile($e, (Join-Path $incDir $e.Name), $true)
+                } elseif ($e.FullName -eq "runtimes/win-x64/native/onnxruntime.lib") {
+                    [System.IO.Compression.ZipFileExtensions]::ExtractToFile($e, (Join-Path $libDir $e.Name), $true)
+                }
+            }
+        } finally {
+            $zip.Dispose()
+            Remove-Item -Force $nupkg -ErrorAction SilentlyContinue
+        }
+        if (-not ((Test-Path (Join-Path $incDir "onnxruntime_cxx_api.h")) -and (Test-Path (Join-Path $libDir "onnxruntime.lib")))) {
+            throw "NuGet package $pkg $ver did not contain the onnxruntime headers / onnxruntime.lib"
+        }
+    }
+    # DLL は毎回 venv から取り直す（onnxruntime-gpu を入れ直したときに古いものが残らないように）
+    Get-ChildItem $libDir -Filter "*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force
+    Copy-Item (Join-Path $capi "onnxruntime*.dll") $libDir -Force
+    $env:SHERPA_ONNXRUNTIME_INCLUDE_DIR = ($incDir -replace '\\', '/')
+    $env:SHERPA_ONNXRUNTIME_LIB_DIR = ($libDir -replace '\\', '/')
+    Write-Host "[sherpa-onnx] Using onnxruntime-gpu $ver from the venv: $stage"
+}
 
 function Invoke-UvQuiet {
     param([Parameter(Mandatory = $true)][string[]]$Args)
@@ -224,6 +288,7 @@ try {
     Invoke-UvQuiet -Args @("pip", "uninstall", "sherpa-onnx", "sherpa-onnx-core") | Out-Null
 
     Ensure-SherpaSource
+    if ($EnableGpu) { Initialize-GpuOnnxRuntime }
 
     $buildDir = Join-Path $srcDir "build"
     if (Test-Path $buildDir) {

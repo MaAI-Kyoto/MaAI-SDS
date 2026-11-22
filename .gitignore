@@ -74,6 +74,7 @@ flash_attn-*.whl
 
 # ===== Bundled third-party projects (depend via pip/uv instead) =====
 vendor/sherpa-onnx/
+vendor/onnxruntime-gpu-*/
 .sherpa_onnx_git_built
 CosyVoice/
 Kokoro-FastAPI/

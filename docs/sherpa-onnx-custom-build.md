@@ -56,9 +56,12 @@ CUDA 版のビルドですが、CUDA は使用時にのみ読み込むため、G
 # => import OK 1.13.5
 ```
 
-既定は GPU ビルドです（`-EnableGpu`。`onnxruntime-win-x64-gpu-1.24.4` の CUDA 実行プロバイダーを同梱）。
+既定は GPU ビルドです。venv に入っている `onnxruntime-gpu`（CUDA 12 向け）の DLL にリンクし、その CUDA 実行プロバイダーを同梱します。
+ヘッダーと `onnxruntime.lib` は同じ版の NuGet パッケージ（`Microsoft.ML.OnnxRuntime.Gpu.Windows`）から取り、`vendor/onnxruntime-gpu-<版>/` に置きます。
+sherpa-onnx の cmake が既定で取りに行く `github.com/microsoft/onnxruntime` の配布物は、リポジトリごと GitHub から消えていて取得できません。
+また NuGet の 1.27.1 は CUDA 13 向けのため使いません。
 CUDA と cuDNN の DLL は、venv の `nvidia-*` と `torch` の wheel から `ort_windows_preload._add_cuda_dll_dirs()` が
-自動で検出します（cuDNN を別途導入する必要はありません）。CPU のみで使用する場合は `-EnableGpu:$false` でビルドできます。
+自動で検出します（cuDNN を別途導入する必要はありません）。CPU のみで使用する場合は `-CpuOnly` でビルドできます（`setup_env.ps1 -Device cpu` はこちらを使います）。
 
 Linux 用のビルド済みパッケージは `scripts/build_sherpa_prebuilt_linux.sh` で作成します。
 
@@ -100,8 +103,11 @@ k2-fsa の配布物には含まれていないため、本リポジトリの `as
 
 | 実行モード | `asr_nemotron_onnx_compute` | provider / 量子化 | 備考 |
 |---|---|---|---|
-| GPU (fp32) | `gpu-fp32`（既定） | cuda / fp32 | 遅延が最も小さく、精度も最良。NVIDIA GPU と GPU ビルドの sherpa-onnx が必要 |
+| GPU (fp32) | `gpu-fp32` | cuda / fp32 | 遅延が最も小さく、精度も最良。NVIDIA GPU と GPU ビルドの sherpa-onnx が必要 |
 | CPU (int8) | `cpu-int8` | cpu / int8 | GPU 不要。CPU の fp32 より高速で、精度はほぼ同等 |
+
+見本の設定（`controller_config.example.json`・`controller_config.docker.example.json`）は、GPU の無い環境でも動く `cpu-int8` です。
+設定に値が無いときは `gpu-fp32` になります。GPU がある環境では、`gpu-fp32` に切り替えると遅延が小さくなります。
 
 int8 は動的量子化のため CUDA カーネルが効かず、GPU ではかえって遅くなります。
 

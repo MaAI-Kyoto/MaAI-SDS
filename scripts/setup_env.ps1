@@ -212,7 +212,12 @@ function Invoke-SherpaSetup {
                "  カスタムビルド無しで進めるなら -SkipSherpa（PyPI 版で動作しますが`n" +
                "  日本語 ASR の品質は落ちます）。")
     }
-    & powershell -ExecutionPolicy Bypass -File $up
+    # -Device cpu なら CUDA 実行プロバイダ無しでビルドする（GPU の無いマシンで CUDA 版を作らない）
+    if ($Device -eq "cpu") {
+        & powershell -ExecutionPolicy Bypass -File $up -CpuOnly
+    } else {
+        & powershell -ExecutionPolicy Bypass -File $up
+    }
     if ($LASTEXITCODE -ne 0) { throw "upgrade_sherpa_onnx.ps1 が失敗した (exit $LASTEXITCODE)" }
     # 次回の uv sync 用に、今できたものを待避しておく
     Save-SherpaSnapshot | Out-Null
