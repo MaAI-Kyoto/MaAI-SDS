@@ -146,15 +146,13 @@ class ManifestTest(unittest.TestCase):
     def test_maai_model_details_are_folded_on_the_web_too(self) -> None:
         win = next(w for w in self._manifest()["windows"] if w["id"] == "maai_settings_window")
         rows = [row for g in win["groups"] for row in g["rows"]]
-        labels = {row["label"]: row.get("detail") for row in rows}
-        self.assertTrue(labels.get("FPS"))  # 頷きの動きの形の細かい調整はたたむ
-        self.assertTrue(labels.get("ローカルモデル（.pt）"))
-        # どのモデルを使うかを決める項目は常に見せる（ユーザー指定）
-        for label in ("フレームレート（Hz）", "モード", "言語", "モデル種別"):
-            shown = [r for r in rows if r["label"] == label]
-            self.assertTrue(shown, label)
-            self.assertTrue(all(not r.get("detail") for r in shown), label)
-        self.assertIsNone(labels.get("MaAIターンしきい値"))
+        # MaAI のモデルの設定でたたむのは、頷きの動きの形の調整だけ（ユーザー指定）。
+        # ONNX のスレッド数・推論チャンクの「詳細設定」は以前からあるもので別扱い。
+        folded = {r["label"] for r in rows if r.get("detail") and "スレッド" not in r["detail"]}
+        self.assertEqual(folded, {
+            "振幅倍率", "頭ボーン名", "減衰率", "振れ幅クリップ下限", "振れ幅クリップ上限",
+            "速度クリップ下限", "速度クリップ上限", "補間", "振り上げ倍率", "再生速度倍率", "目の回転倍率",
+        })
 
     def test_engine_pages_come_first_in_the_settings_list(self) -> None:
         from maai_sds.gui.settings_hub import HUB_PAGES

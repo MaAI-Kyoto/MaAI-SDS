@@ -5296,26 +5296,6 @@
               ]
             },
             {
-              "label": "MaAIターンしきい値",
-              "widgets": [
-                {
-                  "attr": "asr_maai_turn_threshold_edit",
-                  "config_key": "asr_maai_turn_threshold",
-                  "scope": "app",
-                  "tooltip": "範囲：0〜1",
-                  "kind": "line",
-                  "value": "0.5",
-                  "password": false,
-                  "numeric": {
-                    "min": 0.0,
-                    "max": 1.0,
-                    "decimals": true,
-                    "note": null
-                  }
-                }
-              ]
-            },
-            {
               "label": "ローカルモデル（.pt）",
               "widgets": [
                 {
@@ -5336,8 +5316,27 @@
                   "text": "参照…",
                   "browse_target": "maai_test_turn_vap_local_model_edit"
                 }
-              ],
-              "detail": "詳細設定（ローカルモデル）"
+              ]
+            },
+            {
+              "label": "MaAIターンしきい値",
+              "widgets": [
+                {
+                  "attr": "asr_maai_turn_threshold_edit",
+                  "config_key": "asr_maai_turn_threshold",
+                  "scope": "app",
+                  "tooltip": "範囲：0〜1",
+                  "kind": "line",
+                  "value": "0.5",
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
+                }
+              ]
             }
           ]
         },
@@ -5411,6 +5410,29 @@
                     "normal-ver2"
                   ],
                   "value": "normal"
+                }
+              ]
+            },
+            {
+              "label": "ローカルモデル（.pt）",
+              "widgets": [
+                {
+                  "attr": "maai_test_bc_local_model_edit",
+                  "config_key": "maai_test_bc_local_model",
+                  "scope": "app",
+                  "tooltip": null,
+                  "kind": "line",
+                  "value": "",
+                  "password": false
+                },
+                {
+                  "attr": "maai_test_bc_local_model_browse_btn",
+                  "config_key": null,
+                  "scope": "app",
+                  "tooltip": null,
+                  "kind": "button",
+                  "text": "参照…",
+                  "browse_target": "maai_test_bc_local_model_edit"
                 }
               ]
             },
@@ -5496,6 +5518,26 @@
               ]
             },
             {
+              "label": "相槌連続フレーム数",
+              "widgets": [
+                {
+                  "attr": "maai_backchannel_consecutive_frames_edit",
+                  "config_key": "maai_backchannel_consecutive_frames",
+                  "scope": "app",
+                  "tooltip": "範囲：1〜100",
+                  "kind": "line",
+                  "value": "1",
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 100,
+                    "decimals": false,
+                    "note": null
+                  }
+                }
+              ]
+            },
+            {
               "label": "相槌辞書（JSON）",
               "widgets": [
                 {
@@ -5517,51 +5559,6 @@
                   "browse_target": "maai_backchannel_dictionary_path_edit"
                 }
               ]
-            },
-            {
-              "label": "ローカルモデル（.pt）",
-              "widgets": [
-                {
-                  "attr": "maai_test_bc_local_model_edit",
-                  "config_key": "maai_test_bc_local_model",
-                  "scope": "app",
-                  "tooltip": null,
-                  "kind": "line",
-                  "value": "",
-                  "password": false
-                },
-                {
-                  "attr": "maai_test_bc_local_model_browse_btn",
-                  "config_key": null,
-                  "scope": "app",
-                  "tooltip": null,
-                  "kind": "button",
-                  "text": "参照…",
-                  "browse_target": "maai_test_bc_local_model_edit"
-                }
-              ],
-              "detail": "詳細設定（ローカルモデル・連続フレーム数）"
-            },
-            {
-              "label": "相槌連続フレーム数",
-              "widgets": [
-                {
-                  "attr": "maai_backchannel_consecutive_frames_edit",
-                  "config_key": "maai_backchannel_consecutive_frames",
-                  "scope": "app",
-                  "tooltip": "範囲：1〜100",
-                  "kind": "line",
-                  "value": "1",
-                  "password": false,
-                  "numeric": {
-                    "min": 1,
-                    "max": 100,
-                    "decimals": false,
-                    "note": null
-                  }
-                }
-              ],
-              "detail": "詳細設定（ローカルモデル・連続フレーム数）"
             }
           ]
         },
@@ -5757,6 +5754,26 @@
               ]
             },
             {
+              "label": "連続フレーム数",
+              "widgets": [
+                {
+                  "attr": "nod_para_min_consecutive_frames_edit",
+                  "config_key": "nod_para_min_consecutive_frames",
+                  "scope": "app",
+                  "tooltip": "頷きを開始するまでに必要な連続フレーム数です。\n範囲：1〜100",
+                  "kind": "line",
+                  "value": "3",
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 100,
+                    "decimals": false,
+                    "note": null
+                  }
+                }
+              ]
+            },
+            {
               "label": "クールダウン（ms）",
               "widgets": [
                 {
@@ -5771,6 +5788,26 @@
                     "min": 0,
                     "max": 60000,
                     "decimals": true,
+                    "note": null
+                  }
+                }
+              ]
+            },
+            {
+              "label": "FPS",
+              "widgets": [
+                {
+                  "attr": "nod_para_fps_edit",
+                  "config_key": "nod_para_fps",
+                  "scope": "app",
+                  "tooltip": "モーション生成フレームレート\n範囲：1〜240",
+                  "kind": "line",
+                  "value": "30",
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 240,
+                    "decimals": false,
                     "note": null
                   }
                 }
@@ -5794,7 +5831,8 @@
                     "note": null
                   }
                 }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             },
             {
               "label": "頭ボーン名",
@@ -5807,26 +5845,6 @@
                   "kind": "line",
                   "value": "頭",
                   "password": false
-                }
-              ]
-            },
-            {
-              "label": "連続フレーム数",
-              "widgets": [
-                {
-                  "attr": "nod_para_min_consecutive_frames_edit",
-                  "config_key": "nod_para_min_consecutive_frames",
-                  "scope": "app",
-                  "tooltip": "頷きを開始するまでに必要な連続フレーム数です。\n範囲：1〜100",
-                  "kind": "line",
-                  "value": "3",
-                  "password": false,
-                  "numeric": {
-                    "min": 1,
-                    "max": 100,
-                    "decimals": false,
-                    "note": null
-                  }
                 }
               ],
               "detail": "詳細設定（動きの形）"
@@ -5930,27 +5948,6 @@
                     "min": 0.0,
                     "max": 1.0,
                     "decimals": true,
-                    "note": null
-                  }
-                }
-              ],
-              "detail": "詳細設定（動きの形）"
-            },
-            {
-              "label": "FPS",
-              "widgets": [
-                {
-                  "attr": "nod_para_fps_edit",
-                  "config_key": "nod_para_fps",
-                  "scope": "app",
-                  "tooltip": "モーション生成フレームレート\n範囲：1〜240",
-                  "kind": "line",
-                  "value": "30",
-                  "password": false,
-                  "numeric": {
-                    "min": 1,
-                    "max": 240,
-                    "decimals": false,
                     "note": null
                   }
                 }
