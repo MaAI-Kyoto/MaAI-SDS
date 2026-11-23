@@ -34,19 +34,19 @@ VAP（Voice Activity Projection）モデルによるターンテイキング予�
 ## 特徴
 
 - **MaAI（VAP）に基づく素早いターンテイキング**<br>
-  話し終わりを予測し、話し終わる前から返事の準備を始めます
+  話し終わりを予測し、話し終わる前から返事を準備
 - **相槌・頷きをリアルタイムに生成**<br>
-  聞いている間も、相槌を打ち、頷き続けます
+  聞いている間も相槌を打ち、頷き続ける
 - **すべてローカルで動き、応答遅延 1 秒未満**<br>
-  クラウドに音声を送らずに動かせます
+  クラウドに音声を送らずに動かせる
 - **最新の ASR・TTS モデルを幅広く試せる**<br>
-  Qwen3-ASR・Nemotron・Qwen3-TTS・Irodori-TTS など、ASR 12 種・TTS 11 種。LLM も選べます（[対応エンジン](#対応エンジン)）
+  Qwen3-ASR・Nemotron・Qwen3-TTS・Irodori-TTS など（ASR 12 種・TTS 11 種）。LLM も選べる（[対応エンジン](#対応エンジン)）
 
 そのほか
 
 - GUI アプリ（Qt）／ Web UI ／ Docker で動作
-- [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) と通信可能（音声と頭の動きを送り、口パクは MMDAgent-EX が音声から作ります）
-- 本体は MIT ライセンスで公開（各モデルはそれぞれのライセンスに従います）
+- [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) と通信可能
+- 本体は MIT ライセンス（各モデルはそれぞれのライセンスに従う）
 
 ## システム構成
 
