@@ -192,8 +192,8 @@ MMDAgent-EX（`MMDProcessService`）と Qwen3-ASR のコンテナである。VOI
 | `nemotron-asr` | `nemotron` | Nemotron ASR | `19091` |
 | `audiocpp` | `audiocpp` | audio.cpp のサーバー | `18081` |
 
-- `web` と `orchestrator` の公開ポートはループバック（`127.0.0.1`）に固定（Web UI と対話サーバーには認証がないため）。
-  `maai-sds-headless`・`qwen3-asr`・`nemotron-asr`・`audiocpp` はホストのすべてのアドレスに公開する
+- 公開ポートはすべてループバック（`127.0.0.1`）に固定（Web UI・対話サーバー・各サーバーには認証がないため）。
+  `docker-compose.qwen-asr.yml`（Qt アプリとホストの Web UI が Qwen3-ASR を起動するときに使う）も同じ
 - UI 用の `JsonLineDuplexServer` は `listen(1)` で待ち受けるため、Docker の対話サーバーに同時に接続できる設定画面は 1 つ
 
 ### 3.5 ヘッドレス CLI

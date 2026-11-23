@@ -4,7 +4,7 @@ services:
     container_name: qwen3-asr
     restart: unless-stopped
     ports:
-      - "${QWEN_ASR_HOST_PORT:-8000}:80"
+      - "127.0.0.1:${QWEN_ASR_HOST_PORT:-8000}:80"
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
       VLLM_ALLOW_LONG_MAX_MODEL_LEN: "1"

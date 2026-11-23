@@ -2934,6 +2934,9 @@ class VoiceDialogRuntime:
             "sample_end": payload.get("sample_end"),
             "ts_start": payload.get("ts_start"),
             "ts_end": payload.get("ts_end"),
+            # 音声入力ワーカーが送り出した壁時計時刻。ASR が端から端までの遅延（latency_sec）の起点に使う。
+            # 落とすと ASR ワーカーの受信時刻が起点になり、対話サーバーを経由する分の遅れが測れない。
+            "emitted_at": payload.get("emitted_at"),
             "sample_rate": payload.get("sample_rate", 16000),
             "channel": payload.get("channel", "user"),
             "compare_slot": payload.get("compare_slot", "top"),

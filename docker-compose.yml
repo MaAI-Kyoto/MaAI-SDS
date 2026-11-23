@@ -132,8 +132,9 @@ services:
       - ${INPUT_WAV_HOST:-./input_wav}:/app/input_wav
       - ./logs:/app/logs
     ports:
-      - "15601:15601" # TCP audio output verification
-      - "39001:39001" # MMD remote TCP server
+      # web / orchestrator と同じくループバックに固定する（認証が無いため。LAN から使うときだけ外す）。
+      - "127.0.0.1:15601:15601" # TCP audio output verification
+      - "127.0.0.1:39001:39001" # MMD remote TCP server
     command: ["--config", "/app/controller_config.json", "--assume-mmd-running", "voice_dialog"]
 
   nemotron-asr:
@@ -144,7 +145,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "19091:19091"
+      - "127.0.0.1:19091:19091"
     volumes:
       - huggingface-cache:/root/.cache/huggingface
     command: ["--port", "19091"]
@@ -157,7 +158,7 @@ services:
     restart: unless-stopped
     # web の 8000 とぶつからないようホスト側は 18000。コンテナ間は qwen3-asr:80。
     ports:
-      - "18000:80"
+      - "127.0.0.1:18000:80"
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
       VLLM_ALLOW_LONG_MAX_MODEL_LEN: "1"
@@ -196,7 +197,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "18081:8080"
+      - "127.0.0.1:18081:8080"
     volumes:
       - ./audio.cpp/models:/models:ro
       - ./docker/audiocpp-server.json:/app/server.json:ro
