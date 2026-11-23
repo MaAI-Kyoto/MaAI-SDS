@@ -138,6 +138,31 @@ def cfg_float(cfg: dict, key: str, default: float) -> float:
         return default
 
 
+def _cfg_optional_unit(cfg: dict, key: str) -> float | None:
+    """0〜1 の値。空欄・不正なら None（呼び出し側がモデルの既定を使う）。"""
+    v = cfg.get(key, None)
+    if _is_missing(v) or str(v).strip() == "":
+        return None
+    try:
+        return max(0.0, min(1.0, float(str(v).strip())))
+    except (TypeError, ValueError):
+        return None
+
+
+def _cfg_nod_count_thresholds(cfg: dict) -> dict[str, float] | None:
+    """頷き回数のしきい値 t0〜t2。3 つとも数値のときだけ使い、どれかが空欄ならモデルの値（None）。
+
+    GUI のプロット側（gui/controller._maai_nod_para_threshold_alias_kwargs）と同じ扱い。
+    """
+    out: dict[str, float] = {}
+    for i in range(3):
+        v = _cfg_optional_unit(cfg, f"maai_test_nod_count_t{i}")
+        if v is None:
+            return None
+        out[f"t{i}"] = v
+    return out
+
+
 def cfg_bool(cfg: dict, key: str, default: bool) -> bool:
     v = cfg.get(key, None)
     if v is None:
@@ -1237,10 +1262,9 @@ def build_dialog_orchestrator_settings(cfg: dict) -> dict[str, object]:
         "nod_para_prob_threshold": cfg_float(cfg, "nod_para_prob_threshold", 0.6),
         "nod_para_min_consecutive_frames": cfg_int(cfg, "nod_para_min_consecutive_frames", 3),
         "nod_para_min_interval_ms": cfg_float(cfg, "nod_para_min_interval_ms", 1500.0),
-        "nod_para_swing_up_threshold": cfg_float(cfg, "maai_test_nod_swing_threshold", 0.5),
-        "nod_para_count_weight_1": cfg_float(cfg, "maai_test_nod_count_t0", 1.0),
-        "nod_para_count_weight_2": cfg_float(cfg, "maai_test_nod_count_t1", 1.0),
-        "nod_para_count_weight_3": cfg_float(cfg, "maai_test_nod_count_t2", 1.0),
+        # 空欄は None（モデルの .pt に入っている学習時のしきい値を使う）。utils.nod_para_frame_decision。
+        "nod_para_swing_up_threshold": _cfg_optional_unit(cfg, "maai_test_nod_swing_threshold"),
+        "nod_para_count_thresholds": _cfg_nod_count_thresholds(cfg),
         "nod_para_decay_rate": cfg_float(cfg, "nod_para_decay_rate", 0.8),
         "nod_para_fps": cfg_int(cfg, "nod_para_fps", 30),
         "nod_para_interpolation": cfg_str(cfg, "nod_para_interpolation", "cosine") or "cosine",

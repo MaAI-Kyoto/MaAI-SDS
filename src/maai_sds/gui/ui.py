@@ -3170,10 +3170,14 @@ def build_ui(controller) -> None:
     )
     maai_use_mimi_onnx_check.stateChanged.connect(lambda _s: controller._on_maai_mimi_onnx_options_changed())
     maai_use_local_mimi_onnx_check.stateChanged.connect(lambda _s: controller._on_maai_mimi_onnx_options_changed())
-    maai_test_nod_count_t0_edit = QLineEdit("1.0")
-    maai_test_nod_count_t1_edit = QLineEdit("1.0")
-    maai_test_nod_count_t2_edit = QLineEdit("1.0")
-    maai_test_nod_swing_threshold_edit = QLineEdit("0.5")
+    # 空欄＝モデルの値（.pt に入っている学習時のしきい値。公式モデルは t0〜t2 が約0.33、振り上げが0.43）。
+    maai_test_nod_count_t0_edit = QLineEdit("")
+    maai_test_nod_count_t1_edit = QLineEdit("")
+    maai_test_nod_count_t2_edit = QLineEdit("")
+    maai_test_nod_swing_threshold_edit = QLineEdit("")
+    for _thr_edit in (maai_test_nod_count_t0_edit, maai_test_nod_count_t1_edit,
+                      maai_test_nod_count_t2_edit, maai_test_nod_swing_threshold_edit):
+        _thr_edit.setPlaceholderText("空欄＝モデルの値")
     maai_test_nod_count_t0_default_label = QLabel("既定：—")
     maai_test_nod_count_t1_default_label = QLabel("既定：—")
     maai_test_nod_count_t2_default_label = QLabel("既定：—")
@@ -3473,9 +3477,10 @@ def build_ui(controller) -> None:
     maai_test_nod_lang_edit.setToolTip("nod_paraの言語タグです。")
     maai_test_nod_model_type_edit.setToolTip("nod_paraのmodel_type（例：normal-ver2）")
     _nod_thr_tip = (
-        "nod_paraの推論用しきい値です。.pt読込後のnodインスタンス値がワーカー準備完了時に既定値として同期されます。"
-        "UIの値が既定値と一致する場合はVAP内部のpredをそのまま使い、異なる場合は"
-        "nod_count（確率）とnod_swing_up（確率）にこのしきい値を再適用した結果を表示します。"
+        "頷きの回数（t0＝1回、t1＝2回、t2＝3回以上）と振り上げを決めるしきい値です。"
+        "回数は「確率÷しきい値」が最大のものになり、しきい値を小さくするとその回数が出やすくなります。"
+        "空欄ではモデル（.pt）に入っている値を使います（公式モデルはt0〜t2が約0.33、振り上げが0.43）。"
+        "回数のしきい値は3つとも数値のときだけ使います。"
     )
     maai_test_nod_count_t0_edit.setToolTip(_nod_thr_tip)
     maai_test_nod_count_t1_edit.setToolTip(_nod_thr_tip)

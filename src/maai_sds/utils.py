@@ -17,6 +17,73 @@ def apply_nod_count_thresholds_python(prob: list[float], thresholds: dict[str, f
     return int(max(range(3), key=lambda i: ratios[i]))
 
 
+def normalize_nod_para_keys(result: dict[str, Any]) -> None:
+    """maai 0.2.27 の頷き回数のキー名（nod_repetitions*）を、このアプリの名前（nod_count*）にそろえる。
+
+    maai は回数の確率を `nod_repetitions`（[P(1回), P(2回), P(3回以上)]）、しきい値を当てた
+    クラスを `nod_repetitions_pred` で返す。これを読まずに `nod_count` だけを見ていたため、
+    回数は常に 1 回になり、しきい値（t0〜t2）も効いていなかった。
+    """
+    if "nod_repetitions" in result and "nod_count" not in result:
+        result["nod_count"] = result.pop("nod_repetitions")
+    if "nod_repetitions_pred" in result and "nod_count_pred" not in result:
+        result["nod_count_pred"] = result.pop("nod_repetitions_pred")
+
+
+def nod_para_frame_decision(
+    payload: dict[str, Any],
+    count_thresholds: dict[str, float] | None,
+    swing_threshold: float | None,
+) -> tuple[int, int, float]:
+    """1 フレームの頷き回数のクラス（0=1回, 1=2回, 2=3回以上）と、振り上げの有無（0/1）・確率を返す。
+
+    しきい値が None（設定が空欄）のときはモデル自身の判定（*_pred。.pt に入っている学習時の
+    しきい値で決めたもの）を使う。数値があるときはモデルと同じ規則で決め直す：
+    回数は p_i / t_i が最大のクラス、振り上げは確率 >= しきい値。
+    """
+    p = dict(payload)
+    normalize_nod_para_keys(p)
+    probs_raw = p.get("nod_count_probs", p.get("nod_count"))
+    probs: list[float] | None = None
+    if isinstance(probs_raw, (list, tuple)) and len(probs_raw) >= 3:
+        try:
+            probs = [float(x) for x in probs_raw[:3]]
+        except (TypeError, ValueError):
+            probs = None
+
+    def _as_class(v: Any) -> int | None:
+        if isinstance(v, bool) or v is None:
+            return None
+        try:
+            return max(0, min(2, int(v)))
+        except (TypeError, ValueError):
+            return None
+
+    count_idx: int | None = None
+    if count_thresholds is not None and probs is not None:
+        count_idx = apply_nod_count_thresholds_python(probs, count_thresholds)
+    if count_idx is None:
+        count_idx = _as_class(p.get("nod_count_pred"))
+    if count_idx is None:
+        count_idx = _as_class(p.get("nod_count")) if not isinstance(p.get("nod_count"), (list, tuple)) else None
+    if count_idx is None:
+        count_idx = max(range(3), key=lambda i: probs[i]) if probs is not None else 0
+
+    try:
+        swing_prob = float(p.get("nod_swing_up_prob", p.get("nod_swing_up", 0.0)))
+    except (TypeError, ValueError):
+        swing_prob = 0.0
+    swing_pred = p.get("nod_swing_up_pred")
+    if swing_threshold is not None or swing_pred is None:
+        swing_up = 1 if swing_prob >= (0.5 if swing_threshold is None else float(swing_threshold)) else 0
+    else:
+        try:
+            swing_up = 1 if int(swing_pred) else 0
+        except (TypeError, ValueError):
+            swing_up = 1 if swing_prob >= 0.5 else 0
+    return int(count_idx), swing_up, swing_prob
+
+
 def _nod_para_count_thresholds_equal(a: dict[str, float], b: dict[str, float]) -> bool:
     for k in ("t0", "t1", "t2"):
         if abs(float(a.get(k, 1.0)) - float(b.get(k, 1.0))) > NOD_PARA_THRESH_MATCH_EPS:
@@ -43,6 +110,7 @@ def apply_maai_nod_para_prediction_aliases(
     """
     if not isinstance(result, dict):
         return
+    normalize_nod_para_keys(result)
     if "nod_count_pred" not in result and "nod_swing_up_pred" not in result:
         return
 

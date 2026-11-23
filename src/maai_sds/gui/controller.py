@@ -3865,10 +3865,18 @@ class MMDAgentController(
                 raw = edit.text().strip()
             except Exception:
                 raw = ""
+        # 空欄はモデルの値（ワーカーの準備完了時に受け取る .pt の t_swing。公式モデルは 0.43）。
+        fallback = 0.5
+        defaults = getattr(self, "_maai_nod_threshold_defaults", None)
+        if isinstance(defaults, dict):
+            try:
+                fallback = float(defaults["swing"])
+            except (KeyError, TypeError, ValueError):
+                pass
         try:
-            value = float(raw or "0.5")
+            value = float(raw) if raw else fallback
         except Exception:
-            value = 0.5
+            value = fallback
         if value < 0.0:
             return 0.0
         if value > 1.0:

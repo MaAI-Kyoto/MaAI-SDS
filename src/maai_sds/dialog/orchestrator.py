@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+from ..utils import nod_para_frame_decision
+
 def _safe_float(value: object, default: float = 0.0) -> float:
     try:
         return float(value)
@@ -77,6 +79,7 @@ class DialogOrchestratorState:
     nod_para_buf_range: list[float] = field(default_factory=list)
     nod_para_buf_speed: list[float] = field(default_factory=list)
     nod_para_buf_swing_up: list[float] = field(default_factory=list)
+    nod_para_buf_swing_up_decided: list[int] = field(default_factory=list)
     nod_para_buf_raw_range: list[float] = field(default_factory=list)
     nod_para_buf_raw_speed: list[float] = field(default_factory=list)
     nod_para_buf_ts_start: list[float] = field(default_factory=list)
@@ -794,15 +797,22 @@ class DialogOrchestrator:
     def _nod_para_min_interval_ms(self) -> float:
         return max(0.0, _safe_float(self.settings.get("nod_para_min_interval_ms", 1500), 1500))
 
-    def _nod_para_swing_up_threshold(self) -> float:
-        v = _safe_float(self.settings.get("nod_para_swing_up_threshold", 0.5), 0.5)
-        return max(0.0, min(1.0, v))
+    def _nod_para_swing_up_threshold(self) -> float | None:
+        """振り上げのしきい値。None（設定が空欄）ならモデルの判定（nod_swing_up_pred）を使う。"""
+        v = self.settings.get("nod_para_swing_up_threshold")
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        return max(0.0, min(1.0, _safe_float(v, 0.5)))
 
-    def _nod_para_count_weights(self) -> tuple[float, float, float]:
-        w1 = _safe_float(self.settings.get("nod_para_count_weight_1", 1.0), 1.0)
-        w2 = _safe_float(self.settings.get("nod_para_count_weight_2", 1.0), 1.0)
-        w3 = _safe_float(self.settings.get("nod_para_count_weight_3", 1.0), 1.0)
-        return (w1, w2, w3)
+    def _nod_para_count_thresholds(self) -> dict[str, float] | None:
+        """頷き回数のしきい値 t0〜t2。None（どれかが空欄）ならモデルの判定（nod_repetitions_pred）を使う。"""
+        th = self.settings.get("nod_para_count_thresholds")
+        if not isinstance(th, dict):
+            return None
+        try:
+            return {k: float(th[k]) for k in ("t0", "t1", "t2")}
+        except (KeyError, TypeError, ValueError):
+            return None
 
     def _clear_nod_para_buffer(self) -> None:
         s = self.state
@@ -811,6 +821,7 @@ class DialogOrchestrator:
         s.nod_para_buf_range.clear()
         s.nod_para_buf_speed.clear()
         s.nod_para_buf_swing_up.clear()
+        s.nod_para_buf_swing_up_decided.clear()
         s.nod_para_buf_raw_range.clear()
         s.nod_para_buf_raw_speed.clear()
         s.nod_para_buf_ts_start.clear()
@@ -853,23 +864,11 @@ class DialogOrchestrator:
         return max(lo, min(hi, abs(raw)))
 
     def _parse_nod_frame(self, payload: dict[str, Any]) -> dict[str, Any]:
-        frame_count_idx = 0
-        count_obj = payload.get("nod_count")
-        if isinstance(count_obj, (int, float)) and not isinstance(count_obj, bool):
-            frame_count_idx = max(0, min(2, int(count_obj)))
-        else:
-            count_arr = payload.get("nod_count_probs", count_obj)
-            if isinstance(count_arr, (list, tuple)) and len(count_arr) == 3:
-                w1, w2, w3 = self._nod_para_count_weights()
-                w_sum = w1 + w2 + w3
-                if w_sum > 0:
-                    w1, w2, w3 = w1 / w_sum, w2 / w_sum, w3 / w_sum
-                max_score = -1.0
-                for i in range(3):
-                    score = _safe_float(count_arr[i]) * [w1, w2, w3][i]
-                    if score > max_score:
-                        max_score = score
-                        frame_count_idx = i
+        # 回数（0=1回, 1=2回, 2=3回以上）と振り上げは、モデルと同じ規則で決める（utils.nod_para_frame_decision）。
+        # 以前は maai 0.2.27 の nod_repetitions を読まず常に 1 回で、しきい値も掛け算（モデルは割り算）だった。
+        frame_count_idx, frame_swing_up, frame_swing = nod_para_frame_decision(
+            payload, self._nod_para_count_thresholds(), self._nod_para_swing_up_threshold(),
+        )
 
         raw_range = _safe_float(payload.get("nod_range", 0.25), 0.25)
         raw_speed = _safe_float(payload.get("nod_speed", 0.7), 0.7)
@@ -879,9 +878,6 @@ class DialogOrchestrator:
         frame_ts_end = _safe_float(payload.get("source_ts_end"), frame_ts_start)
         if frame_ts_end < frame_ts_start:
             frame_ts_end = frame_ts_start
-        frame_swing = _safe_float(
-            payload.get("nod_swing_up_prob", payload.get("nod_swing_up", 0)), 0.0,
-        )
         p_nod = _safe_float(payload.get("p_nod"), -1.0)
         return {
             "frame_count_idx": frame_count_idx,
@@ -890,6 +886,7 @@ class DialogOrchestrator:
             "raw_range": raw_range,
             "raw_speed": raw_speed,
             "frame_swing": frame_swing,
+            "frame_swing_up": frame_swing_up,
             "frame_ts_start": frame_ts_start,
             "frame_ts_end": frame_ts_end,
             "p_nod": p_nod,
@@ -955,6 +952,7 @@ class DialogOrchestrator:
         use_raw_speed: list[float],
         use_count_idx: list[int],
         use_p_nod: list[float],
+        use_swing_up: list[int] | None = None,
     ) -> tuple[int, float, float, bool, float, float, float, float]:
         avg_range = sum(use_range) / len(use_range)
         avg_speed = sum(use_speed) / len(use_speed)
@@ -967,8 +965,8 @@ class DialogOrchestrator:
             if count_hist[i] > count_hist[mode_idx]:
                 mode_idx = i
         nod_count = mode_idx + 1
-        swing_threshold = self._nod_para_swing_up_threshold()
-        swing_binary = [1 if v > swing_threshold else 0 for v in use_swing]
+        # 振り上げはフレームごとに決めた 0/1（nod_para_frame_decision）の多数決。
+        swing_binary = list(use_swing_up) if use_swing_up else [0] * len(use_swing)
         swing_ones = sum(swing_binary)
         swing_zeros = len(swing_binary) - swing_ones
         use_pre_rise = swing_ones > swing_zeros
@@ -1009,6 +1007,7 @@ class DialogOrchestrator:
         frame_ts_start = float(fr["frame_ts_start"])
         frame_ts_end = float(fr["frame_ts_end"])
         frame_swing = float(fr["frame_swing"])
+        frame_swing_up = int(fr["frame_swing_up"])
 
         s = self.state
         s.nod_para_consecutive_count += 1
@@ -1016,6 +1015,7 @@ class DialogOrchestrator:
         s.nod_para_buf_range.append(frame_range)
         s.nod_para_buf_speed.append(frame_speed)
         s.nod_para_buf_swing_up.append(frame_swing)
+        s.nod_para_buf_swing_up_decided.append(frame_swing_up)
         s.nod_para_buf_raw_range.append(raw_range)
         s.nod_para_buf_raw_speed.append(raw_speed)
         s.nod_para_buf_ts_start.append(frame_ts_start)
@@ -1044,6 +1044,7 @@ class DialogOrchestrator:
         use_ts_end = s.nod_para_buf_ts_end[-req_frames:]
         use_count_idx = s.nod_para_buf_count_idx[-req_frames:]
         use_p_nod = s.nod_para_buf_p_nod[-req_frames:]
+        use_swing_up = s.nod_para_buf_swing_up_decided[-req_frames:]
 
         (
             nod_count,
@@ -1062,6 +1063,7 @@ class DialogOrchestrator:
             use_raw_speed=use_raw_speed,
             use_count_idx=use_count_idx,
             use_p_nod=use_p_nod,
+            use_swing_up=use_swing_up,
         )
 
         used_start_ts = float(use_ts_end[0]) if use_ts_end else time.time()
