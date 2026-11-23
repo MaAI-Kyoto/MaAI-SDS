@@ -18,6 +18,7 @@ from typing import Any
 from ..config_store import ConfigStore
 from ..dialog import settings as vds
 from ..ipc.process_service import MMDProcessService
+from ..mmd.console_filter import is_per_frame_line
 from . import parity as web_parity
 
 
@@ -283,7 +284,8 @@ class WebMmdAgentController:
             try:
                 for raw in iter(stream.readline, ""):
                     line = str(raw).rstrip("\r\n").replace("\x00", "")
-                    if line.strip():
+                    # まばたき・頷きの値を毎フレーム受けるたびに出る 2 行は出さない（mmd/console_filter.py）。
+                    if line.strip() and not is_per_frame_line(line):
                         self._log(f"[MMDAgent][{stream_name}] {line}")
             except Exception:
                 pass

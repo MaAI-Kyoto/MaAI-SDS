@@ -38,6 +38,7 @@ from ..ipc.process_service import (
     DialogOrchestratorProcessService,
     MMDProcessService,
 )
+from ..mmd.console_filter import is_per_frame_line
 from .numeric_fields import apply_numeric_fields
 from .ui import apply_device_choice_limits, build_ui
 from ..utils import apply_maai_nod_para_prediction_aliases, json_config_bool, to_bool
@@ -1182,6 +1183,8 @@ class MMDAgentController(
         if proc in self._attached_console_procs:
             return
         self._attached_console_procs.add(proc)
+        # MMDAgent-EX は、まばたき・頷きの値を毎フレーム受けるたびに 2 行出す。コンソールが埋まるので出さない。
+        drop = is_per_frame_line if name == "MMDAgent" else None
 
         def _pump(stream, stream_name: str) -> None:
             if stream is None:
@@ -1189,7 +1192,7 @@ class MMDAgentController(
             try:
                 for raw in iter(stream.readline, ""):
                     line = raw.rstrip("\r\n")
-                    if line:
+                    if line and not (drop and drop(line)):
                         if _WORKER_PREFIX_RE.match(line):
                             self.process_output_signal.emit(line)
                         else:
