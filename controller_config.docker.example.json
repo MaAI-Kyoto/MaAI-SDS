@@ -34,7 +34,7 @@
   "maai_device": "cpu",
   "llm_backend": "LM Studio",
   "llm_host": "http://host.docker.internal:1234",
-  "llm_model_lmstudio": "gemma-4-e4b-it-japanese@q4_k_m",
+  "llm_model_lmstudio": "google/gemma-4-e4b",
   "mdf_path": "/app/mmdagent_assets/maai_sds/maai_sds.mdf",
   "Plugin_Remote_EnableServer": false,
   "Plugin_Remote_EnableClient": false,

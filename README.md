@@ -21,7 +21,7 @@
 ## 概要
 
 MaAI-SDS は、日本語の音声対話をリアルタイムに行うための研究用プラットフォームです。音声認識（ASR）・
-大規模言語モデル（LLM）・音声合成（TTS）をパイプラインとして接続し、[MaAI](https://pypi.org/project/maai/) の
+大規模言語モデル（LLM）・音声合成（TTS）をパイプラインとして接続し、[MaAI](https://github.com/MaAI-Kyoto/MaAI) の
 VAP（Voice Activity Projection）モデルによるターンテイキング予測・相槌生成・頷き生成を組み合わせて、
 [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) の 3D アバターを駆動します。
 
@@ -88,12 +88,12 @@ flowchart LR
 | 項目 | 要件 |
 |---|---|
 | OS | Windows（Windows 11 で確認。Qt アプリ・セットアップスクリプト・MMDAgent-EX）。対話サーバーは Docker（Linux）でも動作 |
-| Python | 3.11 |
+| Python | [3.11](https://www.python.org/downloads/) |
 | パッケージ管理 | [uv](https://docs.astral.sh/uv/) |
 | GPU | NVIDIA GPU（CUDA 12.8）を推奨。CPU のみの構成にも対応 |
 | アバター | [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX)（Windows 版。v2.1 で確認）と CG アバター（[セットアップ](#3-mmdagent-ex-とアバター)） |
-| LLM | 既定は [LM Studio](https://lmstudio.ai/)（`gemma-4-e4b-it-japanese@q4_k_m`）。OpenAI API・OpenAI 互換サーバーも利用可 |
-| その他（任意） | Docker Desktop、VOICEVOX、AivisSpeech |
+| LLM | 既定は [LM Studio](https://lmstudio.ai/) と [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b)（`google/gemma-4-e4b`）。OpenAI API・OpenAI 互換サーバーも利用可 |
+| その他（任意） | [Docker Desktop](https://www.docker.com/products/docker-desktop/)、[VOICEVOX](https://voicevox.hiroshiba.jp/)、[AivisSpeech](https://aivis-project.com/) |
 
 macOS での動作は確認していません。
 
@@ -141,7 +141,7 @@ API キーはコードや設定ファイルに書かず、環境変数で渡し�
 | OpenAI（LLM） | `OPENAI_API_KEY` |
 | Cartesia（TTS） | `CARTESIA_API_KEY` |
 
-OBS の録画操作に使う WebSocket のパスワードは、環境変数ではなく設定画面の「OBS録画設定」で入力します。
+[OBS Studio](https://obsproject.com/) の録画操作に使う WebSocket のパスワードは、環境変数ではなく設定画面の「OBS録画設定」で入力します。
 入力した値は `controller_config.json`（Git 管理外）に保存されます。
 
 ### 3. MMDAgent-EX とアバター
@@ -197,10 +197,10 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
 
 | 対象 | 準備 |
 |---|---|
-| LM Studio（既定の LLM） | ローカルサーバーを起動し、`gemma-4-e4b-it-japanese@q4_k_m` を読み込む（モデルは設定で変更可） |
-| VOICEVOX / AivisSpeech | 各エンジンを導入して起動する |
-| OpenAI 互換サーバー | vLLM などで API を公開する（LLM の Custom） |
-| Qwen3-ASR | Docker Desktop と NVIDIA GPU。ASR の起動時に設定画面がコンテナを自動で起動する |
+| [LM Studio](https://lmstudio.ai/)（既定の LLM） | [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b) を取得し（`lms get google/gemma-4-e4b`）、ローカルサーバーを起動する（モデルは設定で変更可） |
+| [VOICEVOX](https://voicevox.hiroshiba.jp/) / [AivisSpeech](https://aivis-project.com/) | 各エンジンを導入して起動する |
+| OpenAI 互換サーバー | [vLLM](https://github.com/vllm-project/vllm) などで API を公開する（LLM の Custom） |
+| Qwen3-ASR | [Docker Desktop](https://www.docker.com/products/docker-desktop/) と NVIDIA GPU。ASR の起動時に設定画面がコンテナを自動で起動する |
 
 ---
 
@@ -256,20 +256,20 @@ Docker の対話サーバーに同時に接続できる設定画面は 1 つで�
 
 | エンジン | 実行形態 | 備考 |
 |---|---|---|
-| `sherpa-onnx` | ローカル（sherpa-onnx） | ReazonSpeech k2-v2。既定 |
-| `speechcpp-asr` | ローカル（[speech.cpp](https://github.com/nyosegawa/speech.cpp)） | Haas-ja v1.0・ReazonSpeech NeMo v2・Parakeet TDT-CTC 0.6B ja・Qwen3-ASR 1.7B。Haas-ja は GPU で 1 発話 約 30 ms・GPU メモリ 0.8 GB。Windows は Vulkan、Docker の GPU 構成は CUDA で動作 |
-| `sensevoice-onnx` | ローカル（sherpa-onnx） | SenseVoiceSmall |
-| `parakeet-onnx` | ローカル（sherpa-onnx） | Parakeet TDT-CTC 0.6B 日本語 |
-| `cohere-asr-onnx` | ローカル（sherpa-onnx） | Cohere Transcribe（14 言語） |
-| `funasr-nano-onnx` | ローカル（sherpa-onnx） | Fun-ASR-Nano-2512 |
-| `qwen3-asr-onnx` | ローカル（sherpa-onnx） | Qwen3-ASR 0.6B |
-| `nemotron-onnx` | ローカル（パッチ適用済み sherpa-onnx） | Nemotron 3.5 streaming。逐次（真の）ストリーミング認識 |
-| `faster-whisper` | ローカル | Whisper 系 |
-| `qwen3-asr` | Docker（`qwenllm/qwen3-asr`） | vLLM。ASR の起動に合わせてコンテナを起動・停止 |
-| `nemotron-asr` | 専用環境（NeMo） | `.venv_nemotron` をエンジン管理または `setup_env.ps1 -WithNemotron` で作成 |
+| `sherpa-onnx` | ローカル（[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)） | [ReazonSpeech k2-v2](https://huggingface.co/reazon-research/reazonspeech-k2-v2)。既定 |
+| `speechcpp-asr` | ローカル（[speech.cpp](https://github.com/nyosegawa/speech.cpp)） | [Haas-ja v1.0](https://huggingface.co/third-intelligence/Haas-ja-v1.0)・[ReazonSpeech NeMo v2](https://huggingface.co/reazon-research/reazonspeech-nemo-v2)・[Parakeet TDT-CTC 0.6B ja](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja)・[Qwen3-ASR 1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B)。Haas-ja は GPU で 1 発話 約 30 ms・GPU メモリ 0.8 GB。Windows は Vulkan、Docker の GPU 構成は CUDA で動作 |
+| `sensevoice-onnx` | ローカル（sherpa-onnx） | [SenseVoiceSmall](https://huggingface.co/FunAudioLLM/SenseVoiceSmall) |
+| `parakeet-onnx` | ローカル（sherpa-onnx） | [Parakeet TDT-CTC 0.6B 日本語](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja) |
+| `cohere-asr-onnx` | ローカル（sherpa-onnx） | [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026)（14 言語） |
+| `funasr-nano-onnx` | ローカル（sherpa-onnx） | [Fun-ASR-Nano-2512](https://huggingface.co/FunAudioLLM/Fun-ASR-Nano-2512) |
+| `qwen3-asr-onnx` | ローカル（sherpa-onnx） | [Qwen3-ASR 0.6B](https://huggingface.co/Qwen/Qwen3-ASR-0.6B) |
+| `nemotron-onnx` | ローカル（パッチ適用済み sherpa-onnx） | [Nemotron 3.5 streaming](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b)。逐次（真の）ストリーミング認識 |
+| `faster-whisper` | ローカル（[faster-whisper](https://github.com/SYSTRAN/faster-whisper)） | Whisper 系 |
+| `qwen3-asr` | Docker（[`qwenllm/qwen3-asr`](https://hub.docker.com/r/qwenllm/qwen3-asr)） | [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR)（vLLM）。ASR の起動に合わせてコンテナを起動・停止 |
+| `nemotron-asr` | 専用環境（[NeMo](https://github.com/NVIDIA/NeMo)） | `.venv_nemotron` をエンジン管理または `setup_env.ps1 -WithNemotron` で作成 |
 | `external-asr-tcp` | 外部 | TCP で外部の ASR に接続 |
 
-音声区間検出は `maai` / `silero`、ターン検出は `maai` / `smart-turn` から選択できます（既定の設定では、音声区間検出が `silero`、
+音声区間検出は `maai` / [`silero`](https://github.com/snakers4/silero-vad)、ターン検出は `maai` / [`smart-turn`](https://github.com/pipecat-ai/smart-turn) から選択できます（既定の設定では、音声区間検出が `silero`、
 ターン検出が `maai`）。
 各エンジンの実測値と既定値の根拠は [docs/asr-engine-notes.md](docs/asr-engine-notes.md) にまとめています。
 
@@ -277,16 +277,16 @@ Docker の対話サーバーに同時に接続できる設定画面は 1 つで�
 
 | エンジン | 実行形態 | 備考 |
 |---|---|---|
-| `VOICEVOX-Core` | ローカル（voicevox_core） | 既定。GPU 対応 |
-| `VOICEVOX` | HTTP | VOICEVOX エンジン |
-| `AivisSpeech` | HTTP | AivisSpeech エンジン |
-| `Irodori-v4` | ローカル（speech.cpp / audio.cpp / PyTorch） | 既定は speech.cpp（v4.1 Small MF、GPU で 1 文 0.15〜0.3 秒）。audio.cpp 版（500M v3 / 600M v3 VoiceDesign、読みの CER 0.004）と PyTorch 版（専用環境）にも切り替え可 |
-| `Qwen3-TTS-CPP` | ローカル（audio.cpp） | Qwen3-TTS 1.7B CustomVoice（GGUF）。最初の声まで 約 70 ms（ストリーミング） |
-| `LFM2.5-Audio` | ローカル（audio.cpp） | LFM2.5-Audio-1.5B-JP。1 文 約 0.33 秒・最初の声まで 約 50 ms（ストリーミング）。声は 1 つ。LFM Open License v1.0（年商 1000 万ドル未満なら商用可） |
-| `Supertonic-3` | ローカル（audio.cpp） | |
-| `Kokoro-RealtimeTTS` | ローカル（RealtimeTTS） | Kokoro |
-| `Tsukasa` | ローカル（PyTorch） | 非商用ライセンス |
-| `Cartesia-Realtime` | クラウド | API キーが必要 |
+| `VOICEVOX-Core` | ローカル（[voicevox_core](https://github.com/VOICEVOX/voicevox_core)） | 既定。GPU 対応 |
+| `VOICEVOX` | HTTP | [VOICEVOX](https://voicevox.hiroshiba.jp/) エンジン |
+| `AivisSpeech` | HTTP | [AivisSpeech](https://aivis-project.com/) エンジン |
+| `Irodori-v4` | ローカル（speech.cpp / audio.cpp / PyTorch） | [Irodori-TTS](https://github.com/Aratako/Irodori-TTS)。既定は speech.cpp（[v4.1 Small MF](https://huggingface.co/Aratako/Irodori-TTS-v4.1-Small-MF)、GPU で 1 文 0.15〜0.3 秒）。audio.cpp 版（500M v3 / 600M v3 VoiceDesign、読みの CER 0.004）と PyTorch 版（専用環境）にも切り替え可 |
+| `Qwen3-TTS-CPP` | ローカル（[audio.cpp](https://github.com/0xShug0/audio.cpp)） | [Qwen3-TTS 1.7B CustomVoice](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice)（GGUF）。最初の声まで 約 70 ms（ストリーミング） |
+| `LFM2.5-Audio` | ローカル（audio.cpp） | [LFM2.5-Audio-1.5B-JP](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-JP)。1 文 約 0.33 秒・最初の声まで 約 50 ms（ストリーミング）。声は 1 つ。LFM Open License v1.0（年商 1000 万ドル未満なら商用可） |
+| `Supertonic-3` | ローカル（audio.cpp） | [Supertonic 3](https://huggingface.co/Supertone/supertonic-3) |
+| `Kokoro-RealtimeTTS` | ローカル（[RealtimeTTS](https://github.com/KoljaB/RealtimeTTS)） | [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) |
+| `Tsukasa` | ローカル（PyTorch） | [Tsukasa Speech](https://huggingface.co/Respair/Tsukasa_Speech)。非商用ライセンス |
+| `Cartesia-Realtime` | クラウド（[Cartesia](https://cartesia.ai/)） | API キーが必要 |
 | `TEMPLATE` | HTTP | 任意の TTS API を JSON テンプレートで指定 |
 
 `Irodori-v4`・`Qwen3-TTS-CPP`・`LFM2.5-Audio`（と `Kokoro-RealtimeTTS`・`Cartesia-Realtime`）は、1 文を作り終える前に
@@ -295,8 +295,8 @@ MMDAgent-EX が受け取った音声から自分で作るので、ストリー�
 
 ### LLM
 
-LM Studio（既定）・OpenAI・Custom（OpenAI 互換 API）に対応しています。既定のモデルは LM Studio が
-`gemma-4-e4b-it-japanese@q4_k_m`、OpenAI が `gpt-5-nano` です。
+[LM Studio](https://lmstudio.ai/)（既定）・[OpenAI](https://platform.openai.com/)・Custom（OpenAI 互換 API）に対応しています。既定のモデルは LM Studio が
+[Gemma 4 E4B](https://huggingface.co/google/gemma-4-E4B-it)（`google/gemma-4-e4b`）、OpenAI が `gpt-5-nano` です。
 
 ---
 
@@ -352,10 +352,11 @@ tests/                     テスト
 MaAI-SDS は以下のプロジェクトを利用しています。利用にあたっては、各プロジェクトのライセンスと利用規約（モデルの再配布・
 クレジット表記・商用利用の条件など）に従ってください。詳細は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) にあります。
 
-- [MaAI](https://pypi.org/project/maai/) — VAP によるターンテイキング・相槌・頷き
+- [MaAI](https://github.com/MaAI-Kyoto/MaAI) — VAP によるターンテイキング・相槌・頷き
 - [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) — アバター
-- ASR：[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)・[speech.cpp](https://github.com/nyosegawa/speech.cpp)・ReazonSpeech・Haas-ja・faster-whisper・Qwen3-ASR・NVIDIA NeMo（Nemotron）・silero-vad
-- TTS：VOICEVOX / VOICEVOX Core・AivisSpeech・Irodori-TTS・Kokoro / RealtimeTTS・Qwen3-TTS・LFM2.5-Audio・audio.cpp・Supertonic・Tsukasa Speech・Cartesia
+- ASR：[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)・[speech.cpp](https://github.com/nyosegawa/speech.cpp)・[ReazonSpeech](https://github.com/reazon-research/ReazonSpeech)・[Haas-ja](https://huggingface.co/third-intelligence/Haas-ja-v1.0)・[faster-whisper](https://github.com/SYSTRAN/faster-whisper)・[Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR)・[NVIDIA NeMo](https://github.com/NVIDIA/NeMo)（Nemotron）・[silero-vad](https://github.com/snakers4/silero-vad)・[smart-turn](https://github.com/pipecat-ai/smart-turn)
+- TTS：[VOICEVOX](https://voicevox.hiroshiba.jp/) / [VOICEVOX Core](https://github.com/VOICEVOX/voicevox_core)・[AivisSpeech](https://aivis-project.com/)・[Irodori-TTS](https://github.com/Aratako/Irodori-TTS)・[Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) / [RealtimeTTS](https://github.com/KoljaB/RealtimeTTS)・[Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS)・[LFM2.5-Audio](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-JP)・[audio.cpp](https://github.com/0xShug0/audio.cpp)・[Supertonic](https://github.com/supertone-inc/supertonic)・[Tsukasa Speech](https://huggingface.co/Respair/Tsukasa_Speech)・[Cartesia](https://cartesia.ai/)
+- LLM：[LM Studio](https://lmstudio.ai/)・[Gemma 4](https://huggingface.co/google/gemma-4-E4B-it)
 
 ## ライセンス
 

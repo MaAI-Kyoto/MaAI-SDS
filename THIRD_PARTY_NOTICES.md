@@ -100,9 +100,18 @@ GUI には PySide6（LGPL-3.0）を使用しており、PyQt6（GPL）は使用�
 | Irodori-TTS（audio.cpp 版） | Aratako/Irodori-TTS-500M-v3、Aratako/Irodori-TTS-600M-v3-VoiceDesign（GGUF は audio-cpp/audio.cpp-gguf） | MIT（どちらもモデルカードの表記。2026-11-22 確認） |
 | LFM2.5-Audio | LiquidAI/LFM2.5-Audio-1.5B-JP（GGUF は LiquidAI/LFM2.5-Audio-1.5B-JP-GGUF） | **LFM Open License v1.0（年商 1000 万米ドル以上の法人は商用利用不可）**。非商用・研究目的の利用と、年商がそれ未満の商用利用は可 |
 | Tsukasa | Respair/Tsukasa_Speech | **CC BY-NC 4.0（非商用）** |
+| Supertonic-3 | Supertone/supertonic-3（GGUF は audio-cpp/audio.cpp-gguf） | BigScience Open RAIL-M（用途の制限あり。推論コードは MIT） |
 | audio.cpp | audio-cpp/audio.cpp-gguf | 独自（要確認） |
 | VOICEVOX / VOICEVOX Core | 本体・音声モデル | 本体は MIT ほか。音声ライブラリはキャラクターごとの利用規約に従う（クレジット表記「VOICEVOX:キャラ名」など） |
 | Cartesia | 商用クラウド API | Cartesia の利用規約 |
+
+### LLM
+
+| 対象 | ライセンス | 備考 |
+|---|---|---|
+| Gemma 4 E4B-it（google/gemma-4-E4B-it。LM Studio では google/gemma-4-e4b） | Apache-2.0 | 既定の LLM。LM Studio で利用者が取得する |
+| LM Studio | LM Studio の利用規約 | 既定の LLM の実行系。リポジトリには含めない |
+| OpenAI API | OpenAI の利用規約 | 商用クラウド API |
 
 ### アバター（MMDAgent-EX）
 
