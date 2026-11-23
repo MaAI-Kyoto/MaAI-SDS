@@ -31,15 +31,22 @@ VAP（Voice Activity Projection）モデルによるターンテイキング予�
 > 本体のソースコードは [MIT ライセンス](LICENSE) で公開しています。利用するモデル・ライブラリにはそれぞれの
 > ライセンスが適用され、非商用に限られるものも含まれます（[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)）。
 
-## 主な機能
+## 特徴
 
-- **エンジンの差し替え** — ASR 12 種・TTS 11 種・LLM 3 系統に対応（[対応エンジン](#対応エンジン)）。
-  sherpa-onnx・speech.cpp・audio.cpp などの実行系を含む
-- **VAP による非言語的な振る舞い** — 発話終了の予測による応答準備の前倒し、聞き手としての相槌と頷きの生成
-- **アバター連携** — MMDAgent-EX へ音声・頭部動作を送出（TCP / WebSocket）。口パクは MMDAgent-EX が受け取った音声から作ります
-- **2 種類の設定画面** — Windows アプリ（Qt / PySide6）と Web UI
-- **Docker 対応** — 対話サーバーをコンテナで実行し、音声入出力とアバターはホストで扱う構成
-- **マルチプロセス構成** — 対話制御・音声入出力・ASR・LLM・TTS・MaAI をワーカーに分離し、JSON Lines で通信
+- **MaAI（VAP）に基づく素早いターンテイキング**<br>
+  話し終わりを予測し、話し終わる前から返事の準備を始めます
+- **相槌・頷きをリアルタイムに生成**<br>
+  聞いている間も、相槌を打ち、頷き続けます
+- **すべてローカルで動き、応答遅延 1 秒未満**<br>
+  クラウドに音声を送らずに動かせます
+- **最新の ASR・TTS モデルを幅広く試せる**<br>
+  Qwen3-ASR・Nemotron・Qwen3-TTS・Irodori-TTS など、ASR 12 種・TTS 11 種。LLM も選べます（[対応エンジン](#対応エンジン)）
+
+そのほか
+
+- GUI アプリ（Qt）／ Web UI ／ Docker で動作
+- [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) と通信可能（音声と頭の動きを送り、口パクは MMDAgent-EX が音声から作ります）
+- 本体は MIT ライセンスで公開（各モデルはそれぞれのライセンスに従います）
 
 ## システム構成
 
