@@ -54,6 +54,8 @@ from PySide6.QtWidgets import (  # noqa: E402
 )
 
 from maai_sds.gui.app_config_spec import APP_CONFIG_FIELDS  # noqa: E402
+from maai_sds.gui.collapsible import CollapsibleSection  # noqa: E402
+from maai_sds.gui.numeric_fields import manifest_hint  # noqa: E402
 from maai_sds.maai.plot_window import MAAI_PLOT_VISIBILITY_SPECS  # noqa: E402
 
 OUTPUT = REPO_ROOT / "src" / "maai_sds" / "web" / "ui_manifest.json"
@@ -111,9 +113,9 @@ WINDOW_TEXT_ATTR_QUEUE = {
         "MMDAgent-EXを起動": ["mmdagent_launch_btn"],
         "停止": ["mmdagent_stop_btn"],
         "MMDAgent-EX起動設定": ["settings_toggle_btn"],
-        "TTSテスト": ["tts_test_toggle_btn"],
-        "ASRテスト": ["asr_settings_toggle_btn"],
-        "LLMテスト": ["llm_test_toggle_btn"],
+        "TTS": ["tts_test_toggle_btn"],
+        "ASR": ["asr_settings_toggle_btn"],
+        "LLM": ["llm_test_toggle_btn"],
         "MaAIテスト": ["maai_test_toggle_btn"],
         "OBS録画設定": ["obs_settings_toggle_btn"],
         "音声入力の設定": ["audio_input_settings_toggle_btn"],
@@ -148,9 +150,9 @@ WINDOW_TEXT_ATTR_QUEUE = {
 WINDOW_ATTRS = [
     ("main", None, "メイン"),
     ("voice_dialog_settings", "voice_dialog_settings_window", "音声対話の詳細設定"),
-    ("asr_test_window", "asr_test_window", "ASRテスト"),
-    ("tts_test_window", "tts_test_window", "TTSテスト"),
-    ("llm_test_window", "llm_test_window", "LLMテスト"),
+    ("asr_test_window", "asr_test_window", "ASR（音声認識）"),
+    ("tts_test_window", "tts_test_window", "TTS（音声合成）"),
+    ("llm_test_window", "llm_test_window", "LLM（応答生成）"),
     ("maai_test_window", "maai_test_window", "MaAIテスト"),
     ("maai_settings_window", "maai_settings_window", "MaAIモデル設定"),
     ("llm_s2s_test_window", "llm_s2s_test_window", "LLM分割テスト"),
@@ -267,9 +269,14 @@ def _describe(widget: QWidget, attrs: dict[int, str], keys: dict[str, str]) -> d
         # ブラウザへも配信される。過去に API キー 3 件が実際に混入した経路なので、
         # 「値の出所が変わっても秘密だけは出ない」を構造で担保しておく。
         password = widget.echoMode() == QLineEdit.EchoMode.Password
-        return {**common, "kind": "line",
+        desc = {**common, "kind": "line",
                 "value": "" if password else _portable_value(widget.text()),
                 "password": password}
+        # 数値の欄は範囲を載せる（Web は input type=number にして min/max を付ける）。
+        numeric = manifest_hint(attr)
+        if numeric is not None:
+            desc["numeric"] = numeric
+        return desc
     if isinstance(widget, QPlainTextEdit):
         # 読み取り専用の欄はログ/結果の表示先で、抽出中に届いたイベントが
         # そのまま焼き付いてしまう（実際に console_text_edit に
@@ -385,6 +392,20 @@ def _label_text(item_widget: QWidget | None) -> str:
 
 def _walk(node, attrs, keys, groups, current) -> None:
     """レイアウト木を歩いて groups を埋める。current は今書き込んでいるグループ。"""
+    if isinstance(node, CollapsibleSection):
+        # 「詳細設定」の中の行は、親のグループの行として載せ、detail に見出しを付ける。
+        # Web はこの印の付いた連続する行を、たためる枠（<details>）にまとめる。
+        if current is None:
+            current = {"title": "", "rows": []}
+            groups.append(current)
+        start = len(current["rows"])
+        content = node._content.layout()
+        if content is not None:
+            _walk(content, attrs, keys, groups, current)
+        title = node._toggle.text()
+        for row in current["rows"][start:]:
+            row.setdefault("detail", title)
+        return
     if isinstance(node, QScrollArea):
         # 中身は viewport の下にぶら下がるので layout() からは辿れない。
         # MaAI テスト / MaAI モデル設定 / 起動設定のタブがこの形。
@@ -452,6 +473,16 @@ def _walk(node, attrs, keys, groups, current) -> None:
         for row in range(node.rowCount()):
             label_item = node.itemAt(row, QFormLayout.ItemRole.LabelRole)
             field_item = node.itemAt(row, QFormLayout.ItemRole.FieldRole)
+            if field_item is None:
+                field_item = node.itemAt(row, QFormLayout.ItemRole.SpanningRole)
+            # フォームの 1 行として置いた「詳細設定」は、中の行をそれぞれ行として拾う
+            # （_collect_widgets に渡すと、中のフォームが 1 行に平たく詰め込まれてラベルが落ちる）。
+            if field_item is not None and isinstance(field_item.widget(), CollapsibleSection):
+                if current is None:
+                    current = {"title": "", "rows": []}
+                    groups.append(current)
+                _walk(field_item.widget(), attrs, keys, groups, current)
+                continue
             label = _label_text(label_item.widget() if label_item else None)
             widgets: list[dict] = []
             if field_item is not None:

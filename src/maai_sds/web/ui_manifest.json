@@ -342,7 +342,7 @@
                   "scope": "app",
                   "tooltip": null,
                   "kind": "button",
-                  "text": "ASRテスト"
+                  "text": "ASR"
                 }
               ]
             },
@@ -355,7 +355,7 @@
                   "scope": "app",
                   "tooltip": null,
                   "kind": "button",
-                  "text": "LLMテスト"
+                  "text": "LLM"
                 }
               ]
             },
@@ -368,7 +368,7 @@
                   "scope": "app",
                   "tooltip": null,
                   "kind": "button",
-                  "text": "TTSテスト"
+                  "text": "TTS"
                 }
               ]
             },
@@ -376,12 +376,12 @@
               "label": "",
               "widgets": [
                 {
-                  "attr": "maai_test_toggle_btn",
+                  "attr": "main_maai_settings_open_btn",
                   "config_key": null,
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "MaAIモデル設定",
                   "kind": "button",
-                  "text": "MaAIテスト"
+                  "text": "MaAI"
                 }
               ]
             },
@@ -428,12 +428,12 @@
               "label": "",
               "widgets": [
                 {
-                  "attr": "main_maai_settings_open_btn",
+                  "attr": "obs_settings_toggle_btn",
                   "config_key": null,
                   "scope": "app",
                   "tooltip": null,
                   "kind": "button",
-                  "text": "MaAIモデル設定"
+                  "text": "OBS録画設定"
                 }
               ]
             },
@@ -441,12 +441,12 @@
               "label": "",
               "widgets": [
                 {
-                  "attr": "obs_settings_toggle_btn",
+                  "attr": "maai_test_toggle_btn",
                   "config_key": null,
                   "scope": "app",
                   "tooltip": null,
                   "kind": "button",
-                  "text": "OBS録画設定"
+                  "text": "MaAIテスト"
                 }
               ]
             },
@@ -522,10 +522,16 @@
                   "attr": "voice_dialog_scheduled_exit_sec_edit",
                   "config_key": "voice_dialog_scheduled_exit_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜86400（0＝時間では終了しない）",
                   "kind": "line",
                   "value": "0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 86400.0,
+                    "decimals": true,
+                    "note": "0＝時間では終了しない"
+                  }
                 }
               ]
             },
@@ -550,10 +556,16 @@
                   "attr": "voice_dialog_idle_take_turn_sec_edit",
                   "config_key": "voice_dialog_idle_take_turn_sec",
                   "scope": "app",
-                  "tooltip": "ターンロック解除後、最後のユーザー発話検知からこの秒数経過したらMaAIのターン検知（crossed_up）と同様にターン取得します。",
+                  "tooltip": "ターンロック解除後、最後のユーザー発話検知からこの秒数経過したらMaAIのターン検知（crossed_up）と同様にターン取得します。\n範囲：0〜30",
                   "kind": "line",
                   "value": "0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 30.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -583,10 +595,16 @@
                   "attr": "voice_dialog_interrupt_vad_threshold_edit",
                   "config_key": "voice_dialog_interrupt_vad_threshold",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜1",
                   "kind": "line",
                   "value": "0.1",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -597,10 +615,16 @@
                   "attr": "voice_dialog_interrupt_pnow_threshold_edit",
                   "config_key": "voice_dialog_interrupt_p_now_threshold",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜1",
                   "kind": "line",
                   "value": "0.5",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -630,10 +654,16 @@
                   "attr": "tts_segment_gap_silence_sec_edit",
                   "config_key": "tts_segment_gap_silence_sec",
                   "scope": "app",
-                  "tooltip": "16kHz・モノラルの無音PCMを送出します。最大10秒です。",
+                  "tooltip": "16kHz・モノラルの無音PCMを送出します。最大10秒です。\n範囲：0〜10",
                   "kind": "line",
                   "value": "0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 10.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -643,8 +673,8 @@
     },
     {
       "id": "asr_test_window",
-      "title": "ASRテスト",
-      "qt_title": "ASRテスト",
+      "title": "ASR（音声認識）",
+      "qt_title": "ASR（音声認識）",
       "groups": [
         {
           "title": "ASR制御",
@@ -874,7 +904,8 @@
                   "text": "参照…",
                   "browse_target": "asr_smart_turn_model_edit"
                 }
-              ]
+              ],
+              "detail": "詳細設定（しきい値・秒数・スレッド数）"
             },
             {
               "label": "VAD開始しきい値",
@@ -883,12 +914,19 @@
                   "attr": "asr_vad_on_threshold_edit",
                   "config_key": "asr_vad_on_threshold",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜1",
                   "kind": "line",
                   "value": "0.1",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（しきい値・秒数・スレッド数）"
             },
             {
               "label": "VAD開始継続時間（秒）",
@@ -897,12 +935,19 @@
                   "attr": "asr_vad_on_sec_edit",
                   "config_key": "asr_vad_on_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜5",
                   "kind": "line",
                   "value": "0.1",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 5.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（しきい値・秒数・スレッド数）"
             },
             {
               "label": "VAD終了しきい値",
@@ -911,12 +956,19 @@
                   "attr": "asr_vad_off_threshold_edit",
                   "config_key": "asr_vad_off_threshold",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜1",
                   "kind": "line",
                   "value": "0.2",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（しきい値・秒数・スレッド数）"
             },
             {
               "label": "VAD終了継続時間（秒）",
@@ -925,12 +977,19 @@
                   "attr": "asr_vad_off_sec_edit",
                   "config_key": "asr_vad_off_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜5",
                   "kind": "line",
                   "value": "0.1",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 5.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（しきい値・秒数・スレッド数）"
             },
             {
               "label": "最小発話区間（秒）",
@@ -939,12 +998,19 @@
                   "attr": "asr_min_segment_sec_edit",
                   "config_key": "asr_min_segment_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜10",
                   "kind": "line",
                   "value": "0.5",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 10.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（しきい値・秒数・スレッド数）"
             },
             {
               "label": "先読みバッファ（秒）",
@@ -953,12 +1019,19 @@
                   "attr": "asr_pre_roll_buffer_sec_edit",
                   "config_key": "asr_pre_roll_buffer_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜5",
                   "kind": "line",
                   "value": "0.25",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 5.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（しきい値・秒数・スレッド数）"
             },
             {
               "label": "疑似チャンク長（秒）",
@@ -967,12 +1040,19 @@
                   "attr": "asr_nonstream_pseudo_chunk_sec_edit",
                   "config_key": "asr_nonstream_pseudo_chunk_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0.05〜5",
                   "kind": "line",
                   "value": "0.25",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.05,
+                    "max": 5.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（しきい値・秒数・スレッド数）"
             },
             {
               "label": "SmartTurnしきい値",
@@ -981,12 +1061,19 @@
                   "attr": "asr_smart_turn_threshold_edit",
                   "config_key": "asr_smart_turn_threshold",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜1",
                   "kind": "line",
                   "value": "0.5",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（しきい値・秒数・スレッド数）"
             },
             {
               "label": "SmartTurnスレッド数",
@@ -995,12 +1082,19 @@
                   "attr": "asr_smart_turn_num_threads_edit",
                   "config_key": "asr_smart_turn_num_threads",
                   "scope": "app",
-                  "tooltip": "SmartTurn ONNXの演算内スレッド数（既定：2）です。未指定ではORTがCPUコア数－1本まで使用し、MaAIやTTSと奪い合います。",
+                  "tooltip": "SmartTurn ONNXの演算内スレッド数（既定：2）です。未指定ではORTがCPUコア数－1本まで使用し、MaAIやTTSと奪い合います。\n範囲：1〜32",
                   "kind": "line",
                   "value": "2",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 32,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（しきい値・秒数・スレッド数）"
             },
             {
               "label": "Torch演算内スレッド数",
@@ -1009,12 +1103,19 @@
                   "attr": "asr_torch_cpu_intra_threads_edit",
                   "config_key": "asr_torch_cpu_intra_threads",
                   "scope": "app",
-                  "tooltip": "ASRプロセスのTorchスレッド上限（既定：2）です。turn_backend=maaiのときにターン判定MaAIが使用します。上げるとMaAIワーカーやTTSとCPUコアを奪い合います。",
+                  "tooltip": "ASRプロセスのTorchスレッド上限（既定：2）です。turn_backend=maaiのときにターン判定MaAIが使用します。上げるとMaAIワーカーやTTSとCPUコアを奪い合います。\n範囲：1〜32",
                   "kind": "line",
                   "value": "2",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 32,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（しきい値・秒数・スレッド数）"
             }
           ]
         },
@@ -1237,10 +1338,16 @@
                   "attr": "asr_sherpa_num_threads_edit",
                   "config_key": "asr_sherpa_num_threads",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜32",
                   "kind": "line",
                   "value": "2",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 32,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -1271,10 +1378,16 @@
                   "attr": "asr_qwen_port_edit",
                   "config_key": "asr_qwen_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "8000",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1325,10 +1438,16 @@
                   "attr": "asr_qwen_gpu_util_edit",
                   "config_key": "asr_qwen_gpu_memory_utilization",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0.05〜1",
                   "kind": "line",
                   "value": "0.8",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.05,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1339,10 +1458,16 @@
                   "attr": "asr_qwen_max_model_len_edit",
                   "config_key": "asr_qwen_max_model_len",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：128〜32768",
                   "kind": "line",
                   "value": "4096",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 128,
+                    "max": 32768,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1353,10 +1478,16 @@
                   "attr": "asr_qwen_chunk_sec_edit",
                   "config_key": "asr_qwen_chunk_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0.02〜5",
                   "kind": "line",
                   "value": "2.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.02,
+                    "max": 5.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1367,10 +1498,16 @@
                   "attr": "asr_qwen_timeout_sec_edit",
                   "config_key": "asr_qwen_timeout_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜600",
                   "kind": "line",
                   "value": "30",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 600,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1395,10 +1532,16 @@
                   "attr": "asr_qwen_session_timeout_edit",
                   "config_key": "asr_qwen_session_timeout_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜3600",
                   "kind": "line",
                   "value": "60",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 3600,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1409,10 +1552,16 @@
                   "attr": "asr_qwen_no_text_flush_sec_edit",
                   "config_key": "asr_qwen_no_text_flush_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜30",
                   "kind": "line",
                   "value": "0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 30.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1423,10 +1572,16 @@
                   "attr": "asr_qwen_min_return_audio_sec_edit",
                   "config_key": "asr_qwen_min_return_audio_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜5",
                   "kind": "line",
                   "value": "0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 5.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1535,10 +1690,16 @@
                   "attr": "asr_nemotron_window_sec_edit",
                   "config_key": "asr_nemotron_window_sec",
                   "scope": "app",
-                  "tooltip": "前処理に使う直近音声の窓（秒）です。大きいほど正規化が安定しますが、前処理コストが増えます。",
+                  "tooltip": "前処理に使う直近音声の窓（秒）です。大きいほど正規化が安定しますが、前処理コストが増えます。\n範囲：1〜60",
                   "kind": "line",
                   "value": "15.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1.0,
+                    "max": 60.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1549,10 +1710,16 @@
                   "attr": "asr_nemotron_max_symbols_edit",
                   "config_key": "asr_nemotron_max_symbols",
                   "scope": "app",
-                  "tooltip": "RNNT greedyの1フレームあたり最大トークン数です。小さいと日本語を取りこぼします（既定：30）。",
+                  "tooltip": "RNNT greedyの1フレームあたり最大トークン数です。小さいと日本語を取りこぼします（既定：30）。\n範囲：1〜100",
                   "kind": "line",
                   "value": "30",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 100,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1637,10 +1804,16 @@
                   "attr": "asr_external_port_edit",
                   "config_key": "asr_external_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "19090",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1665,10 +1838,16 @@
                   "attr": "asr_external_audio_port_edit",
                   "config_key": "asr_external_audio_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "14600",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -1837,10 +2016,16 @@
                   "attr": "asr_qwen3_onnx_num_threads_edit",
                   "config_key": "asr_qwen3_onnx_num_threads",
                   "scope": "app",
-                  "tooltip": "ONNXのCPUスレッド数です。int8＋CPUは8、fp32＋GPUは2を推奨します。",
+                  "tooltip": "ONNXのCPUスレッド数です。int8＋CPUは8、fp32＋GPUは2を推奨します。\n範囲：1〜64",
                   "kind": "line",
                   "value": "8",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 64,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -2065,10 +2250,16 @@
                   "attr": "asr_parakeet_onnx_num_threads_edit",
                   "config_key": "asr_parakeet_onnx_num_threads",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜64",
                   "kind": "line",
                   "value": "8",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 64,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -2122,10 +2313,16 @@
                   "attr": "asr_sensevoice_onnx_num_threads_edit",
                   "config_key": "asr_sensevoice_onnx_num_threads",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜64",
                   "kind": "line",
                   "value": "8",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 64,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -2207,10 +2404,16 @@
                   "attr": "asr_funasr_nano_onnx_num_threads_edit",
                   "config_key": "asr_funasr_nano_onnx_num_threads",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜64",
                   "kind": "line",
                   "value": "8",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 64,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -2249,10 +2452,16 @@
                   "attr": "asr_funasr_nano_onnx_max_new_tokens_edit",
                   "config_key": "asr_funasr_nano_onnx_max_new_tokens",
                   "scope": "app",
-                  "tooltip": "LLMデコーダーの生成上限です。最悪遅延の上限になるため、対話用途では小さくします。1発話なら128で十分です（長い読み上げを扱う場合のみ増やします）。",
+                  "tooltip": "LLMデコーダーの生成上限です。最悪遅延の上限になるため、対話用途では小さくします。1発話なら128で十分です（長い読み上げを扱う場合のみ増やします）。\n範囲：1〜4096",
                   "kind": "line",
                   "value": "128",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 4096,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -2306,10 +2515,16 @@
                   "attr": "asr_cohere_onnx_num_threads_edit",
                   "config_key": "asr_cohere_onnx_num_threads",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜64",
                   "kind": "line",
                   "value": "8",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 64,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -2426,10 +2641,16 @@
                   "attr": "asr_speechcpp_threads_edit",
                   "config_key": "asr_speechcpp_threads",
                   "scope": "app",
-                  "tooltip": "CPUのスレッド数です。0＝speech.cppに任せる（性能コアの数）。",
+                  "tooltip": "CPUのスレッド数です。0＝speech.cppに任せる（性能コアの数）。\n範囲：0〜64（0＝speech.cppに任せる）",
                   "kind": "line",
                   "value": "0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0,
+                    "max": 64,
+                    "decimals": false,
+                    "note": "0＝speech.cppに任せる"
+                  }
                 }
               ]
             }
@@ -2439,8 +2660,8 @@
     },
     {
       "id": "tts_test_window",
-      "title": "TTSテスト",
-      "qt_title": "TTSテスト",
+      "title": "TTS（音声合成）",
+      "qt_title": "TTS（音声合成）",
       "groups": [
         {
           "title": "TTS制御",
@@ -2674,10 +2895,16 @@
                   "attr": "tts_port_edit",
                   "config_key": "tts_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "50021",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -2814,10 +3041,16 @@
                   "attr": "voicevox_core_cpu_threads_edit",
                   "config_key": "voicevox_core_cpu_num_threads",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜32",
                   "kind": "line",
                   "value": "16",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 32,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -2889,10 +3122,16 @@
                   "attr": "qwen3_tts_cpp_port_edit",
                   "config_key": "qwen3_tts_cpp_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "18081",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -2973,10 +3212,16 @@
                   "attr": "qwen3_tts_cpp_temperature_edit",
                   "config_key": "qwen3_tts_cpp_temperature",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜2",
                   "kind": "line",
                   "value": "0.9",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 2.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -2987,10 +3232,16 @@
                   "attr": "qwen3_tts_cpp_top_k_edit",
                   "config_key": "qwen3_tts_cpp_top_k",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜1000",
                   "kind": "line",
                   "value": "50",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 1000,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3001,10 +3252,16 @@
                   "attr": "qwen3_tts_cpp_top_p_edit",
                   "config_key": "qwen3_tts_cpp_top_p",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜1",
                   "kind": "line",
                   "value": "1.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3015,10 +3272,16 @@
                   "attr": "qwen3_tts_cpp_repetition_penalty_edit",
                   "config_key": "qwen3_tts_cpp_repetition_penalty",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜2",
                   "kind": "line",
                   "value": "1.05",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1.0,
+                    "max": 2.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3029,10 +3292,16 @@
                   "attr": "qwen3_tts_cpp_seed_edit",
                   "config_key": "qwen3_tts_cpp_seed",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜2.14748e+09（空欄＝ランダム）",
                   "kind": "line",
                   "value": "",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0,
+                    "max": 2147483647,
+                    "decimals": false,
+                    "note": "空欄＝ランダム"
+                  }
                 }
               ]
             }
@@ -3062,10 +3331,16 @@
                   "attr": "lfm2_audio_port_edit",
                   "config_key": "lfm2_audio_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "18082",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3137,10 +3412,16 @@
                   "attr": "cartesia_tts_sample_rate_edit",
                   "config_key": "cartesia_tts_sample_rate",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：8000〜48000",
                   "kind": "line",
                   "value": "16000",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 8000,
+                    "max": 48000,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3221,10 +3502,16 @@
                   "attr": "aivisspeech_port_edit",
                   "config_key": "aivisspeech_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "10104",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -3254,10 +3541,16 @@
                   "attr": "supertonic_port_edit",
                   "config_key": "supertonic_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "18080",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3328,10 +3621,16 @@
                   "attr": "supertonic_steps_edit",
                   "config_key": "supertonic_steps",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜8",
                   "kind": "line",
                   "value": "8",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 8,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -3411,10 +3710,16 @@
                   "attr": "irodori_audiocpp_port_edit",
                   "config_key": "irodori_audiocpp_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "18083",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3448,10 +3753,16 @@
                   "attr": "irodori_speechcpp_steps_edit",
                   "config_key": "irodori_speechcpp_steps",
                   "scope": "app",
-                  "tooltip": "speech.cpp版の生成ステップ数です。MFモデルは4で作られています。",
+                  "tooltip": "speech.cpp版の生成ステップ数です。MFモデルは4で作られています。\n範囲：1〜40",
                   "kind": "line",
                   "value": "4",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 40,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3462,10 +3773,16 @@
                   "attr": "irodori_seed_edit",
                   "config_key": "irodori_seed",
                   "scope": "app",
-                  "tooltip": "参照WAVが無いときの声はseedで決まります。固定しておくと文ごとに声が変わりません（speech.cpp版）。",
+                  "tooltip": "参照WAVが無いときの声はseedで決まります。固定しておくと文ごとに声が変わりません（speech.cpp版）。\n範囲：0〜2.14748e+09",
                   "kind": "line",
                   "value": "1",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0,
+                    "max": 2147483647,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3527,10 +3844,16 @@
                   "attr": "irodori_steps_edit",
                   "config_key": "irodori_steps",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜40",
                   "kind": "line",
                   "value": "16",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 40,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -3583,10 +3906,16 @@
                   "attr": "tsukasa_steps_edit",
                   "config_key": "tsukasa_steps",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：3〜15",
                   "kind": "line",
                   "value": "5",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 3,
+                    "max": 15,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3597,10 +3926,16 @@
                   "attr": "tsukasa_alpha_edit",
                   "config_key": "tsukasa_alpha",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜1",
                   "kind": "line",
                   "value": "0.3",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3611,10 +3946,16 @@
                   "attr": "tsukasa_beta_edit",
                   "config_key": "tsukasa_beta",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜1",
                   "kind": "line",
                   "value": "0.7",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -3723,8 +4064,8 @@
     },
     {
       "id": "llm_test_window",
-      "title": "LLMテスト",
-      "qt_title": "LLMテスト",
+      "title": "LLM（応答生成）",
+      "qt_title": "LLM（応答生成）",
       "groups": [
         {
           "title": "LLM接続設定",
@@ -3768,10 +4109,16 @@
                   "attr": "llm_context_len_edit",
                   "config_key": "llm_context_len",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜200",
                   "kind": "line",
                   "value": "10",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0,
+                    "max": 200,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -3782,10 +4129,16 @@
                   "attr": "llm_max_tokens_edit",
                   "config_key": "llm_max_tokens",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜32768",
                   "kind": "line",
                   "value": "128",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 32768,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -4036,10 +4389,16 @@
                   "attr": "llm_custom_temperature_edit",
                   "config_key": "llm_custom_temperature",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜2",
                   "kind": "line",
                   "value": "0.7",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 2.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -4216,10 +4575,16 @@
                   "attr": "maai_plot_flush_ms_edit",
                   "config_key": "maai_plot_flush_interval_ms",
                   "scope": "app",
-                  "tooltip": "MaAI結果のバッチ描画間隔（ms）。約1000÷値Hzです（例：200→5Hz）",
+                  "tooltip": "MaAI結果のバッチ描画間隔（ms）。約1000÷値Hzです（例：200→5Hz）\n範囲：10〜10000",
                   "kind": "line",
                   "value": "200",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 10,
+                    "max": 10000,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -4230,10 +4595,16 @@
                   "attr": "maai_plot_asr_scroll_ms_edit",
                   "config_key": "maai_plot_asr_scroll_interval_ms",
                   "scope": "app",
-                  "tooltip": "認識が止まっている間も、ASRセグメント／レイテンシ帯を時刻軸に合わせて左へ流すタイマー間隔（ms）です。描画更新間隔（ms）とは別です。認識イベント時の反映は間引きしません。",
+                  "tooltip": "認識が止まっている間も、ASRセグメント／レイテンシ帯を時刻軸に合わせて左へ流すタイマー間隔（ms）です。描画更新間隔（ms）とは別です。認識イベント時の反映は間引きしません。\n範囲：10〜10000",
                   "kind": "line",
                   "value": "200",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 10,
+                    "max": 10000,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -4244,10 +4615,16 @@
                   "attr": "maai_plot_raw_draw_interval_edit",
                   "config_key": "maai_plot_raw_draw_interval_ms",
                   "scope": "app",
-                  "tooltip": "入力波形（x1/x2）の再描画の最小間隔（ms）",
+                  "tooltip": "入力波形（x1/x2）の再描画の最小間隔（ms）\n範囲：10〜10000",
                   "kind": "line",
                   "value": "66.6667",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 10,
+                    "max": 10000,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -4613,12 +4990,19 @@
                   "attr": "maai_mimi_onnx_intra_threads_edit",
                   "config_key": "maai_mimi_onnx_cpu_intra_threads",
                   "scope": "app",
-                  "tooltip": "ORTのCPUスレッド数です。device=cpuのときだけ有効です。cudaではMaAIがintra/inter=0に固定します。SDSではASRと同居するため、既定はintra=2／inter=1です。単体処理を高速化する場合は4～8を指定します。",
+                  "tooltip": "ORTのCPUスレッド数です。device=cpuのときだけ有効です。cudaではMaAIがintra/inter=0に固定します。SDSではASRと同居するため、既定はintra=2／inter=1です。単体処理を高速化する場合は4～8を指定します。\n範囲：1〜64",
                   "kind": "line",
                   "value": "8",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 64,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（スレッド数・推論チャンク）"
             },
             {
               "label": "演算間スレッド数",
@@ -4627,12 +5011,19 @@
                   "attr": "maai_mimi_onnx_inter_threads_edit",
                   "config_key": "maai_mimi_onnx_cpu_inter_threads",
                   "scope": "app",
-                  "tooltip": "ORTのCPUスレッド数です。device=cpuのときだけ有効です。cudaではMaAIがintra/inter=0に固定します。SDSではASRと同居するため、既定はintra=2／inter=1です。単体処理を高速化する場合は4～8を指定します。",
+                  "tooltip": "ORTのCPUスレッド数です。device=cpuのときだけ有効です。cudaではMaAIがintra/inter=0に固定します。SDSではASRと同居するため、既定はintra=2／inter=1です。単体処理を高速化する場合は4～8を指定します。\n範囲：1〜64",
                   "kind": "line",
                   "value": "1",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 64,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（スレッド数・推論チャンク）"
             },
             {
               "label": "Torch演算内スレッド数",
@@ -4641,12 +5032,19 @@
                   "attr": "maai_torch_intra_threads_edit",
                   "config_key": "maai_torch_cpu_intra_threads",
                   "scope": "app",
-                  "tooltip": "Torchの演算内並列数（既定1）。MaAIマルチモードは相槌・頷き・VAPを同時に実行するため、各モデル内をさらに分割すると競合します（Windows実測：1が最速、8は2～3割低速）。",
+                  "tooltip": "Torchの演算内並列数（既定1）。MaAIマルチモードは相槌・頷き・VAPを同時に実行するため、各モデル内をさらに分割すると競合します（Windows実測：1が最速、8は2～3割低速）。\n範囲：1〜24",
                   "kind": "line",
                   "value": "1",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 24,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（スレッド数・推論チャンク）"
             },
             {
               "label": "Torch演算間スレッド数",
@@ -4655,12 +5053,19 @@
                   "attr": "maai_torch_interop_threads_edit",
                   "config_key": "maai_torch_cpu_interop_threads",
                   "scope": "app",
-                  "tooltip": "Torchの演算間並列数（既定：1）です。MaAIは相槌・頷き・VAPを同時実行するため、増やすと高速化する場合がありますが、他のワーカーとCPUコアを奪い合います。",
+                  "tooltip": "Torchの演算間並列数（既定：1）です。MaAIは相槌・頷き・VAPを同時実行するため、増やすと高速化する場合がありますが、他のワーカーとCPUコアを奪い合います。\n範囲：1〜24",
                   "kind": "line",
                   "value": "1",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 24,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（スレッド数・推論チャンク）"
             },
             {
               "label": "推論チャンクのフレーム数",
@@ -4669,12 +5074,19 @@
                   "attr": "maai_inference_chunk_frames_edit",
                   "config_key": "maai_inference_chunk_frames",
                   "scope": "app",
-                  "tooltip": "Mimiエンコーダーが1回のONNX呼び出しで処理するフレーム数（キー：maai_inference_chunk_frames）。2以上にするとNフレームをまとめて1回で推論するため、ONNX呼び出し回数が減ります。Nが2以上の場合は、N用のMimi ONNX（continuous_mimi_{fp32|int8}_Nf.onnx）が別途必要です。ローカルファイルがない場合はエラーになり、Hugging Faceから取得する場合はN用モデルを自動選択します。",
+                  "tooltip": "Mimiエンコーダーが1回のONNX呼び出しで処理するフレーム数（キー：maai_inference_chunk_frames）。2以上にするとNフレームをまとめて1回で推論するため、ONNX呼び出し回数が減ります。Nが2以上の場合は、N用のMimi ONNX（continuous_mimi_{fp32|int8}_Nf.onnx）が別途必要です。ローカルファイルがない場合はエラーになり、Hugging Faceから取得する場合はN用モデルを自動選択します。\n範囲：1〜8",
                   "kind": "line",
                   "value": "1",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 8,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（スレッド数・推論チャンク）"
             }
           ]
         },
@@ -4702,12 +5114,19 @@
                   "attr": "maai_multi_frame_rate_edit",
                   "config_key": "maai_multi_frame_rate",
                   "scope": "app",
-                  "tooltip": "マルチモード時に共有するframe_hzです（相槌・頷き・ターンテイキングVAP共通）。",
+                  "tooltip": "マルチモード時に共有するframe_hzです（相槌・頷き・ターンテイキングVAP共通）。\n範囲：0.1〜500",
                   "kind": "line",
                   "value": "10",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.1,
+                    "max": 500.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（フレームレート・モデル）"
             },
             {
               "label": "モデル種別",
@@ -4724,7 +5143,8 @@
                   ],
                   "value": "normal-ver2"
                 }
-              ]
+              ],
+              "detail": "詳細設定（フレームレート・モデル）"
             }
           ]
         },
@@ -4746,18 +5166,69 @@
               ]
             },
             {
+              "label": "言語",
+              "widgets": [
+                {
+                  "attr": "maai_test_turn_vap_lang_edit",
+                  "config_key": "maai_test_turn_vap_lang",
+                  "scope": "app",
+                  "tooltip": "ターンテイキング／MaAI VADの言語です。_kyotoは京都大学のデータで学習したモデル（MIT）です。",
+                  "kind": "combo",
+                  "items": [
+                    "jp",
+                    "jp_kyoto",
+                    "en",
+                    "en_kyoto",
+                    "ch",
+                    "ch_kyoto",
+                    "tri",
+                    "tri_kyoto",
+                    "fr"
+                  ],
+                  "value": "jp_kyoto"
+                }
+              ]
+            },
+            {
+              "label": "MaAIターンしきい値",
+              "widgets": [
+                {
+                  "attr": "asr_maai_turn_threshold_edit",
+                  "config_key": "asr_maai_turn_threshold",
+                  "scope": "app",
+                  "tooltip": "範囲：0〜1",
+                  "kind": "line",
+                  "value": "0.5",
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
+                }
+              ]
+            },
+            {
               "label": "フレームレート（Hz）",
               "widgets": [
                 {
                   "attr": "maai_test_turn_vap_frame_rate_edit",
                   "config_key": "maai_test_turn_vap_frame_rate",
                   "scope": "app",
-                  "tooltip": "MaAI VAPのframe_hz（1秒あたりのフレーム数、小数可）です。チャンク長≒sample_rate／frame_rate。MaAIワーカーのturn_vapと、vad_backend=maaiのASRのVADで共通して使われます。",
+                  "tooltip": "MaAI VAPのframe_hz（1秒あたりのフレーム数、小数可）です。チャンク長≒sample_rate／frame_rate。MaAIワーカーのturn_vapと、vad_backend=maaiのASRのVADで共通して使われます。\n範囲：0.1〜500",
                   "kind": "line",
                   "value": "20",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.1,
+                    "max": 500.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（フレームレート・モード・モデル）"
             },
             {
               "label": "モード",
@@ -4766,26 +5237,18 @@
                   "attr": "maai_test_turn_vap_mode_edit",
                   "config_key": "maai_test_turn_vap_mode",
                   "scope": "app",
-                  "tooltip": "ターンテイキング／MaAI VADのモード（例：vap_mc、vap）",
-                  "kind": "line",
-                  "value": "vap_mc",
-                  "password": false
+                  "tooltip": "ターンテイキング／MaAI VADのモードです。vap_mcはマルチチャネル（ユーザーとシステムの2ch）、monoは1chのモデルです。",
+                  "kind": "combo",
+                  "items": [
+                    "vap",
+                    "vap_mc",
+                    "vap_mono",
+                    "vap_mc_mono"
+                  ],
+                  "value": "vap_mc"
                 }
-              ]
-            },
-            {
-              "label": "言語",
-              "widgets": [
-                {
-                  "attr": "maai_test_turn_vap_lang_edit",
-                  "config_key": "maai_test_turn_vap_lang",
-                  "scope": "app",
-                  "tooltip": "ターンテイキング／MaAI VADの言語（例：jp_kyoto、jp）",
-                  "kind": "line",
-                  "value": "jp_kyoto",
-                  "password": false
-                }
-              ]
+              ],
+              "detail": "詳細設定（フレームレート・モード・モデル）"
             },
             {
               "label": "モデル種別",
@@ -4802,7 +5265,8 @@
                   ],
                   "value": "normal"
                 }
-              ]
+              ],
+              "detail": "詳細設定（フレームレート・モード・モデル）"
             },
             {
               "label": "ローカルモデル（.pt）",
@@ -4825,21 +5289,8 @@
                   "text": "参照…",
                   "browse_target": "maai_test_turn_vap_local_model_edit"
                 }
-              ]
-            },
-            {
-              "label": "MaAIターンしきい値",
-              "widgets": [
-                {
-                  "attr": "asr_maai_turn_threshold_edit",
-                  "config_key": "asr_maai_turn_threshold",
-                  "scope": "app",
-                  "tooltip": null,
-                  "kind": "line",
-                  "value": "0.5",
-                  "password": false
-                }
-              ]
+              ],
+              "detail": "詳細設定（フレームレート・モード・モデル）"
             }
           ]
         },
@@ -4857,74 +5308,6 @@
                   "kind": "check",
                   "value": true,
                   "text": "有効"
-                }
-              ]
-            },
-            {
-              "label": "フレームレート（Hz）",
-              "widgets": [
-                {
-                  "attr": "maai_test_bc_frame_rate_edit",
-                  "config_key": "maai_test_bc_frame_rate",
-                  "scope": "app",
-                  "tooltip": "bcのframe_hz（1秒あたりフレーム数、小数可）",
-                  "kind": "line",
-                  "value": "10",
-                  "password": false
-                }
-              ]
-            },
-            {
-              "label": "言語",
-              "widgets": [
-                {
-                  "attr": "maai_test_bc_lang_edit",
-                  "config_key": "maai_test_bc_lang",
-                  "scope": "app",
-                  "tooltip": "bcの言語タグ（例：jp、en、jp_kyoto）",
-                  "kind": "line",
-                  "value": "jp",
-                  "password": false
-                }
-              ]
-            },
-            {
-              "label": "モデル種別",
-              "widgets": [
-                {
-                  "attr": "maai_test_bc_model_type_edit",
-                  "config_key": "maai_test_bc_model_type",
-                  "scope": "app",
-                  "tooltip": "bcのmodel_type（例：normal、normal-ver2）",
-                  "kind": "combo",
-                  "items": [
-                    "normal",
-                    "normal-ver2"
-                  ],
-                  "value": "normal"
-                }
-              ]
-            },
-            {
-              "label": "ローカルモデル（.pt）",
-              "widgets": [
-                {
-                  "attr": "maai_test_bc_local_model_edit",
-                  "config_key": "maai_test_bc_local_model",
-                  "scope": "app",
-                  "tooltip": null,
-                  "kind": "line",
-                  "value": "",
-                  "password": false
-                },
-                {
-                  "attr": "maai_test_bc_local_model_browse_btn",
-                  "config_key": null,
-                  "scope": "app",
-                  "tooltip": null,
-                  "kind": "button",
-                  "text": "参照…",
-                  "browse_target": "maai_test_bc_local_model_edit"
                 }
               ]
             },
@@ -4976,10 +5359,16 @@
                   "attr": "maai_backchannel_prob_threshold_edit",
                   "config_key": "maai_backchannel_prob_threshold",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜1",
                   "kind": "line",
                   "value": "0.5",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -4990,24 +5379,16 @@
                   "attr": "maai_backchannel_min_interval_edit",
                   "config_key": "maai_backchannel_min_interval_sec",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：0〜60",
                   "kind": "line",
                   "value": "1.0",
-                  "password": false
-                }
-              ]
-            },
-            {
-              "label": "相槌連続フレーム数",
-              "widgets": [
-                {
-                  "attr": "maai_backchannel_consecutive_frames_edit",
-                  "config_key": "maai_backchannel_consecutive_frames",
-                  "scope": "app",
-                  "tooltip": null,
-                  "kind": "line",
-                  "value": "1",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 60.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -5033,6 +5414,110 @@
                   "browse_target": "maai_backchannel_dictionary_path_edit"
                 }
               ]
+            },
+            {
+              "label": "フレームレート（Hz）",
+              "widgets": [
+                {
+                  "attr": "maai_test_bc_frame_rate_edit",
+                  "config_key": "maai_test_bc_frame_rate",
+                  "scope": "app",
+                  "tooltip": "bcのframe_hz（1秒あたりフレーム数、小数可）\n範囲：0.1〜500",
+                  "kind": "line",
+                  "value": "10",
+                  "password": false,
+                  "numeric": {
+                    "min": 0.1,
+                    "max": 500.0,
+                    "decimals": true,
+                    "note": null
+                  }
+                }
+              ],
+              "detail": "詳細設定（モデル・連続フレーム数）"
+            },
+            {
+              "label": "言語",
+              "widgets": [
+                {
+                  "attr": "maai_test_bc_lang_edit",
+                  "config_key": "maai_test_bc_lang",
+                  "scope": "app",
+                  "tooltip": "bcの言語タグです。",
+                  "kind": "combo",
+                  "items": [
+                    "jp",
+                    "en",
+                    "ch",
+                    "tri"
+                  ],
+                  "value": "jp"
+                }
+              ],
+              "detail": "詳細設定（モデル・連続フレーム数）"
+            },
+            {
+              "label": "モデル種別",
+              "widgets": [
+                {
+                  "attr": "maai_test_bc_model_type_edit",
+                  "config_key": "maai_test_bc_model_type",
+                  "scope": "app",
+                  "tooltip": "bcのmodel_type（例：normal、normal-ver2）",
+                  "kind": "combo",
+                  "items": [
+                    "normal",
+                    "normal-ver2"
+                  ],
+                  "value": "normal"
+                }
+              ],
+              "detail": "詳細設定（モデル・連続フレーム数）"
+            },
+            {
+              "label": "ローカルモデル（.pt）",
+              "widgets": [
+                {
+                  "attr": "maai_test_bc_local_model_edit",
+                  "config_key": "maai_test_bc_local_model",
+                  "scope": "app",
+                  "tooltip": null,
+                  "kind": "line",
+                  "value": "",
+                  "password": false
+                },
+                {
+                  "attr": "maai_test_bc_local_model_browse_btn",
+                  "config_key": null,
+                  "scope": "app",
+                  "tooltip": null,
+                  "kind": "button",
+                  "text": "参照…",
+                  "browse_target": "maai_test_bc_local_model_edit"
+                }
+              ],
+              "detail": "詳細設定（モデル・連続フレーム数）"
+            },
+            {
+              "label": "相槌連続フレーム数",
+              "widgets": [
+                {
+                  "attr": "maai_backchannel_consecutive_frames_edit",
+                  "config_key": "maai_backchannel_consecutive_frames",
+                  "scope": "app",
+                  "tooltip": "範囲：1〜100",
+                  "kind": "line",
+                  "value": "1",
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 100,
+                    "decimals": false,
+                    "note": null
+                  }
+                }
+              ],
+              "detail": "詳細設定（モデル・連続フレーム数）"
             }
           ]
         },
@@ -5060,12 +5545,19 @@
                   "attr": "maai_test_nod_frame_rate_edit",
                   "config_key": "maai_test_nod_frame_rate",
                   "scope": "app",
-                  "tooltip": "nod_paraのframe_hz（1秒あたりフレーム数、小数可）",
+                  "tooltip": "nod_paraのframe_hz（1秒あたりフレーム数、小数可）\n範囲：0.1〜500",
                   "kind": "line",
                   "value": "12.5",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.1,
+                    "max": 500.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（モデル）"
             },
             {
               "label": "言語",
@@ -5074,12 +5566,17 @@
                   "attr": "maai_test_nod_lang_edit",
                   "config_key": "maai_test_nod_lang",
                   "scope": "app",
-                  "tooltip": "nod_paraの言語タグ（例：jp、jp_kyoto）",
-                  "kind": "line",
-                  "value": "jp",
-                  "password": false
+                  "tooltip": "nod_paraの言語タグです。",
+                  "kind": "combo",
+                  "items": [
+                    "jp",
+                    "en",
+                    "tri"
+                  ],
+                  "value": "jp"
                 }
-              ]
+              ],
+              "detail": "詳細設定（モデル）"
             },
             {
               "label": "モデル種別",
@@ -5096,7 +5593,8 @@
                   ],
                   "value": "normal-ver2"
                 }
-              ]
+              ],
+              "detail": "詳細設定（モデル）"
             },
             {
               "label": "頷き回数しきい値（t0）",
@@ -5105,10 +5603,16 @@
                   "attr": "maai_test_nod_count_t0_edit",
                   "config_key": "maai_test_nod_count_t0",
                   "scope": "app",
-                  "tooltip": "nod_paraの推論用しきい値です。.pt読込後のnodインスタンス値がワーカー準備完了時に既定値として同期されます。UIの値が既定値と一致する場合はVAP内部のpredをそのまま使い、異なる場合はnod_count（確率）とnod_swing_up（確率）にこのしきい値を再適用した結果を表示します。",
+                  "tooltip": "nod_paraの推論用しきい値です。.pt読込後のnodインスタンス値がワーカー準備完了時に既定値として同期されます。UIの値が既定値と一致する場合はVAP内部のpredをそのまま使い、異なる場合はnod_count（確率）とnod_swing_up（確率）にこのしきい値を再適用した結果を表示します。\n範囲：0〜1（空欄＝モデルの既定値）",
                   "kind": "line",
                   "value": "1.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": "空欄＝モデルの既定値"
+                  }
                 }
               ]
             },
@@ -5119,10 +5623,16 @@
                   "attr": "maai_test_nod_count_t1_edit",
                   "config_key": "maai_test_nod_count_t1",
                   "scope": "app",
-                  "tooltip": "nod_paraの推論用しきい値です。.pt読込後のnodインスタンス値がワーカー準備完了時に既定値として同期されます。UIの値が既定値と一致する場合はVAP内部のpredをそのまま使い、異なる場合はnod_count（確率）とnod_swing_up（確率）にこのしきい値を再適用した結果を表示します。",
+                  "tooltip": "nod_paraの推論用しきい値です。.pt読込後のnodインスタンス値がワーカー準備完了時に既定値として同期されます。UIの値が既定値と一致する場合はVAP内部のpredをそのまま使い、異なる場合はnod_count（確率）とnod_swing_up（確率）にこのしきい値を再適用した結果を表示します。\n範囲：0〜1（空欄＝モデルの既定値）",
                   "kind": "line",
                   "value": "1.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": "空欄＝モデルの既定値"
+                  }
                 }
               ]
             },
@@ -5133,10 +5643,16 @@
                   "attr": "maai_test_nod_count_t2_edit",
                   "config_key": "maai_test_nod_count_t2",
                   "scope": "app",
-                  "tooltip": "nod_paraの推論用しきい値です。.pt読込後のnodインスタンス値がワーカー準備完了時に既定値として同期されます。UIの値が既定値と一致する場合はVAP内部のpredをそのまま使い、異なる場合はnod_count（確率）とnod_swing_up（確率）にこのしきい値を再適用した結果を表示します。",
+                  "tooltip": "nod_paraの推論用しきい値です。.pt読込後のnodインスタンス値がワーカー準備完了時に既定値として同期されます。UIの値が既定値と一致する場合はVAP内部のpredをそのまま使い、異なる場合はnod_count（確率）とnod_swing_up（確率）にこのしきい値を再適用した結果を表示します。\n範囲：0〜1（空欄＝モデルの既定値）",
                   "kind": "line",
                   "value": "1.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": "空欄＝モデルの既定値"
+                  }
                 }
               ]
             },
@@ -5147,10 +5663,16 @@
                   "attr": "maai_test_nod_swing_threshold_edit",
                   "config_key": "maai_test_nod_swing_threshold",
                   "scope": "app",
-                  "tooltip": "nod_paraの推論用しきい値です。.pt読込後のnodインスタンス値がワーカー準備完了時に既定値として同期されます。UIの値が既定値と一致する場合はVAP内部のpredをそのまま使い、異なる場合はnod_count（確率）とnod_swing_up（確率）にこのしきい値を再適用した結果を表示します。",
+                  "tooltip": "nod_paraの推論用しきい値です。.pt読込後のnodインスタンス値がワーカー準備完了時に既定値として同期されます。UIの値が既定値と一致する場合はVAP内部のpredをそのまま使い、異なる場合はnod_count（確率）とnod_swing_up（確率）にこのしきい値を再適用した結果を表示します。\n範囲：0〜1（空欄＝モデルの既定値）",
                   "kind": "line",
                   "value": "0.5",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": "空欄＝モデルの既定値"
+                  }
                 }
               ]
             }
@@ -5180,9 +5702,69 @@
                   "attr": "nod_para_prob_threshold_edit",
                   "config_key": "nod_para_prob_threshold",
                   "scope": "app",
-                  "tooltip": "頷きフレームを蓄積するp_nodしきい値です。",
+                  "tooltip": "頷きフレームを蓄積するp_nodしきい値です。\n範囲：0〜1",
                   "kind": "line",
                   "value": "0.6",
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
+                }
+              ]
+            },
+            {
+              "label": "クールダウン（ms）",
+              "widgets": [
+                {
+                  "attr": "nod_para_min_interval_ms_edit",
+                  "config_key": "nod_para_min_interval_ms",
+                  "scope": "app",
+                  "tooltip": "モデルが頷きを開始する最小間隔（ms）です。\n範囲：0〜60000",
+                  "kind": "line",
+                  "value": "1500",
+                  "password": false,
+                  "numeric": {
+                    "min": 0,
+                    "max": 60000,
+                    "decimals": true,
+                    "note": null
+                  }
+                }
+              ]
+            },
+            {
+              "label": "振幅倍率",
+              "widgets": [
+                {
+                  "attr": "nod_para_scale_edit",
+                  "config_key": "nod_para_scale",
+                  "scope": "app",
+                  "tooltip": "最終ピッチに掛ける倍率\n範囲：0〜10",
+                  "kind": "line",
+                  "value": "3.0",
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 10.0,
+                    "decimals": true,
+                    "note": null
+                  }
+                }
+              ]
+            },
+            {
+              "label": "頭ボーン名",
+              "widgets": [
+                {
+                  "attr": "nod_para_bone_edit",
+                  "config_key": "nod_para_bone",
+                  "scope": "app",
+                  "tooltip": "MMDAgent-EXの頭ボーン名（例：頭、首）",
+                  "kind": "line",
+                  "value": "頭",
                   "password": false
                 }
               ]
@@ -5194,26 +5776,19 @@
                   "attr": "nod_para_min_consecutive_frames_edit",
                   "config_key": "nod_para_min_consecutive_frames",
                   "scope": "app",
-                  "tooltip": "頷きを開始するまでに必要な連続フレーム数です。",
+                  "tooltip": "頷きを開始するまでに必要な連続フレーム数です。\n範囲：1〜100",
                   "kind": "line",
                   "value": "3",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 100,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
-              ]
-            },
-            {
-              "label": "クールダウン（ms）",
-              "widgets": [
-                {
-                  "attr": "nod_para_min_interval_ms_edit",
-                  "config_key": "nod_para_min_interval_ms",
-                  "scope": "app",
-                  "tooltip": "モデルが頷きを開始する最小間隔（ms）です。",
-                  "kind": "line",
-                  "value": "1500",
-                  "password": false
-                }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             },
             {
               "label": "減衰率",
@@ -5222,12 +5797,19 @@
                   "attr": "nod_para_decay_rate_edit",
                   "config_key": "nod_para_decay_rate",
                   "scope": "app",
-                  "tooltip": "2回目以降の頷きの振幅減衰率（0～1）です。",
+                  "tooltip": "2回目以降の頷きの振幅減衰率（0～1）です。\n範囲：0〜1",
                   "kind": "line",
                   "value": "0.8",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             },
             {
               "label": "振れ幅クリップ下限",
@@ -5236,12 +5818,19 @@
                   "attr": "nod_para_range_clip_min_edit",
                   "config_key": "nod_para_range_clip_min",
                   "scope": "app",
-                  "tooltip": "モデル予測nod_range（振れ幅、rad）のクリップ下限です。既定：0.0。",
+                  "tooltip": "モデル予測nod_range（振れ幅、rad）のクリップ下限です。既定：0.0。\n範囲：0〜1",
                   "kind": "line",
                   "value": "0.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             },
             {
               "label": "振れ幅クリップ上限",
@@ -5250,12 +5839,19 @@
                   "attr": "nod_para_range_clip_max_edit",
                   "config_key": "nod_para_range_clip_max",
                   "scope": "app",
-                  "tooltip": "モデル予測nod_range（振れ幅、rad）のクリップ上限です。既定：1.0。",
+                  "tooltip": "モデル予測nod_range（振れ幅、rad）のクリップ上限です。既定：1.0。\n範囲：0〜1",
                   "kind": "line",
                   "value": "1.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             },
             {
               "label": "速度クリップ下限",
@@ -5264,12 +5860,19 @@
                   "attr": "nod_para_speed_clip_min_edit",
                   "config_key": "nod_para_speed_clip_min",
                   "scope": "app",
-                  "tooltip": "モデル予測nod_speed（速度、rad/s）のクリップ下限です。既定：0.0。",
+                  "tooltip": "モデル予測nod_speed（速度、rad/s）のクリップ下限です。既定：0.0。\n範囲：0〜1",
                   "kind": "line",
                   "value": "0.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             },
             {
               "label": "速度クリップ上限",
@@ -5278,12 +5881,19 @@
                   "attr": "nod_para_speed_clip_max_edit",
                   "config_key": "nod_para_speed_clip_max",
                   "scope": "app",
-                  "tooltip": "モデル予測nod_speed（速度、rad/s）のクリップ上限です。既定：1.0。",
+                  "tooltip": "モデル予測nod_speed（速度、rad/s）のクリップ上限です。既定：1.0。\n範囲：0〜1",
                   "kind": "line",
                   "value": "1.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             },
             {
               "label": "FPS",
@@ -5292,12 +5902,19 @@
                   "attr": "nod_para_fps_edit",
                   "config_key": "nod_para_fps",
                   "scope": "app",
-                  "tooltip": "モーション生成フレームレート",
+                  "tooltip": "モーション生成フレームレート\n範囲：1〜240",
                   "kind": "line",
                   "value": "30",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 240,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             },
             {
               "label": "補間",
@@ -5316,7 +5933,8 @@
                   ],
                   "value": "cosine"
                 }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             },
             {
               "label": "振り上げ倍率",
@@ -5325,26 +5943,19 @@
                   "attr": "nod_para_pre_rise_ratio_edit",
                   "config_key": "nod_para_pre_rise_ratio",
                   "scope": "app",
-                  "tooltip": "振り上げの大きさです（range_radに対する倍率）。",
+                  "tooltip": "振り上げの大きさです（range_radに対する倍率）。\n範囲：0〜2",
                   "kind": "line",
                   "value": "0.8",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 2.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
-            },
-            {
-              "label": "振幅倍率",
-              "widgets": [
-                {
-                  "attr": "nod_para_scale_edit",
-                  "config_key": "nod_para_scale",
-                  "scope": "app",
-                  "tooltip": "最終ピッチに掛ける倍率",
-                  "kind": "line",
-                  "value": "3.0",
-                  "password": false
-                }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             },
             {
               "label": "再生速度倍率",
@@ -5353,12 +5964,19 @@
                   "attr": "nod_para_speed_scale_edit",
                   "config_key": "nod_para_speed_scale",
                   "scope": "app",
-                  "tooltip": "再生速度スケールです（1より大きいと高速化）。",
+                  "tooltip": "再生速度スケールです（1より大きいと高速化）。\n範囲：0.1〜10",
                   "kind": "line",
                   "value": "1.2",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.1,
+                    "max": 10.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             },
             {
               "label": "目の回転倍率",
@@ -5367,26 +5985,19 @@
                   "attr": "nod_para_eye_scale_edit",
                   "config_key": "nod_para_eye_scale",
                   "scope": "app",
-                  "tooltip": "目の逆回転倍率（0＝目は動かない）",
+                  "tooltip": "目の逆回転倍率（0＝目は動かない）\n範囲：0〜10（0＝目は動かない）",
                   "kind": "line",
                   "value": "1.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 10.0,
+                    "decimals": true,
+                    "note": "0＝目は動かない"
+                  }
                 }
-              ]
-            },
-            {
-              "label": "頭ボーン名",
-              "widgets": [
-                {
-                  "attr": "nod_para_bone_edit",
-                  "config_key": "nod_para_bone",
-                  "scope": "app",
-                  "tooltip": "MMDAgent-EXの頭ボーン名（例：頭、首）",
-                  "kind": "line",
-                  "value": "頭",
-                  "password": false
-                }
-              ]
+              ],
+              "detail": "詳細設定（動きの形）"
             }
           ]
         }
@@ -5477,10 +6088,16 @@
                   "attr": "llm_s2s_test_chunk_size_edit",
                   "config_key": null,
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜100",
                   "kind": "line",
                   "value": "2",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 100,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -5562,10 +6179,16 @@
                   "attr": "audio_input_gain_edit",
                   "config_key": "audio_input_gain",
                   "scope": "app",
-                  "tooltip": "1.0で変更なし、2.0で約2倍、0で無音です。最大20倍まで指定できます。",
+                  "tooltip": "1.0で変更なし、2.0で約2倍、0で無音です。最大20倍まで指定できます。\n範囲：0〜20",
                   "kind": "line",
                   "value": "1.0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 20.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -5662,10 +6285,16 @@
                   "attr": "audio_input_wav_start_sec_edit",
                   "config_key": "audio_input_wav_start_sec",
                   "scope": "app",
-                  "tooltip": "再生開始位置（秒・ファイル先頭から）です。変更後は音声入力ワーカーの再起動が必要です。",
+                  "tooltip": "再生開始位置（秒・ファイル先頭から）です。変更後は音声入力ワーカーの再起動が必要です。\n範囲：0〜86400（空欄＝最初から）",
                   "kind": "line",
                   "value": "0",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 86400.0,
+                    "decimals": true,
+                    "note": "空欄＝最初から"
+                  }
                 }
               ]
             },
@@ -5676,10 +6305,16 @@
                   "attr": "audio_input_wav_end_sec_edit",
                   "config_key": "audio_input_wav_end_sec",
                   "scope": "app",
-                  "tooltip": "再生終了位置（秒・ファイル先頭基準）です。空欄ではファイル末尾まで再生します。指定範囲の最後まで再生するとMaAIテスト／音声対話を自動終了します（wavモード時）。",
+                  "tooltip": "再生終了位置（秒・ファイル先頭基準）です。空欄ではファイル末尾まで再生します。指定範囲の最後まで再生するとMaAIテスト／音声対話を自動終了します（wavモード時）。\n範囲：0〜86400（空欄＝最後まで）",
                   "kind": "line",
                   "value": "",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0.0,
+                    "max": 86400.0,
+                    "decimals": true,
+                    "note": "空欄＝最後まで"
+                  }
                 }
               ]
             },
@@ -5796,10 +6431,16 @@
                   "attr": "audio_input_tcp_port_edit",
                   "config_key": "audio_input_tcp_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "15600",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -5822,10 +6463,16 @@
                   "attr": "mmd_burst_snd_frames_edit",
                   "config_key": "mmd_burst_snd_frames",
                   "scope": "app",
-                  "tooltip": "出力先が「MMD」のときのみ適用します。0では常に実時間のみです。ローカル／TCP出力では先頭バーストを使いません。",
+                  "tooltip": "出力先が「MMD」のときのみ適用します。0では常に実時間のみです。ローカル／TCP出力では先頭バーストを使いません。\n範囲：0〜500",
                   "kind": "line",
                   "value": "20",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 0,
+                    "max": 500,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },
@@ -5942,10 +6589,16 @@
                   "attr": "audio_output_tcp_port_edit",
                   "config_key": "audio_output_tcp_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "15601",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -7304,10 +7957,16 @@
                   "attr": "obs_remote_port_edit",
                   "config_key": "obs_remote_port",
                   "scope": "app",
-                  "tooltip": null,
+                  "tooltip": "範囲：1〜65535",
                   "kind": "line",
                   "value": "4455",
-                  "password": false
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 65535,
+                    "decimals": false,
+                    "note": null
+                  }
                 }
               ]
             },

@@ -33,38 +33,53 @@ class EngineInfo:
     # as installed unconditionally — wrong for every engine added this session that has a real
     # setup_venv_script/setup_steps but no uv extra (confirmed via a real fresh-clone test).
     probe_paths: tuple[str, ...] = ()
+    # 「適用」で取得するモデルなどの大きさ（GB、目安）。Python パッケージは含まない。
+    # 値は setup_assets が取る配布物の Content-Length（2026-11-23 確認）。None は取得物が無いか、
+    # 初回利用時に取る（Faster-Whisper のモデルなど）もの。
+    download_gb: float | None = None
+    # 複数のエンジンで共有する実行系（audio.cpp のサーバーなど）。download_gb には含めず、
+    # まだ入っていないときだけ 1 回分を足す（SHARED_RUNTIME_GB）。
+    shared_runtime: str | None = None
 
+
+# 共有の実行系の取得量（GB）。audio.cpp は bin と CUDA ランタイムの zip（v0.9.6）。
+SHARED_RUNTIME_GB: dict[str, float] = {"audiocpp": 1.1}
 
 _ENGINE_DEFINITIONS = (
-    EngineInfo("asr-faster-whisper", "Faster-Whisper (ASR)", "asr-faster-whisper", "faster_whisper"),
+    EngineInfo("asr-faster-whisper", "Faster-Whisper", "asr-faster-whisper", "faster_whisper"),
     EngineInfo(
-        "asr-sherpa", "Sherpa-ONNX (ASR)", "asr-sherpa", "sherpa_onnx",
+        "asr-sherpa", "ReazonSpeech（sherpa-onnx）", "asr-sherpa", "sherpa_onnx",
         setup_steps=("SherpaModels",),
+        download_gb=0.7,
     ),
     EngineInfo(
-        "asr-qwen3-onnx", "Qwen3-ASR ONNX 0.6B int8 (ASR)", "asr-sherpa", "sherpa_onnx",
+        "asr-qwen3-onnx", "Qwen3-ASR 0.6B int8（sherpa-onnx）", "asr-sherpa", "sherpa_onnx",
         setup_steps=("Qwen3AsrOnnxModel",),
         probe_paths=("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/conv_frontend.onnx",),
+        download_gb=0.9,
     ),
     EngineInfo(
-        "asr-qwen3-onnx-fp32", "Qwen3-ASR ONNX 0.6B fp32 (ASR)", "asr-sherpa", "sherpa_onnx",
+        "asr-qwen3-onnx-fp32", "Qwen3-ASR 0.6B fp32（sherpa-onnx）", "asr-sherpa", "sherpa_onnx",
         setup_steps=("Qwen3AsrOnnxFp32Model",),
         probe_paths=("sherpa-onnx-qwen3-asr-0.6B-fp32/decoder.onnx.data",),
+        download_gb=3.6,
     ),
     EngineInfo(
-        "asr-qwen3-onnx-1.7b", "Qwen3-ASR ONNX 1.7B int8 (ASR)", "asr-sherpa", "sherpa_onnx",
+        "asr-qwen3-onnx-1.7b", "Qwen3-ASR 1.7B int8（sherpa-onnx）", "asr-sherpa", "sherpa_onnx",
         setup_steps=("Qwen3AsrOnnx17BModel",),
         probe_paths=("sherpa-onnx-qwen3-asr-1.7B-int8/decoder.int8.onnx",),
+        download_gb=2.3,
     ),
-    EngineInfo("asr-chirp3", "Chirp 3 (ASR)", "asr-chirp3", "google.cloud.speech"),
-    EngineInfo("asr-qwen3", "Qwen3-ASR (external ASR)", None, None),
+    EngineInfo("asr-chirp3", "Chirp 3（Google Cloud）", "asr-chirp3", "google.cloud.speech"),
+    EngineInfo("asr-qwen3", "Qwen3-ASR（Docker）", None, None),
     EngineInfo(
-        "asr-nemotron", "Nemotron ASR (remote/container)", None, None,
+        "asr-nemotron", "Nemotron（NeMo専用環境）", None, None,
         setup_venv_script="scripts/setup_nemotron_venv.ps1",
         probe_paths=(".venv_nemotron/Scripts/python.exe",),
+        download_gb=8.0,
     ),
     EngineInfo(
-        "asr-nemotron-onnx", "Nemotron ONNX (ASR)", "asr-sherpa", "sherpa_onnx",
+        "asr-nemotron-onnx", "Nemotron（sherpa-onnx）", "asr-sherpa", "sherpa_onnx",
         setup_steps=("NemotronOnnxModels",),
         probe_paths=(
             "sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-80ms-int8-2026-06-11/encoder.int8.onnx",
@@ -72,110 +87,130 @@ _ENGINE_DEFINITIONS = (
             "sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11/encoder.int8.onnx",
             "sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-1120ms-int8-2026-06-11/encoder.int8.onnx",
         ),
+        download_gb=1.9,
     ),
-    EngineInfo("asr-external-tcp", "External ASR TCP", None, None),
+    EngineInfo("asr-external-tcp", "外部ASR（TCP）", None, None),
     # speech.cpp（ggml。GPU は Vulkan）。実行ファイルと既定のモデル（Haas-ja）を取る。
     # ほかのモデル（ReazonSpeech NeMo v2 など）は選んだときに speech.cpp が初回に取ってくる。
     EngineInfo(
-        "asr-speechcpp", "speech.cpp ASR (Haas-ja ほか)", None, None,
+        "asr-speechcpp", "speech.cpp（Haas-ja ほか）", None, None,
         setup_steps=("SpeechCppRuntime", "SpeechCppAsrModel"),
         probe_paths=("vendor/speechcpp/speech.exe", "speechcpp_models/sakasegawa--Haas-ja-v1.0-GGUF"),
+        download_gb=0.7,
     ),
     # sherpa-onnx OfflineRecognizer 系。sherpa-onnx 本体は asr-sherpa の extra で入るので、
     # ここで要るのは各モデルの取得だけ（probe_paths は展開済みかどうかの判定）。
     EngineInfo(
-        "asr-sensevoice", "SenseVoiceSmall (ASR)", "asr-sherpa", "sherpa_onnx",
+        "asr-sensevoice", "SenseVoiceSmall（sherpa-onnx）", "asr-sherpa", "sherpa_onnx",
         setup_steps=("SenseVoiceModel",),
         probe_paths=("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/model.int8.onnx",),
+        download_gb=0.2,
     ),
     EngineInfo(
-        "asr-parakeet", "Parakeet TDT-CTC ja (ASR)", "asr-sherpa", "sherpa_onnx",
+        "asr-parakeet", "Parakeet TDT-CTC ja（sherpa-onnx）", "asr-sherpa", "sherpa_onnx",
         setup_steps=("ParakeetJaModel",),
         probe_paths=("sherpa-onnx-nemo-parakeet-tdt_ctc-0.6b-ja-35000-int8/model.int8.onnx",),
+        download_gb=0.5,
     ),
     EngineInfo(
-        "asr-cohere", "Cohere Transcribe (ASR)", "asr-sherpa", "sherpa_onnx",
+        "asr-cohere", "Cohere Transcribe（sherpa-onnx）", "asr-sherpa", "sherpa_onnx",
         setup_steps=("CohereAsrModel",),
         probe_paths=("sherpa-onnx-cohere-transcribe-14-lang-int8-2026-04-01/tokens.txt",),
+        download_gb=1.7,
     ),
     EngineInfo(
-        "asr-funasr-nano", "Fun-ASR-Nano (ASR)", "asr-sherpa", "sherpa_onnx",
+        "asr-funasr-nano", "Fun-ASR-Nano（sherpa-onnx）", "asr-sherpa", "sherpa_onnx",
         setup_steps=("FunAsrNanoModel",),
         probe_paths=("sherpa-onnx-funasr-nano-int8-2025-12-30/llm.int8.onnx",),
+        download_gb=0.8,
     ),
     EngineInfo(
-        "tts-voicevox", "VOICEVOX-Core (TTS)", "tts-voicevox", "voicevox_core",
+        "tts-voicevox", "VOICEVOX Core", "tts-voicevox", "voicevox_core",
         setup_steps=("VoicevoxRuntime",),
+        download_gb=0.3,
     ),
     # アプリ版 VOICEVOX。GUI の TTS 一覧の "VOICEVOX"（HTTP localhost:50021）がこれ。
     # VOICEVOX-Core とは別物で、こちらは Python パッケージを使わず外部プロセスを起動する
     # だけなので extra は無い。インストーラ版と同じ位置を見るので、既に手で入れている人は
     # そのまま「インストール済み」と出る。
     EngineInfo(
-        "tts-voicevox-app", "VOICEVOX アプリ (external TTS)", None, None,
+        "tts-voicevox-app", "VOICEVOX（アプリ）", None, None,
         setup_steps=("VoicevoxApp",),
         probe_paths=("%LOCALAPPDATA%/Programs/VOICEVOX/VOICEVOX.exe",),
+        download_gb=2.1,
     ),
     EngineInfo(
-        "tts-kokoro", "Kokoro (TTS)", "tts-kokoro", "RealtimeTTS",
+        "tts-kokoro", "Kokoro（RealtimeTTS）", "tts-kokoro", "RealtimeTTS",
         setup_steps=("UnidicDict",),
+        download_gb=0.8,
     ),
-    EngineInfo("tts-cartesia", "Cartesia Realtime (TTS)", "tts-cartesia", "cartesia"),
+    EngineInfo("tts-cartesia", "Cartesia（クラウド）", "tts-cartesia", "cartesia"),
     # Irodori の既定の動かし方は speech.cpp（専用の環境が要らず速い）。PyTorch 版は別に選べる。
     EngineInfo(
-        "tts-irodori", "Irodori (TTS, speech.cpp)", None, None,
+        "tts-irodori", "Irodori（speech.cpp）", None, None,
         setup_steps=("SpeechCppRuntime", "SpeechCppIrodoriModel"),
         probe_paths=("vendor/speechcpp/speech.exe", "speechcpp_models/sakasegawa--Irodori-TTS-v4.1-Small-MF-GGUF"),
+        download_gb=1.2,
     ),
     # Irodori-TTS の audio.cpp 版（500M v3 / 600M v3 VoiceDesign。irodori_backend = audiocpp）。
     EngineInfo(
-        "tts-irodori-audiocpp", "Irodori (TTS, audio.cpp)", None, None,
+        "tts-irodori-audiocpp", "Irodori（audio.cpp）", None, None,
         setup_steps=("AudioCppServer", "IrodoriAudioCppGguf"),
         probe_paths=(
             "audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe",
             "audio.cpp/models/Irodori-TTS-500M-v3-GGUF/irodori-tts-500m-v3-q8_0.gguf",
             "audio.cpp/models/Irodori-TTS-600M-v3-VoiceDesign-GGUF/irodori-tts-600m-v3-voicedesign-q8_0.gguf",
         ),
+        download_gb=2.4,
+        shared_runtime="audiocpp",
     ),
     EngineInfo(
-        "tts-irodori-pytorch", "Irodori (TTS, PyTorch)", None, None,
+        "tts-irodori-pytorch", "Irodori（PyTorch専用環境）", None, None,
         setup_venv_script="scripts/setup_irodori_venv.ps1",
         probe_paths=(".venv_irodori/Scripts/python.exe",),
     ),
     EngineInfo(
-        "tts-tsukasa", "Tsukasa (TTS)", "tts-tsukasa", "munch",
+        "tts-tsukasa", "Tsukasa", "tts-tsukasa", "munch",
         setup_steps=("TsukasaVendor",),
+        download_gb=5.0,
     ),
     EngineInfo(
-        "tts-aivis", "AivisSpeech (external TTS)", None, None,
+        "tts-aivis", "AivisSpeech（アプリ）", None, None,
         setup_steps=("AivisSpeech",),
         probe_paths=("%LOCALAPPDATA%/Programs/AivisSpeech/AivisSpeech-Engine/run.exe",),
+        download_gb=0.4,
     ),
     EngineInfo(
-        "tts-supertonic", "Supertonic (external TTS)", None, None,
+        "tts-supertonic", "Supertonic 3（audio.cpp）", None, None,
         setup_steps=("AudioCppServer", "SupertonicGguf"),
         probe_paths=(
             "audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe",
             "audio.cpp/models/Supertonic-3-GGUF/supertonic-3-orig.gguf",
         ),
+        download_gb=0.5,
+        shared_runtime="audiocpp",
     ),
     EngineInfo(
-        "tts-qwen3-cpp", "Qwen3-TTS-CPP (C++, fast)", None, None,
+        "tts-qwen3-cpp", "Qwen3-TTS（audio.cpp）", None, None,
         setup_steps=("AudioCppServer", "Qwen3TTSCppGguf"),
         probe_paths=(
             "audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe",
             "audio.cpp/models/Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF/qwen3-tts-12hz-1.7b-customvoice-q8_0.gguf",
         ),
+        download_gb=2.8,
+        shared_runtime="audiocpp",
     ),
     EngineInfo(
-        "tts-lfm2-audio", "LFM2.5-Audio (TTS, audio.cpp)", None, None,
+        "tts-lfm2-audio", "LFM2.5-Audio（audio.cpp）", None, None,
         setup_steps=("AudioCppServer", "Lfm2AudioGguf"),
         probe_paths=(
             "audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe",
             "audio.cpp/models/LFM2.5-Audio-1.5B-JP-GGUF/LFM2.5-Audio-1.5B-JP-Q8_0.gguf",
         ),
+        download_gb=1.8,
+        shared_runtime="audiocpp",
     ),
-    EngineInfo("tts-template", "Template HTTP (TTS)", None, None),
+    EngineInfo("tts-template", "TEMPLATE（HTTP）", None, None),
 )
 
 def _state_path() -> Path:
@@ -297,6 +332,43 @@ def list_engines() -> list[EngineInfo]:
     # thing computed here, and a hand-written constructor call silently drops any field
     # added to EngineInfo later (probe_paths was added after this function was written).
     return [replace(item, installed=_is_installed(item)) for item in _ENGINE_DEFINITIONS]
+
+
+def engine_kind(item: EngineInfo) -> str:
+    """一覧の見出し（"ASR" / "TTS"）。"""
+    return "ASR" if item.id.startswith("asr-") else "TTS"
+
+
+def has_apply_action(item: EngineInfo) -> bool:
+    """「適用」で何かを入れる・外すエンジンか（外部サービスだけのものは常に使える）。"""
+    return bool(item.extra or item.setup_steps or item.setup_venv_script)
+
+
+def plan_engine_changes(engines: list[EngineInfo], selected_ids) -> dict:
+    """チェックの状態から、「適用」で起きることを求める（確認の表示と各行の状態に使う）。
+
+    - 入れる：チェックがあり、まだ入っていないもの。
+    - 外す：チェックが無く、入っているもの のうち、uv の extra を他のチェック済みのエンジンと
+      共有していないもの。`uv sync` は渡さなかった extra の Python パッケージを消す。
+      モデルなどのファイルは消さない。
+    取得量は各エンジンの download_gb の合計に、まだ入っていない共有の実行系を 1 回分足したもの。
+    """
+    selected = set(selected_ids)
+    selected_extras = {e.extra for e in engines if e.id in selected and e.extra}
+    install = [e for e in engines if e.id in selected and not e.installed and has_apply_action(e)]
+    remove = [
+        e for e in engines
+        if e.id not in selected and e.installed and e.extra and e.extra not in selected_extras
+    ]
+    total = sum(e.download_gb or 0.0 for e in install)
+    present_runtimes = {e.shared_runtime for e in engines if e.installed and e.shared_runtime}
+    for runtime in {e.shared_runtime for e in install if e.shared_runtime} - present_runtimes:
+        total += SHARED_RUNTIME_GB.get(runtime, 0.0)
+    return {
+        "install": [e.id for e in install],
+        "remove": [e.id for e in remove],
+        "download_gb": round(total, 1),
+    }
 
 
 def get_enabled_engines() -> list[str]:

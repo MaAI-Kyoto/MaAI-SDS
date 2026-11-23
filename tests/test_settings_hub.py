@@ -36,7 +36,7 @@ class SettingsHubTests(unittest.TestCase):
 
         ctrl = self._controller()
         hub = SettingsHub(ctrl)
-        self.assertIn("ASRテスト", hub.page_titles())
+        self.assertIn("ASR（音声認識）", hub.page_titles())
         self.assertIn("音声対話の詳細設定", hub.page_titles())
         # 呼び出し側は今までどおり xxx_window.show() / raise_() を呼ぶ。
         ctrl.maai_settings_window.show()
@@ -48,7 +48,7 @@ class SettingsHubTests(unittest.TestCase):
         self.assertFalse(ctrl.asr_test_window.isVisible())
         ctrl.asr_test_window.show()
         self.app.processEvents()
-        self.assertEqual(hub.title.text(), "ASRテスト")
+        self.assertEqual(hub.title.text(), "ASR（音声認識）")
         self.assertTrue(ctrl.asr_test_window.isVisible())
         self.assertFalse(ctrl.maai_settings_window.isVisible())
         # 終了処理の xxx_window.close() はページを閉じない（ウィンドウは 1 枚だけ）。

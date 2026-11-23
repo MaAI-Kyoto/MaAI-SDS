@@ -31,21 +31,25 @@ from PySide6.QtWidgets import (
 from .theme import TOKENS
 
 # (見出し, [(controller の属性名, 一覧に出す名前), ...])。並びは使う順。
+# エンジン（ASR・LLM・TTS・MaAI）の選択と設定は、各画面の中で試しながら行う。以前は「ASRテスト」
+# などの名前で「テスト」の見出しの下にあり、「設定」を探してもエンジンを選ぶ場所が見つからなかった。
 HUB_PAGES: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
-    ("テスト", (
-        ("asr_test_window", "ASRテスト"),
-        ("llm_test_window", "LLMテスト"),
-        ("llm_s2s_test_window", "LLM分割テスト"),
-        ("tts_test_window", "TTSテスト"),
-        ("maai_test_window", "MaAIテスト"),
+    ("エンジン", (
+        ("asr_test_window", "ASR（音声認識）"),
+        ("llm_test_window", "LLM（応答生成）"),
+        ("tts_test_window", "TTS（音声合成）"),
+        ("maai_settings_window", "MaAIモデル設定"),
     )),
     ("設定", (
         ("voice_dialog_settings_window", "音声対話の詳細設定"),
         ("settings_window", "MMDAgent-EX起動設定"),
         ("audio_input_settings_window", "音声入力の設定"),
         ("audio_output_settings_window", "音声出力の設定"),
-        ("maai_settings_window", "MaAIモデル設定"),
         ("obs_settings_window", "OBS録画設定"),
+    )),
+    ("テスト", (
+        ("llm_s2s_test_window", "LLM分割テスト"),
+        ("maai_test_window", "MaAIテスト"),
     )),
     ("ツール", (
         ("engine_manager_window", "エンジン管理"),

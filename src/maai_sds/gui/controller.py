@@ -38,6 +38,7 @@ from ..ipc.process_service import (
     DialogOrchestratorProcessService,
     MMDProcessService,
 )
+from .numeric_fields import apply_numeric_fields
 from .ui import apply_device_choice_limits, build_ui
 from ..utils import apply_maai_nod_para_prediction_aliases, json_config_bool, to_bool
 from ..maai.plot_window import MAAI_PLOT_VISIBILITY_SPECS, MaaiPlotWindow, maai_plot_default_visible
@@ -62,7 +63,7 @@ from .app_config_spec import (
     _LLM_OPENAI_DEFAULT_MODEL,
 )
 from .config_io import AppConfigIOMixin
-from .theme import STATE_COLORS, lamp_style
+from .theme import STATE_COLORS, TOKENS, lamp_style
 from .remote_mic import RemoteMicSender
 
 try:
@@ -345,6 +346,7 @@ class MMDAgentController(
         )
 
         build_ui(self)
+        apply_numeric_fields(self)
         self._refresh_audio_input_device_list()
         self.process_output_signal.connect(
             self._append_console_output, Qt.ConnectionType.QueuedConnection
@@ -1065,6 +1067,10 @@ class MMDAgentController(
             self._set_engine_install_notice(reason, error=True)
             return
         ids = [engine_id for engine_id, check in self.engine_install_checks.items() if check.isChecked()]
+        # 何が入り、何が外れるかを先に見せる。数 GB の取得や、使っているエンジンの
+        # Python パッケージの削除が、押しただけで黙って始まらないようにする。
+        if not self._confirm_engine_changes(ids):
+            return
         # デバイス構成を変える適用は torch そのものを入れ替える。Windows では
         # ロード済み DLL を置き換えられないので、torch を読むプロセス（対話ワーカー）が
         # 動いていると uv sync が c10.dll の rename で必ず失敗する。生の uv エラーの
@@ -1108,11 +1114,67 @@ class MMDAgentController(
         # 再起動するまで古い状態のままになる（CPU→GPU にしたのに GPU が選べない）。
         self._init_device_extra_controls()
         apply_device_choice_limits(self)
-        for engine_info in engine_manager.list_engines():
-            label = self.engine_install_status_labels.get(engine_info.id)
-            if label is not None:
-                label.setText("インストール済み" if engine_info.installed else "未インストール")
+        self._refresh_engine_install_status()
         self.engine_install_apply_btn.setEnabled(True)
+
+    def _engine_install_plan(self) -> tuple[list, dict]:
+        engines = engine_manager.list_engines()
+        selected = [eid for eid, check in getattr(self, "engine_install_checks", {}).items() if check.isChecked()]
+        return engines, engine_manager.plan_engine_changes(engines, selected)
+
+    def _refresh_engine_install_status(self) -> None:
+        """各行の状態（インストール済み・適用で入れる・適用で外す・未インストール）と合計を出す。"""
+        labels = getattr(self, "engine_install_status_labels", None)
+        if not labels:
+            return
+        engines, plan = self._engine_install_plan()
+        install, remove = set(plan["install"]), set(plan["remove"])
+        for info in engines:
+            label = labels.get(info.id)
+            if label is None:
+                continue
+            if info.id in install:
+                text, color = "適用で入れる", TOKENS["accent"]
+            elif info.id in remove:
+                text, color = "適用で外す", TOKENS["warn"]
+            elif info.installed:
+                text, color = "インストール済み", TOKENS["ok"]
+            else:
+                text, color = "未インストール", TOKENS["muted"]
+            label.setText(text)
+            label.setStyleSheet(f"color: {color};")
+        summary = getattr(self, "engine_install_summary", None)
+        if summary is not None:
+            parts = []
+            if install:
+                parts.append(f"入れる：{len(install)} 件（取得 約{plan['download_gb']:g}GB）")
+            if remove:
+                parts.append(f"外す：{len(remove)} 件")
+            summary.setText("「適用」で " + "、".join(parts) if parts else "変更はありません。")
+
+    def _confirm_engine_changes(self, ids: list[str]) -> bool:
+        engines, plan = self._engine_install_plan()
+        if not plan["install"] and not plan["remove"]:
+            return True
+        names = {e.id: e.label for e in engines}
+        sizes = {e.id: e.download_gb for e in engines}
+        lines = []
+        if plan["install"]:
+            lines.append(f"入れるもの（取得 約{plan['download_gb']:g}GB）：")
+            for eid in plan["install"]:
+                gb = sizes.get(eid)
+                lines.append(f"  ・{names.get(eid, eid)}" + (f"（約{gb:g}GB）" if gb else ""))
+        if plan["remove"]:
+            lines.append("外すもの（Pythonパッケージを削除。モデルなどのファイルは残る）：")
+            lines.extend(f"  ・{names.get(eid, eid)}" for eid in plan["remove"])
+        lines.append("")
+        lines.append("容量は目安で、Pythonパッケージの分は含みません。適用しますか？")
+        answer = QMessageBox.question(
+            self, "エンジン管理", "\n".join(lines),
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        return answer == QMessageBox.StandardButton.Ok
 
     def _attach_process_console_output(self, name: str, proc) -> None:
         if proc is None or proc.pid is None:

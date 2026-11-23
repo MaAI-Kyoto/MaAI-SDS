@@ -383,6 +383,20 @@ class ModuleStatusPanelMixin:
         if callable(sync_wav):
             sync_wav()
 
+    # モジュール行をクリックしたときに開く画面（設定ウィンドウのページ）。
+    _MODULE_PAGE_ATTRS = {
+        "asr": "asr_test_window",
+        "llm": "llm_test_window",
+        "tts": "tts_test_window",
+        "maai": "maai_settings_window",
+    }
+
+    def _open_module_page(self, module: str) -> None:
+        page = getattr(self, self._MODULE_PAGE_ATTRS.get(module, ""), None)
+        if page is not None:
+            page.show()
+            page.raise_()
+
     def _refresh_module_status_summaries(self) -> None:
         labels = getattr(self, "module_status_summary_labels", None)
         if not labels:
@@ -394,7 +408,7 @@ class ModuleStatusPanelMixin:
             full = self._module_settings_summary(module)
             short = full if len(full) <= 46 else full[:45] + "…"
             label.setText(short)
-            label.setToolTip(full)
+            label.setToolTip(f"{full}\n（クリックで設定を開く）")
 
     def _module_panel_start_all(self) -> None:
         # Individual launchers may pump Qt events while loading a model.

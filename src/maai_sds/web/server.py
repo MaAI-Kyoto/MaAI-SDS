@@ -1126,6 +1126,8 @@ def create_app(
                     "id": e.id, "label": e.label, "extra": e.extra,
                     "installed": e.installed,
                     "has_setup": bool(e.setup_steps or e.setup_venv_script),
+                    "kind": engine_manager.engine_kind(e),
+                    "download_gb": e.download_gb,
                 }
                 for e in engine_manager.list_engines()
             ],
@@ -1137,6 +1139,15 @@ def create_app(
             "device_extra": engine_manager.device_extra(),
             "device_extra_locked": engine_manager.device_extra_is_locked(),
         }
+
+    @app.post("/api/engines/plan")
+    async def plan_engines(request: Request) -> dict[str, Any]:
+        """チェックの状態から「適用」で入れるもの・外すものと取得量を返す（Qt と同じ計算）。"""
+        payload = await request.json()
+        ids = payload.get("ids") if isinstance(payload, dict) else None
+        if not isinstance(ids, list):
+            raise HTTPException(status_code=422, detail="ids must be a list of engine ids")
+        return engine_manager.plan_engine_changes(engine_manager.list_engines(), [str(i) for i in ids])
 
     @app.post("/api/engines/apply")
     async def apply_engines(request: Request) -> dict[str, Any]:

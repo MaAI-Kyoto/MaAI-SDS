@@ -357,6 +357,13 @@ body.plot-page {
 .module.starting .lamp, .module.stopping .lamp { background: var(--warn); }
 .module.error .lamp { background: var(--err); }
 .module .m-name { color: var(--muted); }
+.module .m-link { cursor: pointer; }
+.engine-table .tag.add { color: var(--accent); }
+.row-detail { margin: 4px 0; }
+.row-detail > summary { cursor: pointer; color: var(--muted); font-size: 12px; padding: 4px 0; }
+.row-detail[open] > summary { margin-bottom: 4px; }
+.engine-table .tag.remove { color: var(--warn); }
+.module .m-link:hover { color: var(--text); text-decoration: underline; }
 .module .m-state { font-variant-numeric: tabular-nums; }
 .module .m-summary {
   color: var(--muted);

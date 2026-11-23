@@ -366,8 +366,28 @@ function renderWidget(w) {
     case 'line': {
       node = el('input');
       node.type = w.password ? 'password' : 'text';
+      const num = w.numeric;
+      if (num && !w.password) {
+        // 数値の欄（gui/numeric_fields.py と同じ範囲）。空欄は意味があるので残す。
+        node.type = 'number';
+        node.min = String(num.min);
+        node.max = String(num.max);
+        node.step = num.decimals ? 'any' : '1';
+        const range = `範囲：${num.min}〜${num.max}${num.note ? `（${num.note}）` : ''}`;
+        node.title = w.tooltip ? `${w.tooltip}\n${range}` : range;
+      }
       node.value = currentValue(w) ?? '';
-      node.addEventListener('change', () => key && markDirty(key, node.value, node, scope));
+      node.addEventListener('change', () => {
+        if (num && node.value !== '') {
+          let v = Number(node.value);
+          if (Number.isFinite(v)) {
+            v = Math.min(Math.max(v, num.min), num.max);
+            if (!num.decimals) v = Math.round(v);
+            if (String(v) !== node.value) node.value = String(v);
+          }
+        }
+        if (key) markDirty(key, node.value, node, scope);
+      });
       break;
     }
     case 'combo': {
@@ -500,6 +520,8 @@ function renderGroup(win, group) {
   title.addEventListener('click', () => box.classList.toggle('collapsed'));
   box.append(title);
   const body = el('div', 'group-body');
+  // 「詳細設定」の行（row.detail）は、続いているものを 1 つのたためる枠にまとめる（Qt と同じ）。
+  let detailBox = null;
   for (const row of group.rows) {
     const line = el('div', 'row');
     line.append(el('label', null, row.label || ''));
@@ -509,7 +531,18 @@ function renderGroup(win, group) {
       if (node) fields.append(node);
     }
     line.append(fields);
-    body.append(line);
+    if (row.detail) {
+      if (!detailBox || detailBox.dataset.title !== row.detail) {
+        detailBox = el('details', 'row-detail');
+        detailBox.dataset.title = row.detail;
+        detailBox.append(el('summary', null, row.detail));
+        body.append(detailBox);
+      }
+      detailBox.append(line);
+    } else {
+      detailBox = null;
+      body.append(line);
+    }
   }
   box.append(body);
   return box;
@@ -912,27 +945,63 @@ async function renderEngineManager() {
   const applyBtn = el('button', 'primary', '適用');
   bar.append(applyBtn);
   const table = el('table', 'engine-table');
+  const help = el('p', 'hint',
+    'チェックしたエンジンを「適用」で入れます。チェックを外したエンジンは、Pythonパッケージを外します'
+    + '（モデルなどのファイルは残ります）。容量はモデルなどの取得量の目安で、Pythonパッケージは含みません。');
+  const summary = el('p', 'hint', '');
   const log = el('textarea', 'console'); log.readOnly = true; log.style.height = '16rem';
-  view.append(bar, table, log);
+  view.append(bar, help, table, summary, log);
+  let lastPlan = { install: [], remove: [], download_gb: 0 };
+
+  const checkedIds = () => [...table.querySelectorAll('input[type=checkbox]')]
+    .filter((c) => c.checked).map((c) => c.dataset.engine);
+
+  // 各行の状態と合計を、Qt と同じ計算（engine_manager.plan_engine_changes）で出す。
+  const updatePlan = async () => {
+    lastPlan = await api.post('/api/engines/plan', { ids: checkedIds() });
+    const install = new Set(lastPlan.install);
+    const remove = new Set(lastPlan.remove);
+    for (const e of state.engines.engines) {
+      const tag = table.querySelector(`[data-status="${e.id}"]`);
+      if (!tag) continue;
+      let text = e.installed ? 'インストール済み' : '未インストール';
+      let cls = e.installed ? 'tag on' : 'tag';
+      if (install.has(e.id)) { text = '適用で入れる'; cls = 'tag add'; }
+      else if (remove.has(e.id)) { text = '適用で外す'; cls = 'tag remove'; }
+      tag.textContent = text;
+      tag.className = cls;
+    }
+    const parts = [];
+    if (install.size) parts.push(`入れる：${install.size} 件（取得 約${lastPlan.download_gb}GB）`);
+    if (remove.size) parts.push(`外す：${remove.size} 件`);
+    summary.textContent = parts.length ? `「適用」で ${parts.join('、')}` : '変更はありません。';
+  };
 
   const refresh = async () => {
     const data = await api.get('/api/engines');
     state.engines = data;
     table.innerHTML = '';
-    const head = el('tr');
-    for (const h of ['', 'エンジン', '状態', '構成']) head.append(el('th', null, h));
-    table.append(head);
-    for (const e of data.engines) {
-      const tr = el('tr');
-      const cb = el('input'); cb.type = 'checkbox'; cb.dataset.engine = e.id;
-      cb.checked = data.enabled.includes(e.id) || e.installed;
-      cb.disabled = !e.extra && !e.has_setup;
-      const c0 = el('td'); c0.append(cb);
-      tr.append(c0, el('td', null, e.label));
-      const st = el('td'); st.append(el('span', `tag ${e.installed ? 'on' : ''}`, e.installed ? 'インストール済み' : '未インストール'));
-      tr.append(st, el('td', null, e.extra ?? '—'));
-      table.append(tr);
+    for (const kind of ['ASR', 'TTS']) {
+      const caption = el('tr');
+      const th = el('th', null, kind); th.colSpan = 4;
+      caption.append(th);
+      table.append(caption);
+      for (const e of data.engines.filter((x) => (x.kind || 'TTS') === kind)) {
+        const tr = el('tr');
+        const cb = el('input'); cb.type = 'checkbox'; cb.dataset.engine = e.id;
+        cb.checked = data.enabled.includes(e.id) || e.installed;
+        cb.disabled = !e.extra && !e.has_setup;
+        if (cb.disabled) cb.title = '外部のサービス・アプリにつなぐだけなので、入れる必要はありません。';
+        cb.addEventListener('change', () => updatePlan().catch(showError));
+        const c0 = el('td'); c0.append(cb);
+        const size = el('td', 'hint', e.download_gb == null ? '' : `約${e.download_gb}GB`);
+        const st = el('td'); st.append(el('span', 'tag', ''));
+        st.firstChild.dataset.status = e.id;
+        tr.append(c0, el('td', null, e.label), size, st);
+        table.append(tr);
+      }
     }
+    await updatePlan();
     if (!data.setup_supported) {
       view.prepend(el('div', 'notice',
         `この環境（${data.platform}）ではセットアップスクリプトを実行できないため「適用」は無効です。`));
@@ -963,7 +1032,26 @@ async function renderEngineManager() {
   view.insertBefore(deviceBox, table);
 
   applyBtn.addEventListener('click', async () => {
-    const ids = [...table.querySelectorAll('input[type=checkbox]')].filter((c) => c.checked).map((c) => c.dataset.engine);
+    const ids = checkedIds();
+    await updatePlan();
+    // 何が入り、何が外れるかを先に見せる（数GBの取得やパッケージの削除が黙って始まらないように）。
+    if (lastPlan.install.length || lastPlan.remove.length) {
+      const label = new Map(state.engines.engines.map((e) => [e.id, e]));
+      const lines = [];
+      if (lastPlan.install.length) {
+        lines.push(`入れるもの（取得 約${lastPlan.download_gb}GB）：`);
+        for (const id of lastPlan.install) {
+          const e = label.get(id);
+          lines.push(`  ・${e?.label ?? id}${e?.download_gb ? `（約${e.download_gb}GB）` : ''}`);
+        }
+      }
+      if (lastPlan.remove.length) {
+        lines.push('外すもの（Pythonパッケージを削除。モデルなどのファイルは残る）：');
+        for (const id of lastPlan.remove) lines.push(`  ・${label.get(id)?.label ?? id}`);
+      }
+      lines.push('', '容量は目安で、Pythonパッケージの分は含みません。適用しますか？');
+      if (!window.confirm(lines.join('\n'))) return;
+    }
     applyBtn.disabled = true;
     log.value += `\n[apply] ${ids.join(', ')}\n`;
     try {
@@ -1027,9 +1115,10 @@ async function buildViews() {
 
 // 設定の画面の左の一覧。並びは Qt の gui/settings_hub.py の HUB_PAGES と同じ。
 const SETTINGS_NAV_GROUPS = [
-  ['テスト', ['asr_test_window', 'llm_test_window', 'llm_s2s_test_window', 'tts_test_window', 'maai_test_window']],
+  ['エンジン', ['asr_test_window', 'llm_test_window', 'tts_test_window', 'maai_settings_window']],
   ['設定', ['voice_dialog_settings', 'settings_window', 'audio_input_settings_window',
-    'audio_output_settings_window', 'maai_settings_window', 'obs_settings_window', 'tts_template_auth_window']],
+    'audio_output_settings_window', 'obs_settings_window', 'tts_template_auth_window']],
+  ['テスト', ['llm_s2s_test_window', 'maai_test_window']],
   ['ツール', ['engine_manager_web', 'console', 'nod_motion_chart_window']],
 ];
 
@@ -1081,6 +1170,14 @@ function activate(id, title) {
   applyEnginePages();
   if (id === 'nod_motion_chart_window') state.nodChart?.paint();
 }
+
+// モジュール行をクリックしたときに開く画面（Qt の module_status_mixin._MODULE_PAGE_ATTRS と同じ）。
+const MODULE_PAGE_IDS = {
+  asr: 'asr_test_window',
+  llm: 'llm_test_window',
+  tts: 'tts_test_window',
+  maai: 'maai_settings_window',
+};
 
 function openSettings(viewId = '') {
   if (viewId) activateById(viewId);
@@ -1854,18 +1951,32 @@ function renderModules() {
     stop.disabled = !['running', 'starting'].includes(st);
     stop.addEventListener('click', () => sendModuleCommand(key, 'stop'));
     const summary = moduleSummary(key);
+    // 名前と要約をクリックすると、そのエンジンの画面（設定とテスト）を開く（Qt と同じ）。
+    const pageId = MODULE_PAGE_IDS[key];
+    const name = el('span', 'm-name', MODULE_LABELS[key] || key);
+    if (pageId) {
+      name.classList.add('m-link');
+      name.addEventListener('click', () => openSettings(pageId));
+    }
     box.append(
       el('span', 'lamp'),
-      el('span', 'm-name', MODULE_LABELS[key] || key),
+      name,
       el('span', 'm-state', MODULE_STATE_LABELS[st] || st),
       start,
       stop,
     );
     const detail = el('span', 'm-detail');
-    if (summary) detail.append(el('span', 'm-summary', summary));
+    if (summary) {
+      const sum = el('span', 'm-summary', summary);
+      if (pageId) {
+        sum.classList.add('m-link');
+        sum.addEventListener('click', () => openSettings(pageId));
+      }
+      detail.append(sum);
+    }
     if (info.error) detail.append(el('span', 'm-error', info.error));
     box.append(detail);
-    box.title = info.error || summary || '';
+    box.title = info.error || (summary ? `${summary}\n（クリックで設定を開く）` : '');
     host.append(box);
   }
   if (isWavInputMode()) {

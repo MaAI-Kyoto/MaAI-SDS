@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from .chat_view import ChatView
+from .choice_combo import ChoiceCombo
 from .collapsible import CollapsibleSection
 from .settings_hub import SettingsHub
 from ..utils import to_bool
@@ -307,6 +308,14 @@ def _finish_main_layout(
         _state_label = QLabel("停止")
         _state_label.setMinimumWidth(44)
         _summary_label = QLabel("-")
+        # 名前と要約をクリックすると、そのエンジンの画面（設定とテスト）を開く。画面はこの後で作るので押した時点で引く。
+        for _clickable in (_name_label, _summary_label):
+            _clickable.setCursor(Qt.CursorShape.PointingHandCursor)
+            _clickable.mousePressEvent = (
+                lambda event, m=_module_key: controller._open_module_page(m)
+                if event.button() == Qt.MouseButton.LeftButton else None
+            )
+        _name_label.setToolTip(f"クリックで{_module_name}の設定を開く")
         # 設定の要約は長いので、列の幅を押し広げないようにする（収まらない分は切れて、全文はツールチップ）。
         _summary_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         _metrics_label = QLabel("")
@@ -583,11 +592,26 @@ def _build_initial_widgets(controller):
     controller.engine_install_checks = {}
     controller.engine_install_status_labels = {}
     engine_install_layout = QVBoxLayout()
+    # チェックの意味を先に書く。以前は「チェック済み・未インストール」の行が何を意味するのか
+    # （適用で入るのか、有効にしているだけか）が画面から読み取れなかった。
+    _engine_install_help = QLabel(
+        "チェックしたエンジンを「適用」で入れます。チェックを外したエンジンは、Pythonパッケージを外します"
+        "（モデルなどのファイルは残ります）。容量はモデルなどの取得量の目安で、Pythonパッケージは含みません。"
+    )
+    _engine_install_help.setWordWrap(True)
+    _engine_install_help.setProperty("role", "caption")
+    engine_install_layout.addWidget(_engine_install_help)
     enabled_engine_ids = set(engine_manager.get_enabled_engines())
+    _engine_kind_layouts: dict[str, QGridLayout] = {}
+    for _kind in ("ASR", "TTS"):
+        _kind_box = QGroupBox(_kind)
+        _kind_grid = QGridLayout()
+        _kind_grid.setColumnStretch(0, 1)
+        _kind_grid.setHorizontalSpacing(16)
+        _kind_box.setLayout(_kind_grid)
+        engine_install_layout.addWidget(_kind_box)
+        _engine_kind_layouts[_kind] = _kind_grid
     for engine_info in engine_manager.list_engines():
-        row = QWidget()
-        row_layout = QHBoxLayout(row)
-        row_layout.setContentsMargins(0, 0, 0, 0)
         check = QCheckBox(engine_info.label)
         # extra=None used to mean "nothing Engine Manager can do here, always available"
         # (asr-qwen3/asr-external-tcp/tts-cartesia/tts-template: genuinely no setup action).
@@ -599,12 +623,25 @@ def _build_initial_widgets(controller):
         always_available = engine_info.extra is None and not has_setup_action
         check.setChecked(True if always_available else (engine_info.id in enabled_engine_ids or engine_info.installed))
         check.setEnabled(not always_available)
-        status = QLabel("インストール済み" if engine_info.installed else "未インストール")
-        row_layout.addWidget(check, 1)
-        row_layout.addWidget(status, 0)
-        engine_install_layout.addWidget(row)
+        if always_available:
+            check.setToolTip("外部のサービス・アプリにつなぐだけなので、入れる必要はありません。")
+        size = QLabel("" if engine_info.download_gb is None else f"約{engine_info.download_gb:g}GB")
+        size.setProperty("role", "caption")
+        size.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        status = QLabel("")
+        status.setMinimumWidth(110)
+        _grid = _engine_kind_layouts[engine_manager.engine_kind(engine_info)]
+        _r = _grid.rowCount()
+        _grid.addWidget(check, _r, 0)
+        _grid.addWidget(size, _r, 1)
+        _grid.addWidget(status, _r, 2)
+        check.toggled.connect(lambda _on: controller._refresh_engine_install_status())
         controller.engine_install_checks[engine_info.id] = check
         controller.engine_install_status_labels[engine_info.id] = status
+    controller.engine_install_summary = QLabel("")
+    controller.engine_install_summary.setWordWrap(True)
+    engine_install_layout.addWidget(controller.engine_install_summary)
+    controller._refresh_engine_install_status()
     controller.engine_install_apply_btn = QPushButton("適用")
     # --- GPU / CPU の選択 ---------------------------------------------------
     # torch と onnxruntime の CUDA ランタイムは cpu / cu128 の排他 extra に分かれており、
@@ -1272,9 +1309,9 @@ def build_ui(controller) -> None:
     save_as_mdf_btn = QPushButton("MDFを新規保存…")
     reset_defaults_btn = QPushButton("デフォルトに戻す")
     settings_toggle_btn = QPushButton("MMDAgent-EX起動設定")
-    tts_test_toggle_btn = QPushButton("TTSテスト")
-    asr_settings_toggle_btn = QPushButton("ASRテスト")
-    llm_test_toggle_btn = QPushButton("LLMテスト")
+    tts_test_toggle_btn = QPushButton("TTS")
+    asr_settings_toggle_btn = QPushButton("ASR")
+    llm_test_toggle_btn = QPushButton("LLM")
     maai_test_toggle_btn = QPushButton("MaAIテスト")
     obs_settings_toggle_btn = QPushButton("OBS録画設定")
     audio_input_settings_toggle_btn = QPushButton("音声入力の設定")
@@ -1770,7 +1807,8 @@ def build_ui(controller) -> None:
     main_plot_open_btn = QPushButton("MaAIプロット")
     main_plot_open_btn.clicked.connect(controller._open_maai_plot_window)
     controller.main_maai_plot_open_btn = main_plot_open_btn
-    main_maai_settings_open_btn = QPushButton("MaAIモデル設定")
+    main_maai_settings_open_btn = QPushButton("MaAI")
+    main_maai_settings_open_btn.setToolTip("MaAIモデル設定")
     # maai_settings_window はこの後で作るので、押した時点で参照する。
     main_maai_settings_open_btn.clicked.connect(
         lambda: (controller.maai_settings_window.show(), controller.maai_settings_window.raise_())
@@ -1779,11 +1817,12 @@ def build_ui(controller) -> None:
     settings_window_buttons = QVBoxLayout()
     settings_window_buttons.setSpacing(4)
     # (見出し, 列数, ボタン)。右の列をスクロールなしで収めるため、名前の短いグループは 1 行に並べる。
+    # 並びは設定ウィンドウの左の一覧（settings_hub.HUB_PAGES）と同じ「エンジン / 設定 / テスト・ツール」。
     _settings_rows = (
-        ("テスト", 4, (asr_settings_toggle_btn, llm_test_toggle_btn, tts_test_toggle_btn, maai_test_toggle_btn)),
+        ("エンジン", 4, (asr_settings_toggle_btn, llm_test_toggle_btn, tts_test_toggle_btn, main_maai_settings_open_btn)),
         ("設定", 2, (settings_toggle_btn, audio_input_settings_toggle_btn, audio_output_settings_toggle_btn,
-                     main_maai_settings_open_btn, obs_settings_toggle_btn)),
-        ("ツール", 3, (console_toggle_btn, engine_manager_toggle_btn, main_plot_open_btn)),
+                     obs_settings_toggle_btn)),
+        ("テスト・ツール", 2, (maai_test_toggle_btn, console_toggle_btn, engine_manager_toggle_btn, main_plot_open_btn)),
     )
     for _caption, _cols, _buttons in _settings_rows:
         _cap = QLabel(_caption)
@@ -2780,7 +2819,7 @@ def build_ui(controller) -> None:
     controller.audio_output_settings_window.setLayout(audio_output_settings_layout)
 
     controller.tts_test_window = QWidget(controller, Qt.WindowType.Window)
-    controller.tts_test_window.setWindowTitle("TTSテスト")
+    controller.tts_test_window.setWindowTitle("TTS（音声合成）")
     # エンジン切替で中身の高さは大きく変わる。ウィンドウ自体は固定気味にして
     # ScrollArea で逃がさないと、Windows の mintrack より小さい setGeometry が
     # 拒否され QWindowsWindow::setGeometry 警告が連発する。
@@ -2828,7 +2867,7 @@ def build_ui(controller) -> None:
     controller.engine_manager_window.setLayout(engine_manager_layout)
 
     controller.asr_test_window = QWidget(controller, Qt.WindowType.Window)
-    controller.asr_test_window.setWindowTitle("ASRテスト")
+    controller.asr_test_window.setWindowTitle("ASR（音声認識）")
     controller.asr_test_window.resize(720, 860)
     asr_test_layout = QVBoxLayout()
     asr_test_layout.addWidget(asr_runtime_box)
@@ -2963,7 +3002,7 @@ def build_ui(controller) -> None:
     llm_chat_box.setLayout(llm_chat_form)
 
     controller.llm_test_window = QWidget(controller, Qt.WindowType.Window)
-    controller.llm_test_window.setWindowTitle("LLMテスト")
+    controller.llm_test_window.setWindowTitle("LLM（応答生成）")
     controller.llm_test_window.resize(760, 760)
     llm_test_layout = QVBoxLayout()
     llm_test_layout.addWidget(llm_connection_box)
@@ -2987,22 +3026,24 @@ def build_ui(controller) -> None:
     maai_device_combo.addItems(["cpu", "cuda"])
     maai_device_combo.setCurrentText("cuda")
     maai_test_turn_vap_frame_rate_edit = QLineEdit("20")
-    maai_test_turn_vap_mode_edit = QLineEdit("vap_mc")
-    maai_test_turn_vap_lang_edit = QLineEdit("jp_kyoto")
+    # モードと言語は maai.util.load_vap_model が受け付ける値から選ぶ（maai 0.2.27）。
+    maai_test_turn_vap_mode_edit = ChoiceCombo(["vap", "vap_mc", "vap_mono", "vap_mc_mono"], "vap_mc")
+    maai_test_turn_vap_lang_edit = ChoiceCombo(
+        ["jp", "jp_kyoto", "en", "en_kyoto", "ch", "ch_kyoto", "tri", "tri_kyoto", "fr"], "jp_kyoto")
     maai_test_turn_vap_model_type_edit = QComboBox()
     maai_test_turn_vap_model_type_edit.addItems(["normal", "normal-ver2"])
     maai_test_turn_vap_local_model_edit = QLineEdit("")
     maai_test_turn_vap_local_model_edit.setPlaceholderText("未指定＝公式モデル")
     maai_test_turn_vap_local_model_browse_btn = QPushButton("参照…")
     maai_test_bc_frame_rate_edit = QLineEdit("10")
-    maai_test_bc_lang_edit = QLineEdit("jp")
+    maai_test_bc_lang_edit = ChoiceCombo(["jp", "en", "ch", "tri"], "jp")
     maai_test_bc_model_type_edit = QComboBox()
     maai_test_bc_model_type_edit.addItems(["normal", "normal-ver2"])
     maai_test_bc_local_model_edit = QLineEdit("")
     maai_test_bc_local_model_edit.setPlaceholderText("未指定＝公式モデル")
     maai_test_bc_local_model_browse_btn = QPushButton("参照…")
     maai_test_nod_frame_rate_edit = QLineEdit("12.5")
-    maai_test_nod_lang_edit = QLineEdit("jp")
+    maai_test_nod_lang_edit = ChoiceCombo(["jp", "en", "tri"], "jp")
     maai_test_nod_model_type_edit = QComboBox()
     maai_test_nod_model_type_edit.addItems(["normal", "normal-ver2"])
     maai_test_nod_model_type_edit.setCurrentText("normal-ver2")
@@ -3271,26 +3312,36 @@ def build_ui(controller) -> None:
     maai_turn_vap_params_box.setChecked(True)
     controller.maai_enable_turn_vap_box = maai_turn_vap_params_box
     maai_turn_vap_params_form = QFormLayout()
-    maai_turn_vap_params_form.addRow(QLabel("フレームレート（Hz）"), maai_test_turn_vap_frame_rate_edit)
-    maai_turn_vap_params_form.addRow(QLabel("モード"), maai_test_turn_vap_mode_edit)
     maai_turn_vap_params_form.addRow(QLabel("言語"), maai_test_turn_vap_lang_edit)
-    maai_turn_vap_params_form.addRow(QLabel("モデル種別"), maai_test_turn_vap_model_type_edit)
+    # 普段は変えないモデルの選び方は「詳細設定」にたたむ（下でまとめて足す）。
+    maai_turn_vap_detail_form = QFormLayout()
+    maai_turn_vap_detail_form.addRow(QLabel("フレームレート（Hz）"), maai_test_turn_vap_frame_rate_edit)
+    maai_turn_vap_detail_form.addRow(QLabel("モード"), maai_test_turn_vap_mode_edit)
+    maai_turn_vap_detail_form.addRow(QLabel("モデル種別"), maai_test_turn_vap_model_type_edit)
     maai_turn_vap_local_model_row = QWidget()
     maai_turn_vap_local_model_row_layout = QHBoxLayout()
     maai_turn_vap_local_model_row_layout.setContentsMargins(0, 0, 0, 0)
     maai_turn_vap_local_model_row_layout.addWidget(maai_test_turn_vap_local_model_edit, 1)
     maai_turn_vap_local_model_row_layout.addWidget(maai_test_turn_vap_local_model_browse_btn, 0)
     maai_turn_vap_local_model_row.setLayout(maai_turn_vap_local_model_row_layout)
-    maai_turn_vap_params_form.addRow(QLabel("ローカルモデル（.pt）"), maai_turn_vap_local_model_row)
+    maai_turn_vap_detail_form.addRow(QLabel("ローカルモデル（.pt）"), maai_turn_vap_local_model_row)
     maai_test_turn_vap_local_model_browse_btn.clicked.connect(controller._browse_maai_turn_vap_local_model)
     maai_turn_vap_params_form.addRow(QLabel("MaAIターンしきい値"), controller.asr_maai_turn_threshold_edit)
-    maai_turn_vap_params_box.setLayout(maai_turn_vap_params_form)
+    maai_turn_vap_detail = CollapsibleSection("詳細設定（フレームレート・モード・モデル）")
+    maai_turn_vap_detail.setContentLayout(maai_turn_vap_detail_form)
+    maai_turn_vap_params_layout = QVBoxLayout()
+    maai_turn_vap_params_layout.addLayout(maai_turn_vap_params_form)
+    maai_turn_vap_params_layout.addWidget(maai_turn_vap_detail)
+    maai_turn_vap_params_box.setLayout(maai_turn_vap_params_layout)
     maai_test_turn_vap_frame_rate_edit.setToolTip(
         "MaAI VAPのframe_hz（1秒あたりのフレーム数、小数可）です。チャンク長≒sample_rate／frame_rate。"
         "MaAIワーカーのturn_vapと、vad_backend=maaiのASRのVADで共通して使われます。"
     )
-    maai_test_turn_vap_mode_edit.setToolTip("ターンテイキング／MaAI VADのモード（例：vap_mc、vap）")
-    maai_test_turn_vap_lang_edit.setToolTip("ターンテイキング／MaAI VADの言語（例：jp_kyoto、jp）")
+    maai_test_turn_vap_mode_edit.setToolTip(
+        "ターンテイキング／MaAI VADのモードです。vap_mcはマルチチャネル（ユーザーとシステムの2ch）、"
+        "monoは1chのモデルです。")
+    maai_test_turn_vap_lang_edit.setToolTip(
+        "ターンテイキング／MaAI VADの言語です。_kyotoは京都大学のデータで学習したモデル（MIT）です。")
     maai_test_turn_vap_model_type_edit.setToolTip(
         "model_type（normal＝CPC、normal-ver2＝Mimi＋ONNX）です。ver2は起動時のCUDA初期化に時間がかかることがあります。"
     )
@@ -3299,16 +3350,17 @@ def build_ui(controller) -> None:
     maai_bc_params_box.setChecked(True)
     controller.maai_enable_bc_box = maai_bc_params_box
     maai_bc_params_form = QFormLayout()
-    maai_bc_params_form.addRow(QLabel("フレームレート（Hz）"), maai_test_bc_frame_rate_edit)
-    maai_bc_params_form.addRow(QLabel("言語"), maai_test_bc_lang_edit)
-    maai_bc_params_form.addRow(QLabel("モデル種別"), maai_test_bc_model_type_edit)
+    maai_bc_detail_form = QFormLayout()
+    maai_bc_detail_form.addRow(QLabel("フレームレート（Hz）"), maai_test_bc_frame_rate_edit)
+    maai_bc_detail_form.addRow(QLabel("言語"), maai_test_bc_lang_edit)
+    maai_bc_detail_form.addRow(QLabel("モデル種別"), maai_test_bc_model_type_edit)
     maai_bc_local_model_row = QWidget()
     maai_bc_local_model_row_layout = QHBoxLayout()
     maai_bc_local_model_row_layout.setContentsMargins(0, 0, 0, 0)
     maai_bc_local_model_row_layout.addWidget(maai_test_bc_local_model_edit, 1)
     maai_bc_local_model_row_layout.addWidget(maai_test_bc_local_model_browse_btn, 0)
     maai_bc_local_model_row.setLayout(maai_bc_local_model_row_layout)
-    maai_bc_params_form.addRow(QLabel("ローカルモデル（.pt）"), maai_bc_local_model_row)
+    maai_bc_detail_form.addRow(QLabel("ローカルモデル（.pt）"), maai_bc_local_model_row)
     maai_test_bc_local_model_browse_btn.clicked.connect(controller._browse_maai_bc_local_model)
     maai_bc_params_form.addRow(QLabel("相槌有効"), maai_backchannel_enabled_check)
     maai_backchannel_playback_combo = QComboBox()
@@ -3326,20 +3378,29 @@ def build_ui(controller) -> None:
     maai_bc_params_form.addRow(QLabel("相槌再生"), maai_backchannel_playback_combo)
     maai_bc_params_form.addRow(QLabel("相槌確率のしきい値"), maai_backchannel_prob_threshold_edit)
     maai_bc_params_form.addRow(QLabel("相槌最小間隔（秒）"), maai_backchannel_min_interval_edit)
-    maai_bc_params_form.addRow(QLabel("相槌連続フレーム数"), maai_backchannel_consecutive_frames_edit)
+    maai_bc_detail_form.addRow(QLabel("相槌連続フレーム数"), maai_backchannel_consecutive_frames_edit)
     maai_bc_params_form.addRow(QLabel("相槌辞書（JSON）"), maai_backchannel_dictionary_path_row)
-    maai_bc_params_box.setLayout(maai_bc_params_form)
+    maai_bc_detail = CollapsibleSection("詳細設定（モデル・連続フレーム数）")
+    maai_bc_detail.setContentLayout(maai_bc_detail_form)
+    maai_bc_params_layout = QVBoxLayout()
+    maai_bc_params_layout.addLayout(maai_bc_params_form)
+    maai_bc_params_layout.addWidget(maai_bc_detail)
+    maai_bc_params_box.setLayout(maai_bc_params_layout)
     maai_test_bc_frame_rate_edit.setToolTip("bcのframe_hz（1秒あたりフレーム数、小数可）")
-    maai_test_bc_lang_edit.setToolTip("bcの言語タグ（例：jp、en、jp_kyoto）")
+    maai_test_bc_lang_edit.setToolTip("bcの言語タグです。")
     maai_test_bc_model_type_edit.setToolTip("bcのmodel_type（例：normal、normal-ver2）")
     maai_nod_params_box = QGroupBox("頷きモデル")
     maai_nod_params_box.setCheckable(True)
     maai_nod_params_box.setChecked(True)
     controller.maai_enable_nod_box = maai_nod_params_box
     maai_nod_params_form = QFormLayout()
-    maai_nod_params_form.addRow(QLabel("フレームレート（Hz）"), maai_test_nod_frame_rate_edit)
-    maai_nod_params_form.addRow(QLabel("言語"), maai_test_nod_lang_edit)
-    maai_nod_params_form.addRow(QLabel("モデル種別"), maai_test_nod_model_type_edit)
+    maai_nod_detail_form = QFormLayout()
+    maai_nod_detail_form.addRow(QLabel("フレームレート（Hz）"), maai_test_nod_frame_rate_edit)
+    maai_nod_detail_form.addRow(QLabel("言語"), maai_test_nod_lang_edit)
+    maai_nod_detail_form.addRow(QLabel("モデル種別"), maai_test_nod_model_type_edit)
+    maai_nod_detail = CollapsibleSection("詳細設定（モデル）")
+    maai_nod_detail.setContentLayout(maai_nod_detail_form)
+    maai_nod_params_form.addRow(maai_nod_detail)
 
     def _maai_nod_thr_edit_row(edit: QLineEdit, default_lbl: QLabel) -> QWidget:
         row_w = QWidget()
@@ -3370,20 +3431,24 @@ def build_ui(controller) -> None:
     nod_para_motion_form = QFormLayout()
     nod_para_motion_form.addRow(QLabel("MMDへ送信"), nod_para_enabled_check)
     nod_para_motion_form.addRow(QLabel("頷き確率のしきい値"), nod_para_prob_threshold_edit)
-    nod_para_motion_form.addRow(QLabel("連続フレーム数"), nod_para_min_consecutive_frames_edit)
     nod_para_motion_form.addRow(QLabel("クールダウン（ms）"), nod_para_min_interval_ms_edit)
-    nod_para_motion_form.addRow(QLabel("減衰率"), nod_para_decay_rate_edit)
-    nod_para_motion_form.addRow(QLabel("振れ幅クリップ下限"), nod_para_range_clip_min_edit)
-    nod_para_motion_form.addRow(QLabel("振れ幅クリップ上限"), nod_para_range_clip_max_edit)
-    nod_para_motion_form.addRow(QLabel("速度クリップ下限"), nod_para_speed_clip_min_edit)
-    nod_para_motion_form.addRow(QLabel("速度クリップ上限"), nod_para_speed_clip_max_edit)
-    nod_para_motion_form.addRow(QLabel("FPS"), nod_para_fps_edit)
-    nod_para_motion_form.addRow(QLabel("補間"), nod_para_interpolation_combo)
-    nod_para_motion_form.addRow(QLabel("振り上げ倍率"), nod_para_pre_rise_ratio_edit)
     nod_para_motion_form.addRow(QLabel("振幅倍率"), nod_para_scale_edit)
-    nod_para_motion_form.addRow(QLabel("再生速度倍率"), nod_para_speed_scale_edit)
-    nod_para_motion_form.addRow(QLabel("目の回転倍率"), nod_para_eye_scale_edit)
     nod_para_motion_form.addRow(QLabel("頭ボーン名"), nod_para_bone_edit)
+    nod_para_motion_detail_form = QFormLayout()
+    nod_para_motion_detail_form.addRow(QLabel("連続フレーム数"), nod_para_min_consecutive_frames_edit)
+    nod_para_motion_detail_form.addRow(QLabel("減衰率"), nod_para_decay_rate_edit)
+    nod_para_motion_detail_form.addRow(QLabel("振れ幅クリップ下限"), nod_para_range_clip_min_edit)
+    nod_para_motion_detail_form.addRow(QLabel("振れ幅クリップ上限"), nod_para_range_clip_max_edit)
+    nod_para_motion_detail_form.addRow(QLabel("速度クリップ下限"), nod_para_speed_clip_min_edit)
+    nod_para_motion_detail_form.addRow(QLabel("速度クリップ上限"), nod_para_speed_clip_max_edit)
+    nod_para_motion_detail_form.addRow(QLabel("FPS"), nod_para_fps_edit)
+    nod_para_motion_detail_form.addRow(QLabel("補間"), nod_para_interpolation_combo)
+    nod_para_motion_detail_form.addRow(QLabel("振り上げ倍率"), nod_para_pre_rise_ratio_edit)
+    nod_para_motion_detail_form.addRow(QLabel("再生速度倍率"), nod_para_speed_scale_edit)
+    nod_para_motion_detail_form.addRow(QLabel("目の回転倍率"), nod_para_eye_scale_edit)
+    nod_para_motion_detail = CollapsibleSection("詳細設定（動きの形）")
+    nod_para_motion_detail.setContentLayout(nod_para_motion_detail_form)
+    nod_para_motion_form.addRow(nod_para_motion_detail)
     nod_para_motion_box.setLayout(nod_para_motion_form)
     controller.nod_para_motion_form = nod_para_motion_form
 
@@ -3413,7 +3478,7 @@ def build_ui(controller) -> None:
     maai_nod_params_form.addRow(nod_para_motion_box)
     maai_nod_params_box.setLayout(maai_nod_params_form)
     maai_test_nod_frame_rate_edit.setToolTip("nod_paraのframe_hz（1秒あたりフレーム数、小数可）")
-    maai_test_nod_lang_edit.setToolTip("nod_paraの言語タグ（例：jp、jp_kyoto）")
+    maai_test_nod_lang_edit.setToolTip("nod_paraの言語タグです。")
     maai_test_nod_model_type_edit.setToolTip("nod_paraのmodel_type（例：normal-ver2）")
     _nod_thr_tip = (
         "nod_paraの推論用しきい値です。.pt読込後のnodインスタンス値がワーカー準備完了時に既定値として同期されます。"
@@ -3435,8 +3500,12 @@ def build_ui(controller) -> None:
     maai_multi_params_box = QGroupBox("マルチモード")
     maai_multi_params_form = QFormLayout()
     maai_multi_params_form.addRow(QLabel("有効"), maai_multi_enabled_check)
-    maai_multi_params_form.addRow(QLabel("フレームレート（Hz）"), maai_multi_frame_rate_edit)
-    maai_multi_params_form.addRow(QLabel("モデル種別"), maai_multi_model_type_edit)
+    maai_multi_detail_form = QFormLayout()
+    maai_multi_detail_form.addRow(QLabel("フレームレート（Hz）"), maai_multi_frame_rate_edit)
+    maai_multi_detail_form.addRow(QLabel("モデル種別"), maai_multi_model_type_edit)
+    maai_multi_detail = CollapsibleSection("詳細設定（フレームレート・モデル）")
+    maai_multi_detail.setContentLayout(maai_multi_detail_form)
+    maai_multi_params_form.addRow(maai_multi_detail)
     maai_multi_params_box.setLayout(maai_multi_params_form)
     maai_multi_enabled_check.setToolTip(
         "有効にするとMaAIマルチモードを使い、ターンテイキングVAP・相槌・頷きの音声エンコーダーを共有します。"
