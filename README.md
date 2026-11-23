@@ -170,8 +170,7 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
 `maai_sds.mdf` の内容：
 
 - 対話サーバーへ TCP で接続します（MMDAgent-EX がクライアントになり、対話サーバーが `localhost:39001` で待ち受けます）。
-  ポートを Windows の動的ポート（49152 以上）の外にしてあるのは、Hyper-V・WSL・Docker Desktop が動的ポートの一部を予約し、
-  そこに当たると待ち受けに失敗するためです。WebSocket で接続する場合や MDF の書き方は [docs/running.md](docs/running.md) を参照してください。
+  WebSocket で接続する場合や MDF の書き方は [docs/running.md](docs/running.md) を参照してください。
 - サンプル集のジェネを、上半身のカメラ・1024×1024 のウィンドウで表示します。待機モーションは、頷きが見やすいように
   体の揺れが小さいもの（`01_Wait.vmd`）にしてあります。
 - 口パクは MMDAgent-EX が受け取った音声から作り、頷き（首）・視線・まばたきは MaAI-SDS が送ります。首を頷きに使うため、
