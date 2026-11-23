@@ -358,6 +358,7 @@ body.plot-page {
 .module.error .lamp { background: var(--err); }
 .module .m-name { color: var(--muted); }
 .module .m-link { cursor: pointer; }
+.module-btn.module-settings { width: auto; padding: 0 8px; }
 .engine-table .tag.add { color: var(--accent); }
 .row-detail { margin: 4px 0; }
 .row-detail > summary { cursor: pointer; color: var(--muted); font-size: 12px; padding: 4px 0; }
@@ -797,6 +798,8 @@ textarea { width: 100%; resize: vertical; font-family: ui-monospace, Consolas, m
   background: #1a222e;
 }
 .module .m-detail { min-width: 0; overflow: hidden; }
+/* ASR・LLM・TTS・MaAI の行は ▶ ■ の右に「設定」ボタンが入るので 1 列多い */
+.module.has-settings { grid-template-columns: 8px 3.3rem 3.2rem 26px 26px auto minmax(0, 1fr); }
 /* 対話サーバーの行は名前が長いので、名前の列だけ広げる（下のモジュールとは区切る） */
 .module.server { grid-template-columns: 8px 5.4rem 3.2rem 26px 26px minmax(0, 1fr); margin-bottom: .2rem; }
 .module .server-detail { display: flex; justify-content: flex-end; overflow: visible; }

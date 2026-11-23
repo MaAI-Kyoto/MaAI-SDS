@@ -1939,7 +1939,7 @@ function renderModules() {
   for (const key of MODULE_KEYS) {
     const info = state.modules[key] || { state: 'stopped' };
     const st = info.state || 'stopped';
-    const box = el('div', `module ${st}`);
+    const box = el('div', `module has-settings ${st}`);
     const start = el('button', 'module-btn', '▶');
     start.type = 'button';
     start.title = `${MODULE_LABELS[key]}起動`;
@@ -1951,6 +1951,11 @@ function renderModules() {
     stop.disabled = !['running', 'starting'].includes(st);
     stop.addEventListener('click', () => sendModuleCommand(key, 'stop'));
     const summary = moduleSummary(key);
+    // そのエンジンの画面を開くボタン（名前と要約のクリックだけでは押せると分からない）。
+    const settingsBtn = el('button', 'module-btn module-settings', '設定');
+    settingsBtn.type = 'button';
+    settingsBtn.title = `${MODULE_LABELS[key]}の設定を開く`;
+    settingsBtn.addEventListener('click', () => openSettings(MODULE_PAGE_IDS[key]));
     // 名前と要約をクリックすると、そのエンジンの画面（設定とテスト）を開く（Qt と同じ）。
     const pageId = MODULE_PAGE_IDS[key];
     const name = el('span', 'm-name', MODULE_LABELS[key] || key);
@@ -1964,6 +1969,7 @@ function renderModules() {
       el('span', 'm-state', MODULE_STATE_LABELS[st] || st),
       start,
       stop,
+      settingsBtn,
     );
     const detail = el('span', 'm-detail');
     if (summary) {

@@ -339,8 +339,14 @@ def _finish_main_layout(
         module_status_grid.addWidget(_state_label, _row, 2)
         module_status_grid.addWidget(_start_btn, _row, 3)
         module_status_grid.addWidget(_stop_btn, _row, 4)
-        module_status_grid.addWidget(_summary_label, _row, 5)
-        module_status_grid.addWidget(_metrics_label, _row, 6)
+        # そのエンジンの画面（選択・設定・テスト）を開く。名前と要約のクリックだけでは押せると分からない。
+        _settings_btn = QPushButton("設定")
+        _settings_btn.setFixedSize(44, 24)
+        _settings_btn.setToolTip(f"{_module_name}の設定を開く")
+        _settings_btn.clicked.connect(lambda checked, m=_mk: controller._open_module_page(m))
+        module_status_grid.addWidget(_settings_btn, _row, 5)
+        module_status_grid.addWidget(_summary_label, _row, 6)
+        module_status_grid.addWidget(_metrics_label, _row, 7)
         controller.module_status_lamps[_module_key] = _lamp
         controller.module_status_state_labels[_module_key] = _state_label
         controller.module_status_metrics_labels[_module_key] = _metrics_label
@@ -373,8 +379,8 @@ def _finish_main_layout(
     module_status_grid.addWidget(_wav_state, _wav_row, 2)
     module_status_grid.addWidget(_wav_start, _wav_row, 3)
     module_status_grid.addWidget(_wav_stop, _wav_row, 4)
-    module_status_grid.addWidget(_wav_summary, _wav_row, 5)
-    module_status_grid.addWidget(_wav_metrics, _wav_row, 6)
+    module_status_grid.addWidget(_wav_summary, _wav_row, 6)
+    module_status_grid.addWidget(_wav_metrics, _wav_row, 7)
     controller.module_status_wav_lamp = _wav_lamp
     controller.module_status_wav_state_label = _wav_state
     controller.module_status_wav_summary_label = _wav_summary
@@ -391,7 +397,7 @@ def _finish_main_layout(
     ]
     for _w in controller.module_status_wav_widgets:
         _w.setVisible(False)
-    module_status_grid.setColumnStretch(5, 1)
+    module_status_grid.setColumnStretch(6, 1)
     controller.module_status_start_all_btn = QPushButton("一括起動")
     controller.module_status_start_all_btn.setToolTip(
         "現在の設定でASR・LLM・TTS・MaAIを起動します。稼働中・起動中のモジュールは再利用します。"

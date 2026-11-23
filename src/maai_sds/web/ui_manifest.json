@@ -228,6 +228,19 @@
               "label": "",
               "widgets": [
                 {
+                  "attr": null,
+                  "config_key": null,
+                  "scope": "app",
+                  "tooltip": "ASRの設定を開く",
+                  "kind": "button",
+                  "text": "設定"
+                }
+              ]
+            },
+            {
+              "label": "",
+              "widgets": [
+                {
                   "attr": "llm_module_start_btn",
                   "config_key": null,
                   "scope": "app",
@@ -247,6 +260,19 @@
                   "tooltip": "LLM停止",
                   "kind": "button",
                   "text": "■"
+                }
+              ]
+            },
+            {
+              "label": "",
+              "widgets": [
+                {
+                  "attr": null,
+                  "config_key": null,
+                  "scope": "app",
+                  "tooltip": "LLMの設定を開く",
+                  "kind": "button",
+                  "text": "設定"
                 }
               ]
             },
@@ -280,6 +306,19 @@
               "label": "",
               "widgets": [
                 {
+                  "attr": null,
+                  "config_key": null,
+                  "scope": "app",
+                  "tooltip": "TTSの設定を開く",
+                  "kind": "button",
+                  "text": "設定"
+                }
+              ]
+            },
+            {
+              "label": "",
+              "widgets": [
+                {
                   "attr": "maai_module_start_btn",
                   "config_key": null,
                   "scope": "app",
@@ -299,6 +338,19 @@
                   "tooltip": "MaAI停止",
                   "kind": "button",
                   "text": "■"
+                }
+              ]
+            },
+            {
+              "label": "",
+              "widgets": [
+                {
+                  "attr": null,
+                  "config_key": null,
+                  "scope": "app",
+                  "tooltip": "MaAIの設定を開く",
+                  "kind": "button",
+                  "text": "設定"
                 }
               ]
             },
