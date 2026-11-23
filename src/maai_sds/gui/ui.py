@@ -3318,12 +3318,13 @@ def build_ui(controller) -> None:
     maai_turn_vap_params_box.setChecked(True)
     controller.maai_enable_turn_vap_box = maai_turn_vap_params_box
     maai_turn_vap_params_form = QFormLayout()
+    # フレームレート・モード・言語・モデル種別はどのモデルを使うかを決めるので常に見せる。
+    # ローカルモデル（.pt）は普段使わないので「詳細設定」にたたむ（下でまとめて足す）。
+    maai_turn_vap_params_form.addRow(QLabel("フレームレート（Hz）"), maai_test_turn_vap_frame_rate_edit)
+    maai_turn_vap_params_form.addRow(QLabel("モード"), maai_test_turn_vap_mode_edit)
     maai_turn_vap_params_form.addRow(QLabel("言語"), maai_test_turn_vap_lang_edit)
-    # 普段は変えないモデルの選び方は「詳細設定」にたたむ（下でまとめて足す）。
+    maai_turn_vap_params_form.addRow(QLabel("モデル種別"), maai_test_turn_vap_model_type_edit)
     maai_turn_vap_detail_form = QFormLayout()
-    maai_turn_vap_detail_form.addRow(QLabel("フレームレート（Hz）"), maai_test_turn_vap_frame_rate_edit)
-    maai_turn_vap_detail_form.addRow(QLabel("モード"), maai_test_turn_vap_mode_edit)
-    maai_turn_vap_detail_form.addRow(QLabel("モデル種別"), maai_test_turn_vap_model_type_edit)
     maai_turn_vap_local_model_row = QWidget()
     maai_turn_vap_local_model_row_layout = QHBoxLayout()
     maai_turn_vap_local_model_row_layout.setContentsMargins(0, 0, 0, 0)
@@ -3333,7 +3334,7 @@ def build_ui(controller) -> None:
     maai_turn_vap_detail_form.addRow(QLabel("ローカルモデル（.pt）"), maai_turn_vap_local_model_row)
     maai_test_turn_vap_local_model_browse_btn.clicked.connect(controller._browse_maai_turn_vap_local_model)
     maai_turn_vap_params_form.addRow(QLabel("MaAIターンしきい値"), controller.asr_maai_turn_threshold_edit)
-    maai_turn_vap_detail = CollapsibleSection("詳細設定（フレームレート・モード・モデル）")
+    maai_turn_vap_detail = CollapsibleSection("詳細設定（ローカルモデル）")
     maai_turn_vap_detail.setContentLayout(maai_turn_vap_detail_form)
     maai_turn_vap_params_layout = QVBoxLayout()
     maai_turn_vap_params_layout.addLayout(maai_turn_vap_params_form)
@@ -3356,10 +3357,10 @@ def build_ui(controller) -> None:
     maai_bc_params_box.setChecked(True)
     controller.maai_enable_bc_box = maai_bc_params_box
     maai_bc_params_form = QFormLayout()
+    maai_bc_params_form.addRow(QLabel("フレームレート（Hz）"), maai_test_bc_frame_rate_edit)
+    maai_bc_params_form.addRow(QLabel("言語"), maai_test_bc_lang_edit)
+    maai_bc_params_form.addRow(QLabel("モデル種別"), maai_test_bc_model_type_edit)
     maai_bc_detail_form = QFormLayout()
-    maai_bc_detail_form.addRow(QLabel("フレームレート（Hz）"), maai_test_bc_frame_rate_edit)
-    maai_bc_detail_form.addRow(QLabel("言語"), maai_test_bc_lang_edit)
-    maai_bc_detail_form.addRow(QLabel("モデル種別"), maai_test_bc_model_type_edit)
     maai_bc_local_model_row = QWidget()
     maai_bc_local_model_row_layout = QHBoxLayout()
     maai_bc_local_model_row_layout.setContentsMargins(0, 0, 0, 0)
@@ -3386,7 +3387,7 @@ def build_ui(controller) -> None:
     maai_bc_params_form.addRow(QLabel("相槌最小間隔（秒）"), maai_backchannel_min_interval_edit)
     maai_bc_detail_form.addRow(QLabel("相槌連続フレーム数"), maai_backchannel_consecutive_frames_edit)
     maai_bc_params_form.addRow(QLabel("相槌辞書（JSON）"), maai_backchannel_dictionary_path_row)
-    maai_bc_detail = CollapsibleSection("詳細設定（モデル・連続フレーム数）")
+    maai_bc_detail = CollapsibleSection("詳細設定（ローカルモデル・連続フレーム数）")
     maai_bc_detail.setContentLayout(maai_bc_detail_form)
     maai_bc_params_layout = QVBoxLayout()
     maai_bc_params_layout.addLayout(maai_bc_params_form)
@@ -3400,13 +3401,9 @@ def build_ui(controller) -> None:
     maai_nod_params_box.setChecked(True)
     controller.maai_enable_nod_box = maai_nod_params_box
     maai_nod_params_form = QFormLayout()
-    maai_nod_detail_form = QFormLayout()
-    maai_nod_detail_form.addRow(QLabel("フレームレート（Hz）"), maai_test_nod_frame_rate_edit)
-    maai_nod_detail_form.addRow(QLabel("言語"), maai_test_nod_lang_edit)
-    maai_nod_detail_form.addRow(QLabel("モデル種別"), maai_test_nod_model_type_edit)
-    maai_nod_detail = CollapsibleSection("詳細設定（モデル）")
-    maai_nod_detail.setContentLayout(maai_nod_detail_form)
-    maai_nod_params_form.addRow(maai_nod_detail)
+    maai_nod_params_form.addRow(QLabel("フレームレート（Hz）"), maai_test_nod_frame_rate_edit)
+    maai_nod_params_form.addRow(QLabel("言語"), maai_test_nod_lang_edit)
+    maai_nod_params_form.addRow(QLabel("モデル種別"), maai_test_nod_model_type_edit)
 
     def _maai_nod_thr_edit_row(edit: QLineEdit, default_lbl: QLabel) -> QWidget:
         row_w = QWidget()
@@ -3506,12 +3503,8 @@ def build_ui(controller) -> None:
     maai_multi_params_box = QGroupBox("マルチモード")
     maai_multi_params_form = QFormLayout()
     maai_multi_params_form.addRow(QLabel("有効"), maai_multi_enabled_check)
-    maai_multi_detail_form = QFormLayout()
-    maai_multi_detail_form.addRow(QLabel("フレームレート（Hz）"), maai_multi_frame_rate_edit)
-    maai_multi_detail_form.addRow(QLabel("モデル種別"), maai_multi_model_type_edit)
-    maai_multi_detail = CollapsibleSection("詳細設定（フレームレート・モデル）")
-    maai_multi_detail.setContentLayout(maai_multi_detail_form)
-    maai_multi_params_form.addRow(maai_multi_detail)
+    maai_multi_params_form.addRow(QLabel("フレームレート（Hz）"), maai_multi_frame_rate_edit)
+    maai_multi_params_form.addRow(QLabel("モデル種別"), maai_multi_model_type_edit)
     maai_multi_params_box.setLayout(maai_multi_params_form)
     maai_multi_enabled_check.setToolTip(
         "有効にするとMaAIマルチモードを使い、ターンテイキングVAP・相槌・頷きの音声エンコーダーを共有します。"

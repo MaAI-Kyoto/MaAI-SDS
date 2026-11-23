@@ -5177,8 +5177,7 @@
                     "note": null
                   }
                 }
-              ],
-              "detail": "詳細設定（フレームレート・モデル）"
+              ]
             },
             {
               "label": "モデル種別",
@@ -5195,8 +5194,7 @@
                   ],
                   "value": "normal-ver2"
                 }
-              ],
-              "detail": "詳細設定（フレームレート・モデル）"
+              ]
             }
           ]
         },
@@ -5214,6 +5212,45 @@
                   "kind": "check",
                   "value": true,
                   "text": "有効"
+                }
+              ]
+            },
+            {
+              "label": "フレームレート（Hz）",
+              "widgets": [
+                {
+                  "attr": "maai_test_turn_vap_frame_rate_edit",
+                  "config_key": "maai_test_turn_vap_frame_rate",
+                  "scope": "app",
+                  "tooltip": "MaAI VAPのframe_hz（1秒あたりのフレーム数、小数可）です。チャンク長≒sample_rate／frame_rate。MaAIワーカーのturn_vapと、vad_backend=maaiのASRのVADで共通して使われます。\n範囲：0.1〜500",
+                  "kind": "line",
+                  "value": "20",
+                  "password": false,
+                  "numeric": {
+                    "min": 0.1,
+                    "max": 500.0,
+                    "decimals": true,
+                    "note": null
+                  }
+                }
+              ]
+            },
+            {
+              "label": "モード",
+              "widgets": [
+                {
+                  "attr": "maai_test_turn_vap_mode_edit",
+                  "config_key": "maai_test_turn_vap_mode",
+                  "scope": "app",
+                  "tooltip": "ターンテイキング／MaAI VADのモードです。vap_mcはマルチチャネル（ユーザーとシステムの2ch）、monoは1chのモデルです。",
+                  "kind": "combo",
+                  "items": [
+                    "vap",
+                    "vap_mc",
+                    "vap_mono",
+                    "vap_mc_mono"
+                  ],
+                  "value": "vap_mc"
                 }
               ]
             },
@@ -5242,6 +5279,23 @@
               ]
             },
             {
+              "label": "モデル種別",
+              "widgets": [
+                {
+                  "attr": "maai_test_turn_vap_model_type_edit",
+                  "config_key": "maai_test_turn_vap_model_type",
+                  "scope": "app",
+                  "tooltip": "model_type（normal＝CPC、normal-ver2＝Mimi＋ONNX）です。ver2は起動時のCUDA初期化に時間がかかることがあります。",
+                  "kind": "combo",
+                  "items": [
+                    "normal",
+                    "normal-ver2"
+                  ],
+                  "value": "normal"
+                }
+              ]
+            },
+            {
               "label": "MaAIターンしきい値",
               "widgets": [
                 {
@@ -5260,65 +5314,6 @@
                   }
                 }
               ]
-            },
-            {
-              "label": "フレームレート（Hz）",
-              "widgets": [
-                {
-                  "attr": "maai_test_turn_vap_frame_rate_edit",
-                  "config_key": "maai_test_turn_vap_frame_rate",
-                  "scope": "app",
-                  "tooltip": "MaAI VAPのframe_hz（1秒あたりのフレーム数、小数可）です。チャンク長≒sample_rate／frame_rate。MaAIワーカーのturn_vapと、vad_backend=maaiのASRのVADで共通して使われます。\n範囲：0.1〜500",
-                  "kind": "line",
-                  "value": "20",
-                  "password": false,
-                  "numeric": {
-                    "min": 0.1,
-                    "max": 500.0,
-                    "decimals": true,
-                    "note": null
-                  }
-                }
-              ],
-              "detail": "詳細設定（フレームレート・モード・モデル）"
-            },
-            {
-              "label": "モード",
-              "widgets": [
-                {
-                  "attr": "maai_test_turn_vap_mode_edit",
-                  "config_key": "maai_test_turn_vap_mode",
-                  "scope": "app",
-                  "tooltip": "ターンテイキング／MaAI VADのモードです。vap_mcはマルチチャネル（ユーザーとシステムの2ch）、monoは1chのモデルです。",
-                  "kind": "combo",
-                  "items": [
-                    "vap",
-                    "vap_mc",
-                    "vap_mono",
-                    "vap_mc_mono"
-                  ],
-                  "value": "vap_mc"
-                }
-              ],
-              "detail": "詳細設定（フレームレート・モード・モデル）"
-            },
-            {
-              "label": "モデル種別",
-              "widgets": [
-                {
-                  "attr": "maai_test_turn_vap_model_type_edit",
-                  "config_key": "maai_test_turn_vap_model_type",
-                  "scope": "app",
-                  "tooltip": "model_type（normal＝CPC、normal-ver2＝Mimi＋ONNX）です。ver2は起動時のCUDA初期化に時間がかかることがあります。",
-                  "kind": "combo",
-                  "items": [
-                    "normal",
-                    "normal-ver2"
-                  ],
-                  "value": "normal"
-                }
-              ],
-              "detail": "詳細設定（フレームレート・モード・モデル）"
             },
             {
               "label": "ローカルモデル（.pt）",
@@ -5342,7 +5337,7 @@
                   "browse_target": "maai_test_turn_vap_local_model_edit"
                 }
               ],
-              "detail": "詳細設定（フレームレート・モード・モデル）"
+              "detail": "詳細設定（ローカルモデル）"
             }
           ]
         },
@@ -5360,6 +5355,62 @@
                   "kind": "check",
                   "value": true,
                   "text": "有効"
+                }
+              ]
+            },
+            {
+              "label": "フレームレート（Hz）",
+              "widgets": [
+                {
+                  "attr": "maai_test_bc_frame_rate_edit",
+                  "config_key": "maai_test_bc_frame_rate",
+                  "scope": "app",
+                  "tooltip": "bcのframe_hz（1秒あたりフレーム数、小数可）\n範囲：0.1〜500",
+                  "kind": "line",
+                  "value": "10",
+                  "password": false,
+                  "numeric": {
+                    "min": 0.1,
+                    "max": 500.0,
+                    "decimals": true,
+                    "note": null
+                  }
+                }
+              ]
+            },
+            {
+              "label": "言語",
+              "widgets": [
+                {
+                  "attr": "maai_test_bc_lang_edit",
+                  "config_key": "maai_test_bc_lang",
+                  "scope": "app",
+                  "tooltip": "bcの言語タグです。",
+                  "kind": "combo",
+                  "items": [
+                    "jp",
+                    "en",
+                    "ch",
+                    "tri"
+                  ],
+                  "value": "jp"
+                }
+              ]
+            },
+            {
+              "label": "モデル種別",
+              "widgets": [
+                {
+                  "attr": "maai_test_bc_model_type_edit",
+                  "config_key": "maai_test_bc_model_type",
+                  "scope": "app",
+                  "tooltip": "bcのmodel_type（例：normal、normal-ver2）",
+                  "kind": "combo",
+                  "items": [
+                    "normal",
+                    "normal-ver2"
+                  ],
+                  "value": "normal"
                 }
               ]
             },
@@ -5468,65 +5519,6 @@
               ]
             },
             {
-              "label": "フレームレート（Hz）",
-              "widgets": [
-                {
-                  "attr": "maai_test_bc_frame_rate_edit",
-                  "config_key": "maai_test_bc_frame_rate",
-                  "scope": "app",
-                  "tooltip": "bcのframe_hz（1秒あたりフレーム数、小数可）\n範囲：0.1〜500",
-                  "kind": "line",
-                  "value": "10",
-                  "password": false,
-                  "numeric": {
-                    "min": 0.1,
-                    "max": 500.0,
-                    "decimals": true,
-                    "note": null
-                  }
-                }
-              ],
-              "detail": "詳細設定（モデル・連続フレーム数）"
-            },
-            {
-              "label": "言語",
-              "widgets": [
-                {
-                  "attr": "maai_test_bc_lang_edit",
-                  "config_key": "maai_test_bc_lang",
-                  "scope": "app",
-                  "tooltip": "bcの言語タグです。",
-                  "kind": "combo",
-                  "items": [
-                    "jp",
-                    "en",
-                    "ch",
-                    "tri"
-                  ],
-                  "value": "jp"
-                }
-              ],
-              "detail": "詳細設定（モデル・連続フレーム数）"
-            },
-            {
-              "label": "モデル種別",
-              "widgets": [
-                {
-                  "attr": "maai_test_bc_model_type_edit",
-                  "config_key": "maai_test_bc_model_type",
-                  "scope": "app",
-                  "tooltip": "bcのmodel_type（例：normal、normal-ver2）",
-                  "kind": "combo",
-                  "items": [
-                    "normal",
-                    "normal-ver2"
-                  ],
-                  "value": "normal"
-                }
-              ],
-              "detail": "詳細設定（モデル・連続フレーム数）"
-            },
-            {
               "label": "ローカルモデル（.pt）",
               "widgets": [
                 {
@@ -5548,7 +5540,7 @@
                   "browse_target": "maai_test_bc_local_model_edit"
                 }
               ],
-              "detail": "詳細設定（モデル・連続フレーム数）"
+              "detail": "詳細設定（ローカルモデル・連続フレーム数）"
             },
             {
               "label": "相槌連続フレーム数",
@@ -5569,7 +5561,7 @@
                   }
                 }
               ],
-              "detail": "詳細設定（モデル・連続フレーム数）"
+              "detail": "詳細設定（ローカルモデル・連続フレーム数）"
             }
           ]
         },
@@ -5608,8 +5600,7 @@
                     "note": null
                   }
                 }
-              ],
-              "detail": "詳細設定（モデル）"
+              ]
             },
             {
               "label": "言語",
@@ -5627,8 +5618,7 @@
                   ],
                   "value": "jp"
                 }
-              ],
-              "detail": "詳細設定（モデル）"
+              ]
             },
             {
               "label": "モデル種別",
@@ -5645,8 +5635,7 @@
                   ],
                   "value": "normal-ver2"
                 }
-              ],
-              "detail": "詳細設定（モデル）"
+              ]
             },
             {
               "label": "頷き回数しきい値（t0）",

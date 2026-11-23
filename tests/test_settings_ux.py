@@ -145,9 +145,15 @@ class ManifestTest(unittest.TestCase):
 
     def test_maai_model_details_are_folded_on_the_web_too(self) -> None:
         win = next(w for w in self._manifest()["windows"] if w["id"] == "maai_settings_window")
-        labels = {row["label"]: row.get("detail") for g in win["groups"] for row in g["rows"]}
-        self.assertTrue(labels.get("モード"))
-        self.assertTrue(labels.get("FPS"))
+        rows = [row for g in win["groups"] for row in g["rows"]]
+        labels = {row["label"]: row.get("detail") for row in rows}
+        self.assertTrue(labels.get("FPS"))  # 頷きの動きの形の細かい調整はたたむ
+        self.assertTrue(labels.get("ローカルモデル（.pt）"))
+        # どのモデルを使うかを決める項目は常に見せる（ユーザー指定）
+        for label in ("フレームレート（Hz）", "モード", "言語", "モデル種別"):
+            shown = [r for r in rows if r["label"] == label]
+            self.assertTrue(shown, label)
+            self.assertTrue(all(not r.get("detail") for r in shown), label)
         self.assertIsNone(labels.get("MaAIターンしきい値"))
 
     def test_engine_pages_come_first_in_the_settings_list(self) -> None:
