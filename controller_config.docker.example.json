@@ -226,6 +226,7 @@
   "maai_test_turn_vap_model_type": "normal-ver2",
   "maai_test_turn_vap_local_model": "",
   "asr_maai_turn_threshold": "0.55",
+  "asr_maai_turn_condition": "p_now",
   "maai_test_bc_frame_rate": "12.5",
   "maai_test_bc_lang": "jp",
   "maai_test_bc_model_type": "normal-ver2",

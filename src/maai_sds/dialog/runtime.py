@@ -3241,12 +3241,17 @@ class VoiceDialogRuntime:
 
     def handle_turn(self, payload: dict) -> None:
         prob = float(payload.get("probability", 0.0) or 0.0)
+        # p_future を送らない経路（ASR ワーカーの MaAI VAD など）は None のまま渡す。
+        # orchestrator は None を「p_future 無し」として扱い、p_now だけでターンを判定する。
+        p_future_in: float | None
         try:
-            p_future = float(payload.get("p_future", 0.0) or 0.0)
+            raw_future = payload.get("p_future")
+            p_future_in = None if raw_future is None else float(raw_future)
         except (TypeError, ValueError):
-            p_future = 0.0
+            p_future_in = None
+        p_future = 0.0 if p_future_in is None else p_future_in
         events = (
-            self._orchestrator.on_turn_probability(prob, p_future=p_future)
+            self._orchestrator.on_turn_probability(prob, p_future=p_future_in)
             if self._orchestrator is not None
             else []
         )

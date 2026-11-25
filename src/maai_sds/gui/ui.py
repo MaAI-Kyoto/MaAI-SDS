@@ -3362,6 +3362,19 @@ def build_ui(controller) -> None:
     maai_turn_vap_params_form.addRow(QLabel("ローカルモデル（.pt）"), maai_turn_vap_local_model_row)
     maai_test_turn_vap_local_model_browse_btn.clicked.connect(controller._browse_maai_turn_vap_local_model)
     maai_turn_vap_params_form.addRow(QLabel("MaAIターンしきい値"), controller.asr_maai_turn_threshold_edit)
+    controller.asr_maai_turn_condition_combo = QComboBox()
+    controller.asr_maai_turn_condition_combo.addItem("p_nowがしきい値を超えたとき", "p_now")
+    controller.asr_maai_turn_condition_combo.addItem("p_nowが超えた時点でp_futureも超えているとき", "p_now_and_future")
+    controller.asr_maai_turn_condition_combo.setToolTip(
+        "システムがターンを取る条件です。どちらもしきい値は「MaAIターンしきい値」を使います。"
+        "「p_futureも超えているとき」では、p_nowがしきい値を超えたその時点でp_futureがしきい値未満なら"
+        "ターンを取りません（p_nowがいったんしきい値を下回り、もう一度超えるまで待ちます）。"
+        "p_futureを出さない経路では、p_nowだけで判定します。"
+    )
+    controller.asr_maai_turn_condition_combo.currentIndexChanged.connect(
+        lambda _i: controller._save_app_config()
+    )
+    maai_turn_vap_params_form.addRow(QLabel("ターンを取る条件"), controller.asr_maai_turn_condition_combo)
     maai_turn_vap_params_box.setLayout(maai_turn_vap_params_form)
     maai_test_turn_vap_frame_rate_edit.setToolTip(
         "MaAI VAPのframe_hz（1秒あたりのフレーム数、小数可）です。チャンク長≒sample_rate／frame_rate。"

@@ -1215,11 +1215,18 @@ def build_orchestrator_tts_stream_inputs(cfg: dict) -> dict[str, object]:
         return {}
 
 
+def _turn_condition(cfg: dict) -> str:
+    from .orchestrator import normalize_turn_condition
+
+    return normalize_turn_condition(cfg.get("asr_maai_turn_condition"))
+
+
 def build_dialog_orchestrator_settings(cfg: dict) -> dict[str, object]:
     """`controller.py:_build_dialog_orchestrator_settings` 相当（GUI 非依存）。"""
     return {
         "system_prompt": cfg_str(cfg, "llm_system_prompt", ""),
         "maai_turn_threshold": _clamp(cfg_float(cfg, "asr_maai_turn_threshold", 0.5), 0.0, 1.0),
+        "maai_turn_condition": _turn_condition(cfg),
         "vad_on_threshold": cfg_float(cfg, "asr_vad_on_threshold", 0.1),
         "interrupt_vad_threshold": cfg_float(cfg, "voice_dialog_interrupt_vad_threshold", 0.0),
         "interrupt_p_now_threshold": cfg_float(cfg, "voice_dialog_interrupt_p_now_threshold", 0.0),

@@ -5600,6 +5600,29 @@
                   }
                 }
               ]
+            },
+            {
+              "label": "ターンを取る条件",
+              "widgets": [
+                {
+                  "attr": "asr_maai_turn_condition_combo",
+                  "config_key": "asr_maai_turn_condition",
+                  "scope": "app",
+                  "tooltip": "システムがターンを取る条件です。どちらもしきい値は「MaAIターンしきい値」を使います。「p_futureも超えているとき」では、p_nowがしきい値を超えたその時点でp_futureがしきい値未満ならターンを取りません（p_nowがいったんしきい値を下回り、もう一度超えるまで待ちます）。p_futureを出さない経路では、p_nowだけで判定します。",
+                  "kind": "combo",
+                  "items": [
+                    {
+                      "value": "p_now",
+                      "label": "p_nowがしきい値を超えたとき"
+                    },
+                    {
+                      "value": "p_now_and_future",
+                      "label": "p_nowが超えた時点でp_futureも超えているとき"
+                    }
+                  ],
+                  "value": "p_now"
+                }
+              ]
             }
           ]
         },

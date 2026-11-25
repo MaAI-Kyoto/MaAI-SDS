@@ -95,6 +95,19 @@ class DialogOrchestratorState:
     # on_maai_result で user_side となった最終時刻（wall）。アイドル経過後ターン取得用。
     last_user_speech_detect_wall_ts: float | None = None
 
+# ターンを取る条件（設定 `asr_maai_turn_condition`）。
+# p_now：p_now がしきい値を上にまたいだらターンを取る（従来どおり）。
+# p_now_and_future：p_now がしきい値を上にまたいだフレームで、p_future もしきい値以上のときだけ取る。
+TURN_CONDITION_P_NOW = "p_now"
+TURN_CONDITION_P_NOW_AND_FUTURE = "p_now_and_future"
+TURN_CONDITIONS = (TURN_CONDITION_P_NOW, TURN_CONDITION_P_NOW_AND_FUTURE)
+
+
+def normalize_turn_condition(value: object) -> str:
+    text = str(value or "").strip().lower()
+    return text if text in TURN_CONDITIONS else TURN_CONDITION_P_NOW
+
+
 class DialogOrchestrator:
     """UI非依存の音声対話状態機械。
 
@@ -214,6 +227,9 @@ class DialogOrchestrator:
 
     def interrupt(self) -> list[dict[str, object]]:
         return self._dispatch_then_return([{"type": "interrupt", "message": "interrupt requested"}])
+
+    def _maai_turn_condition(self) -> str:
+        return normalize_turn_condition(self.settings.get("maai_turn_condition"))
 
     def _maai_turn_threshold(self) -> float:
         value = _safe_float(self.settings.get("maai_turn_threshold", 0.5), 0.5)
@@ -1294,6 +1310,13 @@ class DialogOrchestrator:
             and (float(prev_p) <= float(threshold))
             and (p_now >= float(threshold))
         )
+        # ターンを取るフレーム。p_now_and_future では、p_now が上にまたいだその時点で
+        # p_future もしきい値以上でなければ取らない（後から p_future が上がっても、p_now が
+        # いったんしきい値を下回って再びまたぐまでは取らない）。p_future が届かない経路では従来どおり。
+        future_required = (
+            self._maai_turn_condition() == TURN_CONDITION_P_NOW_AND_FUTURE and p_future is not None
+        )
+        take_turn = crossed_up and ((not future_required) or p_fut >= float(threshold))
         p_future_crossed_up = (
             (prev_fut is not None)
             and (float(prev_fut) <= float(threshold))
@@ -1307,7 +1330,7 @@ class DialogOrchestrator:
         self._maybe_arm_scheduled_exit()
         if (
             self.state.scheduled_exit_waiting_for_turn
-            and crossed_up
+            and take_turn
             and (not self.state.llm_in_progress)
             and (not self.state.opening_tts_pending)
         ):
@@ -1334,10 +1357,14 @@ class DialogOrchestrator:
                 )
 
         # 未確定の先読み: p_future がしきい値を下にまたいだら取り消す。
+        # 同じフレームで p_now が上にまたいでターンを取る条件を満たしていれば、取り消したうえで
+        # 下の通常のターン取得へ進む（ここで返すと、そのまたぎを取りこぼす）。
         if self.state.prefetch_active and p_future_crossed_down:
-            return self._dispatch_then_return(
+            cancel_ev = self._dispatch_then_return(
                 self._cancel_prefetch_events(reason="p_future_cross_down")
             )
+            if not take_turn:
+                return cancel_ev
 
         # p_now でターンを取る前に、p_future 立ち上がりで LLM+TTS を先読みする。
         # llm_in_progress / turn_blocked は立てない（後続の p_now クロスを捨てないため）。
@@ -1356,14 +1383,18 @@ class DialogOrchestrator:
         if self.state.llm_in_progress or self.state.turn_blocked_until_user_speech:
             if self.state.llm_in_progress:
                 # LLM 処理中の通常フレームは黙る。
-                # crossed_up なのに取れなかったときだけ出す（次フレームの「当然ブロック」は出さない）。
-                if crossed_up:
+                # ターンを取るフレームなのに取れなかったときだけ出す（次フレームの「当然ブロック」は出さない）。
+                if take_turn:
                     return self._dispatch_then_return(
                         [{"type": "log", "message": f"{log_prefix} branch=blocked reason=llm_in_progress"}]
                     )
                 return []
             return []
-        if not crossed_up:
+        if not take_turn:
+            if crossed_up:
+                return self._dispatch_then_return(
+                    [{"type": "log", "message": f"{log_prefix} branch=skip reason=p_future_below_threshold"}]
+                )
             return []
 
         # p_now 上抜け: 先読みがあれば確定して再生。失敗していれば通常のターン取得へ。
