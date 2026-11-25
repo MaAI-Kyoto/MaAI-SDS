@@ -23,18 +23,18 @@
 
 ## Overview
 
-MaAI-SDS is a research platform for real-time spoken dialogue in Japanese. It connects speech recognition (ASR),
+MaAI-SDS is a research platform for real-time spoken dialogue. It connects speech recognition (ASR),
 a large language model (LLM) and speech synthesis (TTS) as a pipeline, and uses the VAP (Voice Activity Projection)
 models of [MaAI](https://github.com/MaAI-Kyoto/MaAI) to predict turn-taking and to generate backchannels and nods.
 The system talks through a 3D avatar in [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX).
 
 Each module runs as its own process, and engines can be switched from the settings window. Both local open models
-and cloud APIs are supported, so recent Japanese ASR and TTS models can be compared within the same dialogue system.
+and cloud APIs are supported, so recent ASR and TTS models can be compared within the same dialogue system.
 
 > The source code is released under the [MIT License](LICENSE). The models and libraries it uses are covered by
 > their own licenses, some of which are non-commercial only ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
 
-The user interface and the documents under `docs/` are in Japanese.
+The supported language is currently Japanese (the dialogue, the user interface and the documents under `docs/`). English support is planned.
 
 ## Features
 

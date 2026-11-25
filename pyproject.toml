@@ -1,7 +1,7 @@
 [project]
 name = "maai-sds"
 version = "0.1.0"
-description = "Real-time Japanese spoken dialogue system with MaAI turn-taking, backchannels and nods for an MMDAgent-EX avatar"
+description = "Real-time spoken dialogue system with MaAI turn-taking, backchannels and nods for an MMDAgent-EX avatar"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
