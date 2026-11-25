@@ -53,6 +53,7 @@ NUMERIC_FIELDS: dict[str, tuple[float, float, bool, str]] = {
     "voicevox_core_cpu_threads_edit": (1, 32, False, ""),
     # しきい値・確率
     "asr_maai_turn_threshold_edit": _PROB,
+    "asr_maai_turn_hold_frames_edit": (1, 25, False, "フレーム"),
     "asr_smart_turn_threshold_edit": _PROB,
     "asr_vad_off_threshold_edit": _PROB,
     "asr_vad_on_threshold_edit": _PROB,

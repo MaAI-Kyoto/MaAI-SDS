@@ -53,6 +53,7 @@ APP_CONFIG_FIELDS: tuple[tuple[str, str, str, bool, object, object, str, object]
     ('asr_funasr_nano_onnx_max_new_tokens', 'asr_funasr_nano_onnx_max_new_tokens_edit', 'text', False, None, '128', 'setText', None),
     ('asr_funasr_nano_onnx_num_threads', 'asr_funasr_nano_onnx_num_threads_edit', 'text', False, None, '8', 'setText', None),
     ('asr_maai_turn_threshold', 'asr_maai_turn_threshold_edit', 'text', False, None, '0.5', 'setText', None),
+    ('asr_maai_turn_hold_frames', 'asr_maai_turn_hold_frames_edit', 'text', False, None, '1', 'setText', '1'),
     ('asr_min_segment_sec', 'asr_min_segment_sec_edit', 'text', False, None, '0.5', 'setText', None),
     ('asr_nemotron_lang', 'asr_nemotron_lang_edit', 'text', False, None, 'ja-JP', 'setText', None),
     ('asr_nemotron_max_symbols', 'asr_nemotron_max_symbols_edit', 'text', False, None, '30', 'setText', None),

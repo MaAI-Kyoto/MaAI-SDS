@@ -3362,6 +3362,14 @@ def build_ui(controller) -> None:
     maai_turn_vap_params_form.addRow(QLabel("ローカルモデル（.pt）"), maai_turn_vap_local_model_row)
     maai_test_turn_vap_local_model_browse_btn.clicked.connect(controller._browse_maai_turn_vap_local_model)
     maai_turn_vap_params_form.addRow(QLabel("MaAIターンしきい値"), controller.asr_maai_turn_threshold_edit)
+    controller.asr_maai_turn_hold_frames_edit = QLineEdit("1")
+    controller.asr_maai_turn_hold_frames_edit.setToolTip(
+        "p_nowが何フレーム続けてしきい値以上になったらターンを取るかです（1〜25。12.5 Hzなら1フレーム0.08秒）。"
+        "1はしきい値を超えた時点で取ります。増やすと、相手の話の途中の短い間でp_nowが一瞬だけ超えたときに"
+        "ターンを取りにくくなりますが、その分だけ応答が遅れます。"
+    )
+    controller.asr_maai_turn_hold_frames_edit.editingFinished.connect(controller._save_app_config)
+    maai_turn_vap_params_form.addRow(QLabel("ターンを取るまでの連続フレーム数"), controller.asr_maai_turn_hold_frames_edit)
     controller.asr_maai_turn_condition_combo = QComboBox()
     controller.asr_maai_turn_condition_combo.addItem("p_nowがしきい値を超えたとき", "p_now")
     controller.asr_maai_turn_condition_combo.addItem("p_nowが超えた時点でp_futureも超えているとき", "p_now_and_future")

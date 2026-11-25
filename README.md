@@ -105,6 +105,7 @@ the hatched bars are prefetches (audio that is generated and held without playin
 
 Other mechanisms:
 
+- **Frames before taking the turn**: with the default 1, the turn is taken as soon as `p_now` goes past the threshold. A larger value makes the system wait until `p_now` has stayed past the threshold for that many frames, so short pauses in the middle of the user's speech are taken less often (at the cost of that much delay).
 - **Turn lock**: after taking the turn, the system does not take the next one until user speech is detected (so it does not keep
   talking on its own).
 - **User speech and barge-in**: the user is considered to be speaking when VAD is at or above 「割り込みVADしきい値」 (barge-in

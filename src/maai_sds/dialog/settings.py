@@ -1227,6 +1227,7 @@ def build_dialog_orchestrator_settings(cfg: dict) -> dict[str, object]:
         "system_prompt": cfg_str(cfg, "llm_system_prompt", ""),
         "maai_turn_threshold": _clamp(cfg_float(cfg, "asr_maai_turn_threshold", 0.5), 0.0, 1.0),
         "maai_turn_condition": _turn_condition(cfg),
+        "maai_turn_hold_frames": max(1, cfg_int(cfg, "asr_maai_turn_hold_frames", 1)),
         "vad_on_threshold": cfg_float(cfg, "asr_vad_on_threshold", 0.1),
         "interrupt_vad_threshold": cfg_float(cfg, "voice_dialog_interrupt_vad_threshold", 0.0),
         "interrupt_p_now_threshold": cfg_float(cfg, "voice_dialog_interrupt_p_now_threshold", 0.0),

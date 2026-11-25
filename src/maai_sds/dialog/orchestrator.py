@@ -95,6 +95,8 @@ class DialogOrchestratorState:
     # 終了時の発話を出したら True（そのあと対話は止まる）。開始時の発話と同じく最後まで流すため、
     # この間はユーザー発話による割り込み・ターン取得・終了時の発話の出し直しをしない。
     scheduled_exit_speaking: bool = False
+    # p_now がしきい値を上にまたいでから、しきい値以上のフレームが何フレーム続いているか（0 は下にいる）
+    turn_above_frames: int = 0
     # on_maai_result で user_side となった最終時刻（wall）。アイドル経過後ターン取得用。
     last_user_speech_detect_wall_ts: float | None = None
 
@@ -104,6 +106,8 @@ class DialogOrchestratorState:
 TURN_CONDITION_P_NOW = "p_now"
 TURN_CONDITION_P_NOW_AND_FUTURE = "p_now_and_future"
 TURN_CONDITIONS = (TURN_CONDITION_P_NOW, TURN_CONDITION_P_NOW_AND_FUTURE)
+# 「ターンを取るまでの連続フレーム数」の上限（12.5 Hz で 2 秒）
+MAX_TURN_HOLD_FRAMES = 25
 
 
 def normalize_turn_condition(value: object) -> str:
@@ -233,6 +237,14 @@ class DialogOrchestrator:
 
     def _maai_turn_condition(self) -> str:
         return normalize_turn_condition(self.settings.get("maai_turn_condition"))
+
+    def _maai_turn_hold_frames(self) -> int:
+        """p_now が何フレーム続けてしきい値以上になったらターンを取るか（1 で上抜けた時点）。"""
+        try:
+            v = int(float(str(self.settings.get("maai_turn_hold_frames", 1)).strip() or "1"))
+        except (TypeError, ValueError):
+            v = 1
+        return max(1, min(MAX_TURN_HOLD_FRAMES, v))
 
     def _maai_turn_threshold(self) -> float:
         value = _safe_float(self.settings.get("maai_turn_threshold", 0.5), 0.5)
@@ -1320,13 +1332,23 @@ class DialogOrchestrator:
             and (float(prev_p) <= float(threshold))
             and (p_now >= float(threshold))
         )
-        # ターンを取るフレーム。p_now_and_future では、p_now が上にまたいだその時点で
-        # p_future もしきい値以上でなければ取らない（後から p_future が上がっても、p_now が
-        # いったんしきい値を下回って再びまたぐまでは取らない）。p_future が届かない経路では従来どおり。
+        # p_now が上にまたいでから、しきい値以上が続いたフレーム数。「ターンを取るまでの連続フレーム数」
+        # （maai_turn_hold_frames）に届いたフレームでターンを取る。1 なら上にまたいだフレーム（従来どおり）。
+        # 話の途中の短い間で p_now が一瞬だけ超えたときに、ターンを取らないためのもの。
+        if crossed_up:
+            self.state.turn_above_frames = 1
+        elif p_now >= float(threshold) and self.state.turn_above_frames > 0:
+            self.state.turn_above_frames += 1
+        elif p_now < float(threshold):
+            self.state.turn_above_frames = 0
+        reached = self.state.turn_above_frames == self._maai_turn_hold_frames()
+        # ターンを取るフレーム。p_now_and_future では、そのフレームで p_future もしきい値以上でなければ
+        # 取らない（後から p_future が上がっても、p_now がいったんしきい値を下回って再びまたぐまでは
+        # 取らない）。p_future が届かない経路では従来どおり。
         future_required = (
             self._maai_turn_condition() == TURN_CONDITION_P_NOW_AND_FUTURE and p_future is not None
         )
-        take_turn = crossed_up and ((not future_required) or p_fut >= float(threshold))
+        take_turn = reached and ((not future_required) or p_fut >= float(threshold))
         p_future_crossed_up = (
             (prev_fut is not None)
             and (float(prev_fut) <= float(threshold))
@@ -1381,7 +1403,7 @@ class DialogOrchestrator:
         # llm_in_progress / turn_blocked は立てない（後続の p_now クロスを捨てないため）。
         if (
             p_future_crossed_up
-            and (not crossed_up)
+            and (not reached)
             and (not self.state.prefetch_active)
             and (not self.state.llm_in_progress)
             and (not self.state.turn_blocked_until_user_speech)
@@ -1402,7 +1424,7 @@ class DialogOrchestrator:
                 return []
             return []
         if not take_turn:
-            if crossed_up:
+            if reached:
                 return self._dispatch_then_return(
                     [{"type": "log", "message": f"{log_prefix} branch=skip reason=p_future_below_threshold"}]
                 )

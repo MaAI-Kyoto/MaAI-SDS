@@ -5602,6 +5602,26 @@
               ]
             },
             {
+              "label": "ターンを取るまでの連続フレーム数",
+              "widgets": [
+                {
+                  "attr": "asr_maai_turn_hold_frames_edit",
+                  "config_key": "asr_maai_turn_hold_frames",
+                  "scope": "app",
+                  "tooltip": "p_nowが何フレーム続けてしきい値以上になったらターンを取るかです（1〜25。12.5 Hzなら1フレーム0.08秒）。1はしきい値を超えた時点で取ります。増やすと、相手の話の途中の短い間でp_nowが一瞬だけ超えたときにターンを取りにくくなりますが、その分だけ応答が遅れます。\n範囲：1〜25（フレーム）",
+                  "kind": "line",
+                  "value": "1",
+                  "password": false,
+                  "numeric": {
+                    "min": 1,
+                    "max": 25,
+                    "decimals": false,
+                    "note": "フレーム"
+                  }
+                }
+              ]
+            },
+            {
               "label": "ターンを取る条件",
               "widgets": [
                 {
