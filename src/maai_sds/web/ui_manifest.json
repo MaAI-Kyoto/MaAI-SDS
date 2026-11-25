@@ -114,19 +114,6 @@
               "label": "",
               "widgets": [
                 {
-                  "attr": "voice_dialog_interrupt_btn",
-                  "config_key": null,
-                  "scope": "app",
-                  "tooltip": "話している途中のシステム発話を止めます。",
-                  "kind": "button",
-                  "text": "割り込み"
-                }
-              ]
-            },
-            {
-              "label": "",
-              "widgets": [
-                {
                   "attr": "voice_dialog_settings_toggle_btn",
                   "config_key": null,
                   "scope": "app",

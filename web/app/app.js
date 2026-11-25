@@ -2561,10 +2561,6 @@ async function handleButton(w, node, ev) {
       await stopVoiceDialog();
       return;
     }
-    if (attr === 'voice_dialog_interrupt_btn') {
-      await postCommand({ type: 'interrupt' });
-      return;
-    }
     if (attr === 'asr_launch_btn') {
       sendModuleCommand('asr', 'start');
       return;
@@ -3287,7 +3283,6 @@ async function main() {
   $('#btn-stop-all').addEventListener('click', () => stopAllModules().catch(showError));
   $('#btn-start').addEventListener('click', () => startVoiceDialog());
   $('#btn-stop').addEventListener('click', () => stopVoiceDialog());
-  $('#btn-interrupt').addEventListener('click', () => postCommand({ type: 'interrupt' }).catch(showError));
   document.addEventListener('pointerdown', () => {
     unlockBrowserAudio();
     if (state.voiceActive) restoreVoiceMic('running');

@@ -220,19 +220,11 @@ def _finish_main_layout(
     voice_dialog_start_btn.setMaximumWidth(16777215)  # 上で一律に付けた 220px の上限を外す
     voice_dialog_settings_btn = QPushButton("詳細設定")
     controller.voice_dialog_settings_toggle_btn = voice_dialog_settings_btn
-    # Web の「割り込み」と同じ。システム発話を止めてユーザーの番にする（dialog/worker の interrupt）。
-    voice_dialog_interrupt_btn = QPushButton("割り込み")
-    voice_dialog_interrupt_btn.setToolTip("話している途中のシステム発話を止めます。")
-    voice_dialog_interrupt_btn.clicked.connect(
-        lambda: controller._send_dialog_orchestrator_command({"type": "interrupt"})
-    )
-    controller.voice_dialog_interrupt_btn = voice_dialog_interrupt_btn
     voice_dialog_hint = QLabel("開始すると、ASR・LLM・TTS・MaAIを自動で起動します。")
     voice_dialog_hint.setProperty("role", "caption")
     voice_dialog_hint.setWordWrap(True)
     voice_dialog_sub_buttons = QHBoxLayout()
     voice_dialog_sub_buttons.addWidget(voice_dialog_stop_btn)
-    voice_dialog_sub_buttons.addWidget(voice_dialog_interrupt_btn)
     voice_dialog_sub_buttons.addStretch()
     voice_dialog_sub_buttons.addWidget(voice_dialog_settings_btn)
     controller.voice_dialog_status_label.setProperty("role", "status")
