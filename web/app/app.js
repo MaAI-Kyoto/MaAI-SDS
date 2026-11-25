@@ -199,7 +199,25 @@ const api = {
 function nodeValue(node) {
   if (!node) return '';
   if (node.type === 'checkbox') return node.checked;
+  // エンジンの一覧（1 行＝モデル（実行系））は、選んだ行のエンジンの値を返す。
+  if (node.dataset?.engineChoice) return node.selectedOptions[0]?.dataset.engine ?? node.value;
   return node.value;
+}
+
+// エンジンの一覧で、engine に当たる行のうち、隠した欄の設定値（subs）も合う行を選ぶ。
+function selectEngineChoice(node, engine) {
+  const opts = [...node.options].filter((o) => o.dataset.engine === String(engine ?? ''));
+  const subsMatch = (o) => JSON.parse(o.dataset.subs || '[]')
+    .every((sub) => !sub.config_key || String(state.config[sub.config_key] ?? '') === String(sub.value));
+  const pick = opts.find(subsMatch) || opts[0];
+  if (pick) {
+    node.value = pick.value;
+  } else if (engine) {
+    const opt = new Option(String(engine), String(engine));
+    opt.dataset.engine = String(engine);
+    node.append(opt);
+    node.value = String(engine);
+  }
 }
 
 function attrValue(attr, fallback = '') {
@@ -212,6 +230,7 @@ function setAttrValue(attr, value) {
   const node = state.byAttr.get(attr);
   if (!node) return;
   if (node.type === 'checkbox') node.checked = Boolean(value);
+  else if (node.dataset?.engineChoice) selectEngineChoice(node, value);
   else node.value = value == null ? '' : String(value);
 }
 
@@ -227,6 +246,7 @@ function syncDuplicateInputs(key, value, source) {
   for (const n of state.inputNodes.get(key) || []) {
     if (n === source) continue;
     if (n.type === 'checkbox') n.checked = Boolean(value);
+    else if (n.dataset?.engineChoice) selectEngineChoice(n, value);
     else n.value = value == null ? '' : String(value);
   }
 }
@@ -391,6 +411,36 @@ function renderWidget(w) {
       break;
     }
     case 'combo': {
+      if (w.engine_choice) {
+        // 1 行＝「モデル（実行系）」（Qt の gui/engine_choices.py）。保存するのはエンジンの値と、
+        // 行が決める隠した欄の値（speech.cpp のモデル・Irodori の実行系など）。
+        node = el('select');
+        node.dataset.engineChoice = '1';
+        for (const item of w.items ?? []) {
+          const opt = new Option(String(item.label ?? item.value), String(item.value));
+          opt.dataset.engine = String(item.engine ?? item.value);
+          opt.dataset.subs = JSON.stringify(item.subs ?? []);
+          node.append(opt);
+        }
+        selectEngineChoice(node, currentValue(w));
+        node.addEventListener('change', () => {
+          const opt = node.selectedOptions[0];
+          const engine = opt?.dataset.engine ?? '';
+          for (const sub of JSON.parse(opt?.dataset.subs || '[]')) {
+            if (!sub.config_key) continue;
+            state.config[sub.config_key] = sub.value;
+            syncDuplicateInputs(sub.config_key, sub.value);
+            markDirty(sub.config_key, sub.value, null, 'app');
+          }
+          if (key) {
+            syncDuplicateInputs(key, engine, node);
+            markDirty(key, engine, node, scope);
+          }
+          if (w.attr === 'tts_engine_combo') onTtsEngineChanged(engine);
+          else onAsrEngineChanged(engine);
+        });
+        break;
+      }
       node = el('select');
       // この環境で選ばせない値（CPU 構成での GPU 項目など）。サーバが
       // /api/ui/manifest の応答に足してくる。項目は残して押せなくするだけなので、
@@ -527,9 +577,11 @@ function renderGroup(win, group) {
     line.append(el('label', null, row.label || ''));
     const fields = el('div', 'row-fields');
     for (const w of row.widgets) {
+      if (w.hidden) continue; // エンジンの一覧で選ぶようになった欄
       const node = renderWidget(w);
       if (node) fields.append(node);
     }
+    if (!fields.children.length && row.widgets.some((w) => w.hidden)) continue;
     line.append(fields);
     if (row.detail) {
       if (!detailBox || detailBox.dataset.title !== row.detail) {

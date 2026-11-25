@@ -55,6 +55,7 @@ from PySide6.QtWidgets import (  # noqa: E402
 
 from maai_sds.gui.app_config_spec import APP_CONFIG_FIELDS  # noqa: E402
 from maai_sds.gui.collapsible import CollapsibleSection  # noqa: E402
+from maai_sds.gui.engine_choices import HIDDEN_SUB_ATTRS, EngineChoiceCombo, choice_id  # noqa: E402
 from maai_sds.gui.numeric_fields import manifest_hint  # noqa: E402
 from maai_sds.maai.plot_window import MAAI_PLOT_VISIBILITY_SPECS  # noqa: E402
 
@@ -263,6 +264,9 @@ def _describe(widget: QWidget, attrs: dict[int, str], keys: dict[str, str]) -> d
         "scope": "mdf" if (attr or "").startswith("mdf:") else "app",
         "tooltip": tooltip or None,
     }
+    # エンジンの一覧で選ぶようになった欄（speech.cpp のモデル・Irodori の実行系）は Web でも出さない。
+    if attr in HIDDEN_SUB_ATTRS:
+        common["hidden"] = True
     if isinstance(widget, QLineEdit):
         # パスワード欄は値を一切載せない。build_manifest が設定を読ませずに構築するので
         # 本来ここは常に空だが、この生成物は git に commit され `/api/ui/manifest` から
@@ -286,6 +290,20 @@ def _describe(widget: QWidget, attrs: dict[int, str], keys: dict[str, str]) -> d
         return {**common, "kind": "textarea",
                 "value": "" if readonly else widget.toPlainText(),
                 "readonly": readonly}
+    if isinstance(widget, EngineChoiceCombo):
+        # 1 行＝「モデル（実行系）」。保存するのはエンジンの値（config_key）と、行が決める隠した欄の値。
+        # Web は選んだ行の subs をそれぞれの設定キーへ書く（app.js の engine_choice）。
+        items = []
+        for c in widget.choices():
+            items.append({
+                "value": choice_id(c),
+                "label": c.label,
+                "engine": c.engine,
+                "subs": [{"config_key": keys.get(a), "value": v} for a, v in c.subs],
+            })
+        current = widget.current_choice()
+        return {**common, "kind": "combo", "engine_choice": True, "items": items,
+                "value": current.engine if current is not None else ""}
     if isinstance(widget, QComboBox):
         # マイク入力の選択肢は載せない。中身は **抽出したマシンに繋がっている
         # オーディオデバイス** で、Bluetooth の接続状況ひとつで変わるため、

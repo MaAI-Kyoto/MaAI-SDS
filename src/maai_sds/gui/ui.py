@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 from .chat_view import ChatView
 from .choice_combo import ChoiceCombo
 from .collapsible import CollapsibleSection
+from .engine_choices import ASR_ENGINE_CHOICES, TTS_ENGINE_CHOICES, EngineChoiceCombo, unique_engines
 from .settings_hub import SettingsHub
 from ..utils import to_bool
 from .. import engine_manager
@@ -40,11 +41,8 @@ from ..maai.nod_motion_chart_widget import NodMotionChartWidget
 # ASR エンジンの選択肢。メイン画面のコンボと比較モードの上下段コンボが同じ一覧を使う
 # （以前は 3 箇所に同じリテラルが並んでいて、エンジンを足すと比較モードにだけ現れない、
 # という取りこぼしが起きていた）。並び順は「よく使う順」で、設定ページの並びとは独立。
-_ASR_ENGINE_CHOICES = [
-    "sherpa-onnx", "qwen3-asr-onnx", "nemotron-onnx",
-    "sensevoice-onnx", "parakeet-onnx", "cohere-asr-onnx", "funasr-nano-onnx",
-    "speechcpp-asr", "faster-whisper", "qwen3-asr", "nemotron-asr", "external-asr-tcp",
-]
+# メイン画面の欄は「モデル（実行系）」の一覧（gui/engine_choices.py）。ここはエンジンの値だけの一覧。
+_ASR_ENGINE_CHOICES = unique_engines(ASR_ENGINE_CHOICES)
 
 
 class _CurrentPageSizeStack(QStackedWidget):
@@ -578,22 +576,8 @@ def _build_initial_widgets(controller):
     root = QVBoxLayout()
     controller.exec_edit = QLineEdit()
     controller.mdf_edit = QLineEdit()
-    controller.tts_engine_combo = QComboBox()
-    controller.tts_engine_combo.addItems(
-        [
-            "VOICEVOX",
-            "VOICEVOX-Core",
-            "Kokoro-RealtimeTTS",
-            "Qwen3-TTS-CPP",
-            "LFM2.5-Audio",
-            "Cartesia-Realtime",
-            "AivisSpeech",
-            "Supertonic-3",
-            "Irodori-v4",
-            "Tsukasa",
-            "TEMPLATE",
-        ]
-    )
+    # 1 行＝「モデル（実行系）」。currentText() はエンジンの値（gui/engine_choices.py）。
+    controller.tts_engine_combo = EngineChoiceCombo(controller, TTS_ENGINE_CHOICES)
 
     controller.engine_install_checks = {}
     controller.engine_install_status_labels = {}
@@ -929,8 +913,7 @@ def _build_initial_widgets(controller):
     controller.llm_chat_view.setReadOnly(True)
     controller.llm_chat_view.setPlaceholderText("LLMとの対話ログがここに表示されます")
     controller.llm_status_label = QLabel("状態：待機")
-    controller.asr_engine_combo = QComboBox()
-    controller.asr_engine_combo.addItems(_ASR_ENGINE_CHOICES)
+    controller.asr_engine_combo = EngineChoiceCombo(controller, ASR_ENGINE_CHOICES)
     controller.asr_engine_combo_settings = QComboBox()
     controller.asr_engine_combo_settings.addItems(_ASR_ENGINE_CHOICES)
     controller.asr_vad_backend_combo = QComboBox()
@@ -1506,8 +1489,8 @@ def build_ui(controller) -> None:
     asr_qwen_custom_model_path_browse_btn.clicked.connect(controller._browse_asr_qwen_custom_model_path)
     asr_nemotron_python_browse_btn.clicked.connect(controller._browse_asr_nemotron_python)
     asr_external_start_script_browse_btn.clicked.connect(controller._browse_asr_external_start_script)
-    controller.tts_engine_combo.currentTextChanged.connect(controller._on_tts_engine_changed)
-    controller.tts_engine_combo.currentTextChanged.connect(lambda _text: controller._save_app_config())
+    controller.tts_engine_combo.engineChanged.connect(controller._on_tts_engine_changed)
+    controller.tts_engine_combo.engineChanged.connect(lambda _text: controller._save_app_config())
     controller.voicevox_exe_edit.editingFinished.connect(controller._save_app_config)
     controller.voicevox_core_onnxruntime_edit.editingFinished.connect(controller._save_app_config)
     controller.voicevox_core_openjtalk_dict_edit.editingFinished.connect(controller._save_app_config)
@@ -1634,8 +1617,8 @@ def build_ui(controller) -> None:
     controller.voice_dialog_scheduled_exit_sec_edit.editingFinished.connect(controller._save_app_config)
     controller.voice_dialog_scheduled_exit_utterance_edit.editingFinished.connect(controller._save_app_config)
     controller.voice_dialog_idle_take_turn_sec_edit.editingFinished.connect(controller._save_app_config)
-    controller.asr_engine_combo.currentTextChanged.connect(lambda _text: controller._save_app_config())
-    controller.asr_engine_combo.currentTextChanged.connect(controller._on_asr_engine_changed)
+    controller.asr_engine_combo.engineChanged.connect(lambda _text: controller._save_app_config())
+    controller.asr_engine_combo.engineChanged.connect(controller._on_asr_engine_changed)
     controller.asr_engine_combo_settings.currentTextChanged.connect(lambda _text: controller._save_app_config())
     controller.asr_engine_combo_settings.currentTextChanged.connect(controller._on_asr_engine_changed)
     controller.asr_vad_backend_combo.currentTextChanged.connect(lambda _text: controller._save_app_config())

@@ -740,19 +740,129 @@
                   "scope": "app",
                   "tooltip": null,
                   "kind": "combo",
+                  "engine_choice": true,
                   "items": [
-                    "sherpa-onnx",
-                    "qwen3-asr-onnx",
-                    "nemotron-onnx",
-                    "sensevoice-onnx",
-                    "parakeet-onnx",
-                    "cohere-asr-onnx",
-                    "funasr-nano-onnx",
-                    "speechcpp-asr",
-                    "faster-whisper",
-                    "qwen3-asr",
-                    "nemotron-asr",
-                    "external-asr-tcp"
+                    {
+                      "value": "sherpa-onnx",
+                      "label": "ReazonSpeech k2（sherpa-onnx）",
+                      "engine": "sherpa-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "speechcpp-asr::asr_speechcpp_model_combo=reazonspeech-v2",
+                      "label": "ReazonSpeech NeMo v2（speech.cpp）",
+                      "engine": "speechcpp-asr",
+                      "subs": [
+                        {
+                          "config_key": "asr_speechcpp_model",
+                          "value": "reazonspeech-v2"
+                        }
+                      ]
+                    },
+                    {
+                      "value": "speechcpp-asr::asr_speechcpp_model_combo=haas-ja-v1.0",
+                      "label": "Haas-ja v1.0（speech.cpp）",
+                      "engine": "speechcpp-asr",
+                      "subs": [
+                        {
+                          "config_key": "asr_speechcpp_model",
+                          "value": "haas-ja-v1.0"
+                        }
+                      ]
+                    },
+                    {
+                      "value": "qwen3-asr-onnx",
+                      "label": "Qwen3-ASR（sherpa-onnx）",
+                      "engine": "qwen3-asr-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "speechcpp-asr::asr_speechcpp_model_combo=qwen3-asr-0.6b",
+                      "label": "Qwen3-ASR 0.6B（speech.cpp）",
+                      "engine": "speechcpp-asr",
+                      "subs": [
+                        {
+                          "config_key": "asr_speechcpp_model",
+                          "value": "qwen3-asr-0.6b"
+                        }
+                      ]
+                    },
+                    {
+                      "value": "speechcpp-asr::asr_speechcpp_model_combo=qwen3-asr-1.7b",
+                      "label": "Qwen3-ASR 1.7B（speech.cpp）",
+                      "engine": "speechcpp-asr",
+                      "subs": [
+                        {
+                          "config_key": "asr_speechcpp_model",
+                          "value": "qwen3-asr-1.7b"
+                        }
+                      ]
+                    },
+                    {
+                      "value": "qwen3-asr",
+                      "label": "Qwen3-ASR（vLLM・Docker）",
+                      "engine": "qwen3-asr",
+                      "subs": []
+                    },
+                    {
+                      "value": "parakeet-onnx",
+                      "label": "Parakeet TDT-CTC ja（sherpa-onnx）",
+                      "engine": "parakeet-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "speechcpp-asr::asr_speechcpp_model_combo=parakeet-tdt_ctc-0.6b-ja",
+                      "label": "Parakeet TDT-CTC ja（speech.cpp）",
+                      "engine": "speechcpp-asr",
+                      "subs": [
+                        {
+                          "config_key": "asr_speechcpp_model",
+                          "value": "parakeet-tdt_ctc-0.6b-ja"
+                        }
+                      ]
+                    },
+                    {
+                      "value": "nemotron-onnx",
+                      "label": "Nemotron 3.5 streaming（sherpa-onnx）",
+                      "engine": "nemotron-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "nemotron-asr",
+                      "label": "Nemotron 3.5 streaming（NeMo）",
+                      "engine": "nemotron-asr",
+                      "subs": []
+                    },
+                    {
+                      "value": "sensevoice-onnx",
+                      "label": "SenseVoiceSmall（sherpa-onnx）",
+                      "engine": "sensevoice-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "cohere-asr-onnx",
+                      "label": "Cohere Transcribe（sherpa-onnx）",
+                      "engine": "cohere-asr-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "funasr-nano-onnx",
+                      "label": "Fun-ASR-Nano（sherpa-onnx）",
+                      "engine": "funasr-nano-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "faster-whisper",
+                      "label": "Whisper（faster-whisper）",
+                      "engine": "faster-whisper",
+                      "subs": []
+                    },
+                    {
+                      "value": "external-asr-tcp",
+                      "label": "外部ASR（TCP）",
+                      "engine": "external-asr-tcp",
+                      "subs": []
+                    }
                   ],
                   "value": "sherpa-onnx"
                 }
@@ -812,16 +922,16 @@
                   "kind": "combo",
                   "items": [
                     "sherpa-onnx",
+                    "speechcpp-asr",
                     "qwen3-asr-onnx",
-                    "nemotron-onnx",
-                    "sensevoice-onnx",
+                    "qwen3-asr",
                     "parakeet-onnx",
+                    "nemotron-onnx",
+                    "nemotron-asr",
+                    "sensevoice-onnx",
                     "cohere-asr-onnx",
                     "funasr-nano-onnx",
-                    "speechcpp-asr",
                     "faster-whisper",
-                    "qwen3-asr",
-                    "nemotron-asr",
                     "external-asr-tcp"
                   ],
                   "value": "sherpa-onnx"
@@ -834,16 +944,16 @@
                   "kind": "combo",
                   "items": [
                     "sherpa-onnx",
+                    "speechcpp-asr",
                     "qwen3-asr-onnx",
-                    "nemotron-onnx",
-                    "sensevoice-onnx",
+                    "qwen3-asr",
                     "parakeet-onnx",
+                    "nemotron-onnx",
+                    "nemotron-asr",
+                    "sensevoice-onnx",
                     "cohere-asr-onnx",
                     "funasr-nano-onnx",
-                    "speechcpp-asr",
                     "faster-whisper",
-                    "qwen3-asr",
-                    "nemotron-asr",
                     "external-asr-tcp"
                   ],
                   "value": "faster-whisper"
@@ -2636,6 +2746,7 @@
                   "config_key": "asr_speechcpp_model",
                   "scope": "app",
                   "tooltip": "speech.cppで動かすモデルです。初めて選んだモデルは起動時に取得します（0.7〜2.2GB）。時間はRTX 5070 Ti LaptopのGPUで1発話あたり。",
+                  "hidden": true,
                   "kind": "combo",
                   "items": [
                     {
@@ -2727,18 +2838,120 @@
                   "scope": "app",
                   "tooltip": null,
                   "kind": "combo",
+                  "engine_choice": true,
                   "items": [
-                    "VOICEVOX",
-                    "VOICEVOX-Core",
-                    "Kokoro-RealtimeTTS",
-                    "Qwen3-TTS-CPP",
-                    "LFM2.5-Audio",
-                    "Cartesia-Realtime",
-                    "AivisSpeech",
-                    "Supertonic-3",
-                    "Irodori-v4",
-                    "Tsukasa",
-                    "TEMPLATE"
+                    {
+                      "value": "VOICEVOX-Core",
+                      "label": "VOICEVOX（VOICEVOX Core）",
+                      "engine": "VOICEVOX-Core",
+                      "subs": []
+                    },
+                    {
+                      "value": "VOICEVOX",
+                      "label": "VOICEVOX（アプリ）",
+                      "engine": "VOICEVOX",
+                      "subs": []
+                    },
+                    {
+                      "value": "AivisSpeech",
+                      "label": "AivisSpeech（アプリ）",
+                      "engine": "AivisSpeech",
+                      "subs": []
+                    },
+                    {
+                      "value": "Irodori-v4::irodori_backend_combo=speechcpp",
+                      "label": "Irodori-TTS v4.1 Small MF（speech.cpp）",
+                      "engine": "Irodori-v4",
+                      "subs": [
+                        {
+                          "config_key": "irodori_backend",
+                          "value": "speechcpp"
+                        }
+                      ]
+                    },
+                    {
+                      "value": "Irodori-v4::irodori_backend_combo=audiocpp&irodori_audiocpp_model_combo=500m-v3",
+                      "label": "Irodori-TTS 500M v3（audio.cpp）",
+                      "engine": "Irodori-v4",
+                      "subs": [
+                        {
+                          "config_key": "irodori_backend",
+                          "value": "audiocpp"
+                        },
+                        {
+                          "config_key": "irodori_audiocpp_model",
+                          "value": "500m-v3"
+                        }
+                      ]
+                    },
+                    {
+                      "value": "Irodori-v4::irodori_backend_combo=audiocpp&irodori_audiocpp_model_combo=600m-v3-voicedesign",
+                      "label": "Irodori-TTS 600M v3 VoiceDesign（audio.cpp）",
+                      "engine": "Irodori-v4",
+                      "subs": [
+                        {
+                          "config_key": "irodori_backend",
+                          "value": "audiocpp"
+                        },
+                        {
+                          "config_key": "irodori_audiocpp_model",
+                          "value": "600m-v3-voicedesign"
+                        }
+                      ]
+                    },
+                    {
+                      "value": "Irodori-v4::irodori_backend_combo=pytorch",
+                      "label": "Irodori-TTS（PyTorch）",
+                      "engine": "Irodori-v4",
+                      "subs": [
+                        {
+                          "config_key": "irodori_backend",
+                          "value": "pytorch"
+                        }
+                      ]
+                    },
+                    {
+                      "value": "Qwen3-TTS-CPP",
+                      "label": "Qwen3-TTS 1.7B CustomVoice（audio.cpp）",
+                      "engine": "Qwen3-TTS-CPP",
+                      "subs": []
+                    },
+                    {
+                      "value": "LFM2.5-Audio",
+                      "label": "LFM2.5-Audio（audio.cpp）",
+                      "engine": "LFM2.5-Audio",
+                      "subs": []
+                    },
+                    {
+                      "value": "Supertonic-3",
+                      "label": "Supertonic 3（audio.cpp）",
+                      "engine": "Supertonic-3",
+                      "subs": []
+                    },
+                    {
+                      "value": "Kokoro-RealtimeTTS",
+                      "label": "Kokoro（RealtimeTTS）",
+                      "engine": "Kokoro-RealtimeTTS",
+                      "subs": []
+                    },
+                    {
+                      "value": "Tsukasa",
+                      "label": "Tsukasa Speech（PyTorch）",
+                      "engine": "Tsukasa",
+                      "subs": []
+                    },
+                    {
+                      "value": "Cartesia-Realtime",
+                      "label": "Cartesia（クラウド）",
+                      "engine": "Cartesia-Realtime",
+                      "subs": []
+                    },
+                    {
+                      "value": "TEMPLATE",
+                      "label": "任意のHTTP API（TEMPLATE）",
+                      "engine": "TEMPLATE",
+                      "subs": []
+                    }
                   ],
                   "value": "VOICEVOX"
                 }
@@ -3699,6 +3912,7 @@
                   "config_key": "irodori_backend",
                   "scope": "app",
                   "tooltip": "speech.cppはIrodori-TTS v4.1 Small MFで1文0.15〜0.3秒・最初の声まで約70ms（GPU）。audio.cppはIrodori-TTS 500M v3 / 600M v3 VoiceDesignで1文約0.35秒（読みのCER 0.004）。PyTorch版は1文1秒前後で、チェックポイントを選べます。",
+                  "hidden": true,
                   "kind": "combo",
                   "items": [
                     {
@@ -3726,6 +3940,7 @@
                   "config_key": "irodori_audiocpp_model",
                   "scope": "app",
                   "tooltip": "VoiceDesignは声質キャプション（話者欄の文）で声を指定します。参照WAVがあればそちらを優先します。",
+                  "hidden": true,
                   "kind": "combo",
                   "items": [
                     {

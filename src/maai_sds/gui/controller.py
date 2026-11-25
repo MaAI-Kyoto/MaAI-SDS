@@ -39,6 +39,7 @@ from ..ipc.process_service import (
     MMDProcessService,
 )
 from ..mmd.console_filter import is_per_frame_line
+from .engine_choices import link_engine_choice_combos, resync_engine_choice_combos
 from .numeric_fields import apply_numeric_fields
 from .ui import apply_device_choice_limits, build_ui
 from ..utils import apply_maai_nod_para_prediction_aliases, json_config_bool, to_bool
@@ -100,6 +101,12 @@ def parse_remote_orchestrator_endpoint(value: str) -> tuple[str, int]:
     if not 1 <= port <= 65535:
         raise ValueError(f"remote orchestrator port is outside 1..65535: {port}")
     return host.strip(), port
+
+
+def _engine_label(combo) -> str:
+    """一覧の表示名（モデル（実行系））。エンジンの値しか持たない欄はその値。"""
+    label = getattr(combo, "current_label", None)
+    return (label() if callable(label) else combo.currentText()).strip()
 
 
 class MMDAgentController(
@@ -348,6 +355,7 @@ class MMDAgentController(
 
         build_ui(self)
         apply_numeric_fields(self)
+        link_engine_choice_combos(self)
         self._refresh_audio_input_device_list()
         self.process_output_signal.connect(
             self._append_console_output, Qt.ConnectionType.QueuedConnection
@@ -415,6 +423,8 @@ class MMDAgentController(
             self._load_app_config()
         finally:
             self._is_loading_app_config = False
+        # 隠した欄（speech.cpp のモデル・Irodori の実行系）を読んだ後で、一覧の行をそれに合わせる。
+        resync_engine_choice_combos(self)
         # 設定を読み込んだ **後** に無効化する。先に当てると、GPU 機で書かれた設定を
         # 読んだ時点で無効項目が選択された状態に戻ってしまう。
         self._init_device_extra_controls()
@@ -2960,7 +2970,7 @@ class MMDAgentController(
                     top = self.asr_compare_top_engine_combo.currentText().strip()
                     bottom = self.asr_compare_bottom_engine_combo.currentText().strip()
                     return f"比較 {top} + {bottom}"
-                engine = self.asr_engine_combo.currentText().strip() or "sherpa-onnx"
+                engine = _engine_label(self.asr_engine_combo) or "sherpa-onnx"
                 vad = self.asr_vad_backend_combo.currentText().strip() or "maai"
                 turn = self.asr_turn_backend_combo.currentText().strip() or "maai"
                 return f"{engine} / VAD:{vad} / Turn:{turn}"
@@ -2969,7 +2979,7 @@ class MMDAgentController(
                 model = self._read_llm_model_for_backend(backend) or "-"
                 return f"{backend} / {model}"
             if module == "tts":
-                engine = self.tts_engine_combo.currentText().strip() or "VOICEVOX"
+                engine = _engine_label(self.tts_engine_combo) or "VOICEVOX"
                 voice = self.tts_voice_edit.text().strip() or "-"
                 return f"{engine} / voice:{voice}"
             if module == "maai":
