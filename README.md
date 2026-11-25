@@ -103,7 +103,7 @@ the hatched bars are prefetches (audio that is generated and held without playin
   past the threshold (①); if the user then keeps talking, the system speech is stopped by barge-in. `p_now_and_future` takes the
   turn only if `p_future` is also past the threshold when `p_now` goes past it, so it waits at ① and takes the turn at ②.
 
-Logic not shown in the figure:
+Other mechanisms:
 
 - **Turn lock**: after taking the turn, the system does not take the next one until user speech is detected (so it does not keep
   talking on its own).
