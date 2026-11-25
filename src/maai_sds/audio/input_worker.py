@@ -254,6 +254,14 @@ def main() -> int:
         input_gain = 1.0
     input_gain = max(0.0, min(20.0, float(input_gain)))
 
+    # 雑音抑制（audio/denoise.py）。AEC の設定の後で作る。入力ゲインの後にかけ、長さは変えない。
+    noise_suppressor = None
+
+    def _denoise(mono_f32: np.ndarray) -> np.ndarray:
+        if noise_suppressor is None or mono_f32.size <= 0:
+            return mono_f32
+        return noise_suppressor(mono_f32)
+
     def _apply_input_gain(mono_f32: np.ndarray) -> np.ndarray:
         if input_gain == 1.0:
             return mono_f32
@@ -631,7 +639,7 @@ def main() -> int:
             mono = _run_aec(near, far)
             if mono.size <= 0:
                 return
-            mono = _apply_input_gain(mono)
+            mono = _denoise(_apply_input_gain(mono))
             _feed_monitors(mono)
             # Append the current WAV other-channel block before taking the
             # paired system frame. The old order emitted one block of zeros,
@@ -658,7 +666,7 @@ def main() -> int:
             mono = _run_aec(mono, far)
             if mono.size <= 0:
                 return
-            mono = _apply_input_gain(mono)
+            mono = _denoise(_apply_input_gain(mono))
             _feed_monitors(mono)
             other = _prepare_other_ch(
                 raw,
@@ -677,7 +685,7 @@ def main() -> int:
         if mono.size <= 0:
             return
         mono = _resample_linear(mono, int(src_rate), int(sample_rate))
-        mono = _apply_input_gain(mono)
+        mono = _denoise(_apply_input_gain(mono))
         _feed_monitors(mono)
         other = _prepare_other_ch(
             raw,
@@ -706,6 +714,11 @@ def main() -> int:
             emit("log", message=f"AEC not available, proceeding without: {ex}")
     else:
         emit("log", message="AEC disabled by config")
+    from .denoise import make_noise_suppressor
+
+    noise_suppressor = make_noise_suppressor(
+        str(config.get("noise_suppression", "off")), sample_rate, lambda m: emit("log", message=m),
+    )
     stream = None
     feeder_thread: threading.Thread | None = None
     tcp_server_sock: socket.socket | None = None

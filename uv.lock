@@ -129,6 +129,25 @@ wheels = [
 ]
 
 [[package]]
+name = "audiolab"
+version = "0.5.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "av" },
+    { name = "click" },
+    { name = "humanize" },
+    { name = "jinja2" },
+    { name = "requests" },
+    { name = "smart-open" },
+    { name = "soundfile" },
+    { name = "soxr" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/35/e4/465891822307e4ab4a7665fab9c3b5059ecc3d8e39f033b6d05392400bdb/audiolab-0.5.2.tar.gz", hash = "sha256:f9e8da42784dfd40595bd4fbda24ad96a7e07d261cf4caac74d15bb161293ba6", size = 46682, upload-time = "2026-08-27T09:06:55.323Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/94/81/5bff5f43003dc2b72497c85c391cb87e1a9ff0b55c359bdf774fe8779c36/audiolab-0.5.2-py3-none-any.whl", hash = "sha256:657cbabc358d6ff04b69f13d52ffa53288acf4cbcbc792c1cc8b112b670749da", size = 61895, upload-time = "2026-08-27T09:06:54.193Z" },
+]
+
+[[package]]
 name = "audioop-lts"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1571,6 +1590,15 @@ wheels = [
 ]
 
 [[package]]
+name = "humanize"
+version = "4.17.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/a7/5391f6db94bf16289ca63ce2632eef2eba7b9991e701016ac66f04539d47/humanize-4.17.0.tar.gz", hash = "sha256:1d6a36c453dbfbb3f0b34601d2e0b4ce5d48d780305cd45714843f0068fde6ac", size = 90688, upload-time = "2026-11-12T12:33:34.37Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/74/bb970f876202aa0e8c4a1e9904f0b3482e73c752512962b7e957091d5acf/humanize-4.17.0-py3-none-any.whl", hash = "sha256:02d0899527760efe18011944f882df4970943b4cdff7b5a0ba7fed43a576ef98", size = 133715, upload-time = "2026-11-12T12:33:32.955Z" },
+]
+
+[[package]]
 name = "idna"
 version = "3.13"
 source = { registry = "https://pypi.org/simple" }
@@ -2155,6 +2183,7 @@ dependencies = [
     { name = "openai" },
     { name = "pyarrow" },
     { name = "pyaudio" },
+    { name = "pyrnnoise" },
     { name = "pyworld" },
     { name = "silero-vad" },
     { name = "sounddevice" },
@@ -2247,6 +2276,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=23.0.1" },
     { name = "pyaudio" },
     { name = "pyqtgraph", marker = "extra == 'gui'", specifier = ">=0.14.0" },
+    { name = "pyrnnoise", specifier = ">=0.4.6" },
     { name = "pyside6-essentials", marker = "extra == 'gui'", specifier = "==6.12.0" },
     { name = "pyworld", specifier = ">=0.3.5" },
     { name = "realtimetts", extras = ["kokoro"], marker = "extra == 'tts-kokoro'", specifier = "==0.5.7" },
@@ -4228,6 +4258,24 @@ dependencies = [
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/32/36/4c242f81fdcbfa4fb62a5645f6af79191f4097a0577bd5460c24f19cc4ef/pyqtgraph-0.14.0-py3-none-any.whl", hash = "sha256:7abb7c3e17362add64f8711b474dffac5e7b0e9245abdf992e9a44119b7aa4f5", size = 1924755, upload-time = "2025-11-16T19:43:22.251Z" },
+]
+
+[[package]]
+name = "pyrnnoise"
+version = "0.4.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "audiolab" },
+    { name = "click" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "tqdm" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b4/e5/6c85b7d8aaee8e04f730fdbd8295f1d3e5d6dcfb5c1cf8f8b7b22a1fccc7/pyrnnoise-0.4.6-py3-none-macosx_26_0_universal2.whl", hash = "sha256:6110acdbb1aa992fc4122cc5a23d8efa07553abca9cd867c11cb2a64c94f73e8", size = 13382844, upload-time = "2026-11-19T00:11:47.569Z" },
+    { url = "https://files.pythonhosted.org/packages/48/61/640fbfdcc3cb140bac9e9e68764d0b9c92719c900f8c5a8e51371cbae26b/pyrnnoise-0.4.6-py3-none-manylinux1_x86_64.whl", hash = "sha256:60a4819f4f1d1160c853846c3f88dd33d4378fd0cd1b273a35067a62a02a12ce", size = 13280211, upload-time = "2026-11-19T00:11:49.161Z" },
+    { url = "https://files.pythonhosted.org/packages/23/39/cb6f57478c4efeddbf01b942f1f440453db68ae67fb93a03aa4730d08ee1/pyrnnoise-0.4.6-py3-none-manylinux2014_aarch64.whl", hash = "sha256:30f5246645b7f9a48ee98a6fcf711876b576dc1c63eaf03afee864bcb61623c0", size = 13267268, upload-time = "2026-11-19T00:11:58.554Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/a0/d15da42873e1a8474c9147de59845345ba91e495e6a2f505dfd30d39cfde/pyrnnoise-0.4.6-py3-none-win_amd64.whl", hash = "sha256:f34c07815581e110a84e820e7abf452578ad6d2d8af4b4178e2541d247e2d634", size = 13263771, upload-time = "2026-11-19T00:13:40.239Z" },
 ]
 
 [[package]]

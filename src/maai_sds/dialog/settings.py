@@ -812,6 +812,8 @@ def build_audio_input_worker_config(
         "input_mode": mode,
         "start_paused": mode == "wav",
         "input_gain": float(gain),
+        # 雑音抑制（off / webrtc / rnnoise。audio/denoise.py）。ASR と MaAI の両方に効く。
+        "noise_suppression": (cfg_str(cfg, "audio_input_noise_suppression", "off") or "off").lower(),
         "enable_aec": aec_on,
         "wav_enable_aec": aec_on,
     }

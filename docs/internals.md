@@ -234,13 +234,23 @@ Audio Output ワーカーへ送る。
 1. `sounddevice` の入力ストリームを開く。リアルタイムのコールバック（`_audio_callback`）では、ブロッキング処理も重い処理も行わない。
    再利用バッファをコピーして上限付きのキュー（`mic_frame_queue`）へ積み、ただちに戻る。キューが満杯のときは最も古いフレームを
    破棄して遅延を抑える。
-2. 専用スレッド `_mic_processor_loop` がキューからフレームを取り出し、AEC・リサンプル・ゲイン調整・int16 変換を行ったうえで
+2. 専用スレッド `_mic_processor_loop` がキューからフレームを取り出し、AEC・リサンプル・ゲイン調整・雑音抑制（下記）・int16 変換を行ったうえで
    `_emit_pcm_bytes` から送信する（ブロッキング送信はこのスレッドで行う）。音声は float32 のモノラルに揃え、320 サンプル単位で送出する。
 3. 各チャンクに `sample_start`・`ts_start` などのメタデータを付与し、`emit_audio("audio_frame", ...)`（ユーザー音声）と
    `emit_audio("system_audio_frame", ...)`（システム音声）を送る。
 4. すべてのフレームは primary IPC（上記の 1 接続）へ送る。ASR・MaAI への転送は対話サーバーが行う。
 
 > WAV・TCP モードは通常のスレッドで動作するため、コールバックと処理スレッドの分離はマイクモードのみに適用している。
+
+### 雑音抑制
+
+- 「音声入力の設定」の「雑音抑制」（`audio_input_noise_suppression`：`off`・`webrtc`・`rnnoise`、既定 `off`）。どの入力モードでも、
+  AEC と入力ゲインの後にかける（`audio/denoise.py`）。ASR と MaAI は同じ音を使うので、両方に効く。
+- WebRTC：LiveKit の APM の雑音抑制だけを有効にした、AEC とは別のインスタンス。10 ms 単位。
+- RNNoise：pyrnnoise に同梱の RNNoise のライブラリを ctypes で直接呼ぶ（`import pyrnnoise` はファイル入出力のために PyAV を読むので使わない）。
+  48 kHz・10 ms 単位なので、soxr で 16 kHz と 48 kHz の間を連続して変換する。
+- 出力は入力と同じ長さ（処理の遅れの分は最初に無音を詰める。WebRTC は 10 ms、RNNoise は 10 ms と変換の遅れ）。WAV の 2 ch 目と並べて送る音との対応を保つため。
+- 使えないとき（ライブラリが無いなど）はログに出して、雑音抑制なしで続ける。設定はワーカーの起動時に読むので、変えたら音声対話を始め直す。
 
 ### WAV モード
 

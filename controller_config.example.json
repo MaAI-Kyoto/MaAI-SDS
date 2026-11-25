@@ -83,6 +83,7 @@
   "audio_input_aec_ref": "system",
   "audio_input_enable_aec": true,
   "audio_input_gain": "1.5",
+  "audio_input_noise_suppression": "off",
   "audio_input_mic_device_index": "-1",
   "audio_input_mode": "mic",
   "audio_input_tcp_host": "127.0.0.1",

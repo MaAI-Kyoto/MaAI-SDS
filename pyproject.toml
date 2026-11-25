@@ -39,6 +39,8 @@ dependencies = [
     "pyarrow>=23.0.1",
     "pyworld>=0.3.5",
     "livekit>=1.1.3",
+    # マイク入力の雑音抑制の RNNoise（audio/denoise.py）。同梱の RNNoise（BSD-3-Clause）を ctypes で直接呼ぶ。
+    "pyrnnoise>=0.4.6",
     # OBS の遠隔録画（obs/remote.py）は websocket-client で OBS WebSocket v5 を直接話す。
     # obsws-python は GPL-3.0-only なので使わない。
 ]

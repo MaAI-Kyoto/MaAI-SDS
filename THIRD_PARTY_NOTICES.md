@@ -32,6 +32,14 @@ GitHub Releases で配布する sherpa-onnx のビルド済みパッケージに
 GUI には PySide6（LGPL-3.0）を使用しており、PyQt6（GPL）は使用していません。OBS の遠隔録画には obsws-python（GPL-3.0-only）を
 使用せず、`websocket-client` で OBS WebSocket v5 と直接通信する独自の実装（`src/maai_sds/obs/remote.py`）を用いています。
 
+### 雑音抑制（RNNoise）
+
+| パッケージ | ライセンス | 備考 |
+|---|---|---|
+| pyrnnoise | Apache-2.0 | 同梱の RNNoise のライブラリを `audio/denoise.py` が ctypes で直接呼ぶ |
+| RNNoise（Xiph、pyrnnoise に同梱） | BSD-3-Clause | |
+| audiolab / humanize（pyrnnoise の依存） | Apache-2.0 / MIT | MaAI-SDS からは使わない |
+
 ### LGPL / MPL（動的に利用する限り問題のないもの）
 
 | パッケージ | ライセンス | 導入元 |

@@ -6492,6 +6492,33 @@
                   }
                 }
               ]
+            },
+            {
+              "label": "雑音抑制",
+              "widgets": [
+                {
+                  "attr": "audio_input_noise_suppression_combo",
+                  "config_key": "audio_input_noise_suppression",
+                  "scope": "app",
+                  "tooltip": "マイクの音から雑音を抑えます（AECと入力ゲインの後）。ASRとMaAI（ターンテイキング・相槌・頷き）の両方に効きます。WebRTCは軽く控えめ、RNNoiseはニューラルネットで強めです。MaAIのモデルは雑音抑制なしの音で学習されているため、出方が変わることがあります。変えたら音声対話を始め直すと反映されます。",
+                  "kind": "combo",
+                  "items": [
+                    {
+                      "value": "off",
+                      "label": "なし"
+                    },
+                    {
+                      "value": "webrtc",
+                      "label": "WebRTC"
+                    },
+                    {
+                      "value": "rnnoise",
+                      "label": "RNNoise"
+                    }
+                  ],
+                  "value": "off"
+                }
+              ]
             }
           ]
         },

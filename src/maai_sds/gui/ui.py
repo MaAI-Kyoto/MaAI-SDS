@@ -2673,6 +2673,21 @@ def build_ui(controller) -> None:
     audio_input_mode_form = QFormLayout()
     audio_input_mode_form.addRow(QLabel("入力モード"), controller.audio_input_mode_combo)
     audio_input_mode_form.addRow(controller.audio_input_gain_label, controller.audio_input_gain_edit)
+    # 雑音抑制（audio/denoise.py）。ASR と MaAI の両方に効くので既定はなし。
+    controller.audio_input_noise_suppression_combo = QComboBox()
+    controller.audio_input_noise_suppression_combo.addItem("なし", "off")
+    controller.audio_input_noise_suppression_combo.addItem("WebRTC", "webrtc")
+    controller.audio_input_noise_suppression_combo.addItem("RNNoise", "rnnoise")
+    controller.audio_input_noise_suppression_combo.setToolTip(
+        "マイクの音から雑音を抑えます（AECと入力ゲインの後）。ASRとMaAI（ターンテイキング・相槌・頷き）の"
+        "両方に効きます。WebRTCは軽く控えめ、RNNoiseはニューラルネットで強めです。"
+        "MaAIのモデルは雑音抑制なしの音で学習されているため、出方が変わることがあります。"
+        "変えたら音声対話を始め直すと反映されます。"
+    )
+    controller.audio_input_noise_suppression_combo.currentIndexChanged.connect(
+        lambda _i: controller._save_app_config()
+    )
+    audio_input_mode_form.addRow(QLabel("雑音抑制"), controller.audio_input_noise_suppression_combo)
     audio_input_mode_box = QGroupBox("音声入力")
     audio_input_mode_box.setLayout(audio_input_mode_form)
 

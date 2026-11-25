@@ -264,6 +264,7 @@
   "llm_split_custom_strip_parenthetical": true,
   "llm_split_custom_strip_standalone_warai": true,
   "audio_input_gain": "1.5",
+  "audio_input_noise_suppression": "off",
   "audio_input_wav_aec_ref": "システム音声",
   "audio_input_wav_start_sec": "",
   "audio_input_wav_end_sec": "",
