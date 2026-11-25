@@ -610,6 +610,7 @@ class AppConfigIOMixin:
             self._apply_app_config_field(cfg, "audio_input_tcp_host")
             self._apply_app_config_field(cfg, "audio_input_tcp_port")
             self._apply_app_config_field(cfg, "audio_input_gain")
+            self._apply_app_config_field(cfg, "audio_input_noise_suppression")
             # nod_para motion
             if hasattr(self, "nod_para_enabled_check"):
                 self.nod_para_enabled_check.setChecked(json_config_bool(cfg, "nod_para_enabled", False))
@@ -658,6 +659,8 @@ class AppConfigIOMixin:
                 to_bool(str(cfg.get("asr_segment_arrival_align", False)))
             )
             self._apply_app_config_field(cfg, "asr_maai_turn_threshold")
+            self._apply_app_config_field(cfg, "asr_maai_turn_condition")
+            self._apply_app_config_field(cfg, "asr_maai_turn_hold_frames")
             self._apply_app_config_field(cfg, "asr_smart_turn_threshold")
             self._apply_app_config_field(cfg, "asr_smart_turn_num_threads")
             self._apply_app_config_field(cfg, "asr_torch_cpu_intra_threads")
