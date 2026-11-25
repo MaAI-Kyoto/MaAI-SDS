@@ -553,6 +553,8 @@ export function createMaaiPlot(root, options = {}) {
     // 9 個までは 1 列、10 個以上で 2 列（Qt の maai/plot_window.py と同じ）
     const twoColumns = visibleCount > 9;
     body.classList.toggle('one-column', !twoColumns);
+    // 1 列のときは引き出し（別タブでは表示の幅）を細くして縦長にする（Qt の窓と同じ）
+    root.classList.toggle('plot-one-column', !twoColumns);
     for (const row of ROWS) {
       const { wrap } = canvases.get(row.id);
       const target = twoColumns && row.col === 'right' ? right : left;

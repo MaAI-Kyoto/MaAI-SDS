@@ -42,6 +42,27 @@ class PlotColumnsTest(unittest.TestCase):
             self.assertEqual(cols, 1 if n <= 9 else 2, f"{n} 個のとき {cols} 列")
         win.close()
 
+    def test_window_is_tall_with_one_column_and_wide_with_two(self) -> None:
+        from maai_sds.maai.plot_window import MAAI_PLOT_VISIBILITY_SPECS, MaaiPlotWindow
+
+        win = MaaiPlotWindow(frame_rate=12.5, sample_rate=16000)
+        win.init_full_layout()
+        ids = [panel_id for panel_id, _label in MAAI_PLOT_VISIBILITY_SPECS]
+        win.configure_maai_plot_panel_visibility({i: False for i in ids})
+        win.configure_maai_plot_panel_visibility({ids[0]: True})
+        self.assertEqual(win.graph.ci.layout.columnCount(), 1)
+        self.assertGreater(win.height(), win.width(), "1 列は縦長")
+        # 1 列のまま手で横長にしても、列の数が変わらない間はそのまま
+        win.resize(900, 600)
+        win.configure_maai_plot_panel_visibility({ids[1]: True})
+        self.assertEqual((win.width(), win.height()), (900, 600))
+        win.configure_maai_plot_panel_visibility({i: True for i in ids})
+        self.assertEqual(win.graph.ci.layout.columnCount(), 2)
+        self.assertGreater(win.width(), win.height(), "2 列は横長")
+        win.configure_maai_plot_panel_visibility({i: False for i in ids[1:]})
+        self.assertGreater(win.height(), win.width(), "1 列に戻ったら縦長")
+        win.close()
+
     def test_web_uses_the_same_threshold(self) -> None:
         js = (_REPO / "web/app/plot.js").read_text(encoding="utf-8")
         self.assertRegex(js, r"const twoColumns = visibleCount > 9;")

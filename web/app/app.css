@@ -229,6 +229,12 @@ body.plot-page {
   overflow-y: auto;
 }
 .plot-body.one-column .plot-col:empty { display: none; }
+/* 1 列のときは縦長にする（Qt の MaAI プロットの窓と同じ。幅は Qt の 760px に合わせる） */
+#plot-overlay.plot-one-column { width: min(47.5rem, 96vw); }
+#plot-standalone.plot-one-column .plot-body {
+  width: min(47.5rem, 100%);
+  margin: 0 auto;
+}
 
 @media (max-width: 720px) {
   #plot-overlay { width: 100%; }

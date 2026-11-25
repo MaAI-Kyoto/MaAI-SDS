@@ -1242,7 +1242,7 @@ Docker 内で `127.0.0.1` / `localhost` を `host.docker.internal` に付け替�
 
 ### `maai/plot_window.py`
 
-- MaAI の時系列（`p_now`・VAD・相槌など）を別ウィンドウにプロット
+- MaAI の時系列（`p_now`・VAD・相槌など）を別ウィンドウにプロット。表示するグラフが 9 個までは 1 列で縦長の窓、10 個以上は 2 列で横長の窓にする（列の数が変わったときだけ窓の形を合わせ、同じ列の数の間は手で変えた大きさを保つ。Web は引き出しの幅を変える）
 - Controller が `history_snapshot` の `turn_blocked_until_user_speech` を受け取り、`update_turn_lock_state` でターンロックの表示を
   更新するなど、対話サーバーの状態と連動
 

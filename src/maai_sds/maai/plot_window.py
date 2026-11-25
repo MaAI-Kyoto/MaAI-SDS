@@ -7,7 +7,7 @@ from collections import deque
 from typing import Any
 
 import numpy as np
-from PySide6.QtGui import QColor, QResizeEvent
+from PySide6.QtGui import QColor, QGuiApplication, QResizeEvent
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 from ..utils import to_float_or_none
 
@@ -61,7 +61,9 @@ class MaaiPlotWindow(QWidget):
     ) -> None:
         super().__init__()
         self.setWindowTitle("MaAIプロット")
-        self.resize(1200, 780)
+        self.resize(*self.TWO_COLUMN_SIZE)
+        # 最後に窓の形を合わせたときの列の数（_fit_window_to_columns）
+        self._fitted_columns: int | None = None
 
         self.shown_context_sec = int(shown_context_sec)
         self.frame_rate = int(frame_rate)
@@ -274,6 +276,47 @@ class MaaiPlotWindow(QWidget):
 
         self._configure_maai_grid_columns()
         self._align_plot_left_axes()
+        self._fit_window_to_columns(2 if use_two_cols else 1)
+
+    # 1 列のときは縦長、2 列のときは横長の窓にする（幅・高さの上限は画面の作業領域）
+    ONE_COLUMN_WIDTH = 760
+    ONE_COLUMN_HEIGHT_RATIO = 0.92
+    TWO_COLUMN_SIZE = (1200, 780)
+
+    def _fit_window_to_columns(self, columns: int) -> None:
+        """列の数が変わったときに、窓の形を列の数に合わせる。
+
+        1 列で横長なら縦長に、2 列で縦長なら横長にする。列の数が変わらない間は、手で変えた大きさをそのまま使う。
+        前回の終了時の大きさ（window_state）が戻されていても、最初にレイアウトを組んだときに一度だけ合わせる。
+        """
+        previous = self._fitted_columns
+        self._fitted_columns = columns
+        if previous == columns:
+            return
+        w, h = self.width(), self.height()
+        if columns == 1 and w <= h:
+            return
+        if columns != 1 and w >= h:
+            return
+        screen = self.screen() or QGuiApplication.primaryScreen()
+        avail = screen.availableGeometry() if screen is not None else None
+        if columns == 1:
+            new_w = self.ONE_COLUMN_WIDTH
+            new_h = int(avail.height() * self.ONE_COLUMN_HEIGHT_RATIO) if avail is not None else 1000
+            new_h = max(new_h, new_w + 1)
+        else:
+            new_w, new_h = self.TWO_COLUMN_SIZE
+        if avail is not None:
+            new_w = min(new_w, avail.width())
+            new_h = min(new_h, avail.height())
+        self.resize(new_w, new_h)
+        if avail is not None and self.isVisible():
+            # 伸ばした分が画面の下や右にはみ出さないよう、作業領域の中へ寄せる（タイトルバーの分は frame で見る）
+            frame = self.frameGeometry()
+            x = max(avail.left(), min(frame.x(), avail.right() - frame.width() + 1))
+            y = max(avail.top(), min(frame.y(), avail.bottom() - frame.height() + 1))
+            if (x, y) != (frame.x(), frame.y()):
+                self.move(x, y)
 
     def set_thresholds(
         self,
