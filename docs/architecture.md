@@ -140,7 +140,7 @@ MMDAgent-EX（`MMDProcessService`）と Qwen3-ASR のコンテナである。VOI
 | Docker | `docker compose ... up` | compose のサービス内で起動（[3.4](#34-docker)） |
 | ヘッドレス CLI | `python headless_main.py --config controller_config.json` | CLI が子プロセスとして起動、または起動済みのワーカーに接続 |
 
-対話サーバーと設定画面の組み合わせ（ホスト / Docker × Qt / Web UI）と各手順は [../README.md](../README.md) と
+対話サーバーと設定画面の組み合わせ（ホスト / Docker × Qt / Web UI）と各手順は [../README_JP.md](../README_JP.md) と
 [running.md](./running.md) にある。
 
 ### 3.1 Orchestrator の起動引数
@@ -477,7 +477,7 @@ TTS 由来のシステム音声の経路は、音声出力ワーカーの `MmdAu
 
 | 文書 | 内容 |
 |---|---|
-| [../README.md](../README.md) | 概要・セットアップ・起動 |
+| [../README_JP.md](../README_JP.md) | 概要・セットアップ・起動 |
 | [internals.md](./internals.md) | 対話制御と各ワーカーの内部実装 |
 | [running.md](./running.md) | 起動と動作確認の手順（Qt・Web UI・Docker） |
 | [asr-engine-notes.md](./asr-engine-notes.md) | ASR エンジンの実測値と既定値の根拠 |

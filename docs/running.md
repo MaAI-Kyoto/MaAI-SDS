@@ -1,7 +1,7 @@
 # 実行ガイド
 
 MaAI-SDS を 4 通りの実行構成で起動し、MMDAgent-EX のアバターと対話できることを確かめるまでの手順です。
-環境構築・API キー・外部アプリケーションの準備は [README](../README.md) を参照してください。
+環境構築・API キー・外部アプリケーションの準備は [README](../README_JP.md) を参照してください。
 
 ## 概要
 
@@ -26,7 +26,7 @@ MaAI-SDS を 4 通りの実行構成で起動し、MMDAgent-EX のアバター�
 
 ### MMDAgent-EX と MDF
 
-MMDAgent-EX の本体とアバターの取得は [README](../README.md#3-mmdagent-ex-とアバター) を参照してください。
+MMDAgent-EX の本体とアバターの取得は [README](../README_JP.md#3-mmdagent-ex-とアバター) を参照してください。
 
 1. 「MMDAgent-EX起動設定」の「ファイル設定」で次を指定します（README の配置なら自動で入ります）。Docker の構成では
    `controller_config.docker.json` の `mdf_path` も確認します（[Docker の準備](#docker-の準備)）。
@@ -142,7 +142,7 @@ Docker × Web UI と Docker × Qt アプリに共通の手順です。
    .venv\Scripts\python main.py
    ```
 
-   `uv run python main.py` は使わないでください（理由は [README](../README.md)）。uv 経由で起動する場合は
+   `uv run python main.py` は使わないでください（理由は [README](../README_JP.md)）。uv 経由で起動する場合は
    `uv run --no-sync python main.py` を使います。
 2. [共通の準備](#共通の準備)に従って MMDAgent-EX・MDF・音声を設定します。
 3. メイン画面の「MMDAgent-EX」欄で「MMDAgent-EXを起動」を押します。
@@ -243,7 +243,7 @@ docker compose -f docker-compose.yml -f docker-compose.cpu.yml up
 ```
 
 バックグラウンドで起動する場合は `up -d` とします。`--profile qwen3`・`--profile nemotron`・`--profile audiocpp` などの
-追加サービスは [README](../README.md) を参照してください。<http://127.0.0.1:8000/> を開きます。
+追加サービスは [README](../README_JP.md) を参照してください。<http://127.0.0.1:8000/> を開きます。
 
 **期待される結果**
 

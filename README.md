@@ -6,7 +6,11 @@
 </p>
 
 <p align="center">
-  <b>MaAIによるターンテイキング・相槌・頷きに基づくリアルタイム音声対話システム</b>
+  <b>A real-time spoken dialogue system built on MaAI's turn-taking, backchannel and nodding prediction</b>
+</p>
+
+<p align="center">
+  📄 README: <a href="README.md">English</a> | <a href="README_JP.md">Japanese (日本語)</a>
 </p>
 
 <p align="center">
@@ -17,205 +21,212 @@
 
 ---
 
-## 概要
+## Overview
 
-MaAI-SDS は、日本語の音声対話をリアルタイムに行うための研究用プラットフォームです。音声認識（ASR）・
-大規模言語モデル（LLM）・音声合成（TTS）をパイプラインとして接続し、[MaAI](https://github.com/MaAI-Kyoto/MaAI) の
-VAP（Voice Activity Projection）モデルによるターンテイキング予測・相槌生成・頷き生成を組み合わせて、
-[MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) の 3D アバターを駆動します。
+MaAI-SDS is a research platform for real-time spoken dialogue in Japanese. It connects speech recognition (ASR),
+a large language model (LLM) and speech synthesis (TTS) as a pipeline, and uses the VAP (Voice Activity Projection)
+models of [MaAI](https://github.com/MaAI-Kyoto/MaAI) to predict turn-taking and to generate backchannels and nods.
+The system talks through a 3D avatar in [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX).
 
-各モジュールは独立したプロセスとして動作し、エンジンは設定画面から切り替えられます。ローカルの
-オープンモデルとクラウド API の双方に対応しており、最新の日本語 ASR・TTS モデルを同じ対話系の上で比較できます。
+Each module runs as its own process, and engines can be switched from the settings window. Both local open models
+and cloud APIs are supported, so recent Japanese ASR and TTS models can be compared within the same dialogue system.
 
-> 本体のソースコードは [MIT ライセンス](LICENSE) で公開しています。利用するモデル・ライブラリにはそれぞれの
-> ライセンスが適用され、非商用に限られるものも含まれます（[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)）。
+> The source code is released under the [MIT License](LICENSE). The models and libraries it uses are covered by
+> their own licenses, some of which are non-commercial only ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
 
-## 特徴
+The user interface and the documents under `docs/` are in Japanese.
 
-- **MaAI（VAP）に基づく素早いターンテイキング**<br>
-  発話終了を予測し、あらかじめ応答を生成
-- **相槌・頷きをリアルタイムに生成**<br>
-  聞き手として自然な相槌、頷きを生成
-- **すべてローカルで動き、低遅延で応答**<br>
-  クラウドに音声を送らずに動かせる
-- **最新の ASR・TTS モデルを幅広く試せる**<br>
-  Qwen3-ASR・Nemotron・Qwen3-TTS・Irodori-TTS など（ASR 12 種・TTS 11 種）。LLM も選べる（[対応エンジン](#対応エンジン)）
+## Features
 
-そのほか
+- **Fast turn-taking based on MaAI (VAP)**<br>
+  Predicts the end of the user's turn and starts preparing the response in advance
+- **Real-time backchannels and nods**<br>
+  Gives natural backchannels and nods as a listener
+- **Runs entirely locally with low latency**<br>
+  Works without sending any audio to the cloud
+- **Try a wide range of recent ASR and TTS models**<br>
+  Qwen3-ASR, Nemotron, Qwen3-TTS, Irodori-TTS and more (12 ASR and 11 TTS engines). The LLM is selectable too ([Supported engines](#supported-engines))
 
-- GUI アプリ（Qt）／ Web UI ／ Docker で動作
-- [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) と通信可能
-- 本体は MIT ライセンス（各モデルはそれぞれのライセンスに従う）
+Also
 
-## システム構成
+- Runs as a GUI app (Qt), a Web UI, or with Docker
+- Talks to [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX)
+- MIT-licensed (each model follows its own license)
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    MIC[マイク] --> AIN[音声入力<br/>AEC]
-    AIN --> ASR[ASR<br/>VAD・ターン検出]
-    AIN --> MAAI[MaAI<br/>相槌・頷き]
-    ASR --> ORC{{対話制御<br/>orchestrator}}
+    MIC[Microphone] --> AIN[Audio input<br/>AEC]
+    AIN --> ASR[ASR<br/>VAD / turn detection]
+    AIN --> MAAI[MaAI<br/>backchannels / nods]
+    ASR --> ORC{{Dialogue control<br/>orchestrator}}
     MAAI --> ORC
     ORC <--> LLM[LLM]
     ORC --> TTS[TTS]
-    TTS --> AOUT[音声出力]
-    AOUT --> SPK[スピーカー]
-    AOUT --> MMD[MMDAgent-EX<br/>アバター]
+    TTS --> AOUT[Audio output]
+    AOUT --> SPK[Speaker]
+    AOUT --> MMD[MMDAgent-EX<br/>avatar]
     ORC --> MMD
-    UI[設定画面<br/>Qt / Web UI] -.-> ORC
+    UI[Settings<br/>Qt / Web UI] -.-> ORC
 ```
 
-詳細は [docs/architecture.md](docs/architecture.md) を参照してください。
+See [docs/architecture.md](docs/architecture.md) (Japanese) for details.
 
-### 実行構成
+### Run configurations
 
-対話サーバーと設定画面は、次の 4 通りの組み合わせで動作します。音声入出力とアバターは、いずれの構成でもホストで扱います。
+The dialogue server and the settings window work in four combinations. Audio input/output and the avatar are always
+handled on the host.
 
-| 対話サーバー | 設定画面 | 用途 |
+| Dialogue server | Settings window | Use |
 |---|---|---|
-| ホスト（Python） | Qt アプリ | 標準の構成 |
-| ホスト（Python） | Web UI | ブラウザからの操作 |
-| Docker | Qt アプリ | エンジンの依存関係をコンテナに分離 |
-| Docker | Web UI | 設定画面を含めてコンテナで実行 |
+| Host (Python) | Qt app | Standard configuration |
+| Host (Python) | Web UI | Operate from a browser |
+| Docker | Qt app | Keep engine dependencies in a container |
+| Docker | Web UI | Run everything, including the settings window, in containers |
 
-ホストと Docker は、設定画面のヘッダーにある「対話サーバー」から切り替え・起動・停止できます。
+Host and Docker can be switched, started and stopped from 「対話サーバー」 (dialogue server) in the header of the settings window.
 
 ---
 
-## 動作環境
+## Requirements
 
-| 項目 | 要件 |
+| Item | Requirement |
 |---|---|
-| OS | Windows（Windows 11 で確認。Qt アプリ・セットアップスクリプト・MMDAgent-EX）。対話サーバーは Docker（Linux）でも動作 |
+| OS | Windows (tested on Windows 11; the Qt app, setup scripts and MMDAgent-EX). The dialogue server also runs in Docker (Linux) |
 | Python | [3.11](https://www.python.org/downloads/) |
-| パッケージ管理 | [uv](https://docs.astral.sh/uv/) |
-| GPU | NVIDIA GPU（CUDA 12.8）を推奨。CPU のみの構成にも対応 |
-| アバター | [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX)（Windows 版。v2.1 で確認）と CG アバター（[セットアップ](#3-mmdagent-ex-とアバター)） |
-| LLM | 既定は [LM Studio](https://lmstudio.ai/) と [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b)（`google/gemma-4-e4b`）。OpenAI API・OpenAI 互換サーバーも利用可 |
-| その他（任意） | [Docker Desktop](https://www.docker.com/products/docker-desktop/)、[VOICEVOX](https://voicevox.hiroshiba.jp/)、[AivisSpeech](https://aivis-project.com/) |
+| Package manager | [uv](https://docs.astral.sh/uv/) |
+| GPU | An NVIDIA GPU (CUDA 12.8) is recommended. CPU-only setups are also supported |
+| Avatar | [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) (Windows build, tested with v2.1) and a CG avatar ([setup](#3-mmdagent-ex-and-the-avatar)) |
+| LLM | [LM Studio](https://lmstudio.ai/) with [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b) (`google/gemma-4-e4b`) by default. The OpenAI API and OpenAI-compatible servers also work |
+| Optional | [Docker Desktop](https://www.docker.com/products/docker-desktop/), [VOICEVOX](https://voicevox.hiroshiba.jp/), [AivisSpeech](https://aivis-project.com/) |
 
-macOS での動作は確認していません。
+macOS has not been tested.
 
 ---
 
-## セットアップ
+## Setup
 
-### 1. 環境構築
+### 1. Environment
 
-`uv sync` だけでは環境は完成しません（パッチを当てた sherpa-onnx とエンジンの資産が別途必要）。
-必要な手順は `scripts/setup_env.ps1` にまとめてあります。
+`uv sync` alone does not complete the environment (a patched sherpa-onnx and the engine assets are also needed).
+The required steps are collected in `scripts/setup_env.ps1`.
 
 ```powershell
 git clone https://github.com/MaAI-Kyoto/MaAI-SDS.git
 cd MaAI-SDS
-powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1              # GPU 構成（既定）
-powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1 -Device cpu  # CPU 構成
+powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1              # GPU (default)
+powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1 -Device cpu  # CPU only
 ```
 
-スクリプトは次の順に実行します：`uv sync` → パッチ適用済み sherpa-onnx の導入 → エンジン資産の取得
-（`scripts/setup_assets.ps1`）→ 検証（sherpa-onnx の版・ワーカーの起動・GUI の構築・テスト）。
+The script runs, in order: `uv sync` → install the patched sherpa-onnx → fetch the engine assets
+(`scripts/setup_assets.ps1`) → verify (sherpa-onnx version, worker start-up, GUI construction, tests).
 
-| オプション | 説明 |
+| Option | Description |
 |---|---|
-| `-Device cuda` / `cpu` | 既定は `cuda`（PyTorch cu128・CUDA 版 ONNX Runtime）。`cpu` では NVIDIA のライブラリ（`nvidia-*` で約 3.3 GB）と CUDA 版 PyTorch を導入しない。選択は `.device_extra` に記録され、エンジン管理もこれに従う |
-| `-WithNemotron` | `nemotron-asr` 用の環境 `.venv_nemotron`（約 8 GB）も作成する |
-| `-SkipAssets` | エンジン資産を取得しない |
-| `-SkipSherpa` | パッチ適用済み sherpa-onnx を導入しない（PyPI 版のままになり、`nemotron-onnx` の精度が下がる） |
-| `-ForceSherpaBuild` | ビルド済みの sherpa-onnx を使わず、ソースからビルドする（Git・CMake・MSVC Build Tools の C++ が必要。[docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md)） |
-| `-VerifyOnly` | 導入せず検証のみ行う |
+| `-Device cuda` / `cpu` | `cuda` by default (PyTorch cu128 and the CUDA build of ONNX Runtime). `cpu` skips the NVIDIA libraries (about 3.3 GB of `nvidia-*`) and the CUDA build of PyTorch. The choice is recorded in `.device_extra`, and the Engine Manager follows it |
+| `-WithNemotron` | Also create `.venv_nemotron` (about 8 GB) for the `nemotron-asr` engine |
+| `-SkipAssets` | Do not fetch the engine assets |
+| `-SkipSherpa` | Do not install the patched sherpa-onnx (the PyPI build stays, and `nemotron-onnx` becomes less accurate) |
+| `-ForceSherpaBuild` | Build sherpa-onnx from source instead of using the prebuilt package (needs Git, CMake and the C++ workload of MSVC Build Tools; [docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md), Japanese) |
+| `-VerifyOnly` | Only verify, without installing anything |
 
-既定で取得するのは、既定の設定（ASR：ReazonSpeech〔sherpa-onnx〕、TTS：VOICEVOX Core）で対話できる最小限の資産です。
-その他のエンジンは、設定画面の「エンジン管理」で選択して「適用」すると導入されます。
+By default, only the assets needed to talk with the default settings (ASR: ReazonSpeech on sherpa-onnx, TTS: VOICEVOX Core)
+are fetched. Other engines are installed by selecting them in 「エンジン管理」 (Engine Manager) in the settings window and pressing 「適用」 (Apply).
 
 > [!WARNING]
-> `uv sync` を単独で実行すると、パッチ適用済みの sherpa-onnx が PyPI 版で上書きされます。その場合は
-> `scripts\setup_env.ps1` を再実行して復元してください（[docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md)）。
+> Running `uv sync` on its own replaces the patched sherpa-onnx with the PyPI build. Run `scripts\setup_env.ps1`
+> again to restore it ([docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md), Japanese).
 
-### 2. API キー
+### 2. API keys
 
-API キーはコードや設定ファイルに書かず、環境変数で渡します（`.env.example` 参照）。読む環境変数の名前は設定画面で変えられます。
+API keys are passed through environment variables, never written into code or configuration files (see `.env.example`).
+The names of the variables to read can be changed in the settings window.
 
-| 用途 | 環境変数 |
+| Use | Environment variable |
 |---|---|
-| OpenAI（LLM） | `OPENAI_API_KEY` |
-| Cartesia（TTS） | `CARTESIA_API_KEY` |
+| OpenAI (LLM) | `OPENAI_API_KEY` |
+| Cartesia (TTS) | `CARTESIA_API_KEY` |
 
-[OBS Studio](https://obsproject.com/) の録画操作に使う WebSocket のパスワードは、環境変数ではなく設定画面の「OBS録画設定」で入力します。
-入力した値は `controller_config.json`（Git 管理外）に保存されます。
+The WebSocket password used to control recording in [OBS Studio](https://obsproject.com/) is entered in 「OBS録画設定」
+(OBS recording settings) in the settings window, not through an environment variable. It is stored in `controller_config.json`
+(not tracked by Git).
 
-### 3. MMDAgent-EX とアバター
+### 3. MMDAgent-EX and the avatar
 
-アバターの表示には [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX)（公式の Windows 版 v2.1）と、
-アバターの入った公式のサンプル集 [mmdagent-ex/example](https://github.com/mmdagent-ex/example) を使います。
-PowerShell で次を実行すると、MMDAgent-EX が `C:\MMDAgent-EX` に入り、MaAI-SDS 用の MDF と FST がサンプル集の中に置かれます
-（`<MaAI-SDS のフォルダー>` は、このリポジトリを clone した場所に置き換えます）。
+The avatar is shown with [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) (the official Windows build, v2.1) and its
+official sample collection [mmdagent-ex/example](https://github.com/mmdagent-ex/example), which contains the avatars.
+Running the following in PowerShell installs MMDAgent-EX in `C:\MMDAgent-EX` and places the MDF and FST for MaAI-SDS inside the
+sample collection (replace `<MaAI-SDS folder>` with the folder where you cloned this repository).
 
 ```powershell
-# 1. 本体（Releases の MMDAgent-EX-x64-v2.1.zip）。ZIP の中の MMDAgent-EX-x64-v2.1 フォルダーを C:\MMDAgent-EX にする
+# 1. MMDAgent-EX itself (MMDAgent-EX-x64-v2.1.zip from Releases). The MMDAgent-EX-x64-v2.1 folder in the ZIP becomes C:\MMDAgent-EX
 Invoke-WebRequest https://github.com/mmdagent-ex/MMDAgent-EX/releases/download/v2.1/MMDAgent-EX-x64-v2.1.zip -OutFile $env:TEMP\MMDAgent-EX.zip
 Expand-Archive $env:TEMP\MMDAgent-EX.zip -DestinationPath C:\
 Rename-Item C:\MMDAgent-EX-x64-v2.1 MMDAgent-EX
 
-# 2. サンプル集。アバター（ジェネ・ウカ）はサブモジュールなので --recursive を付ける（約 470 MB）
+# 2. The sample collection. The avatars (Gene and Uka) are submodules, so use --recursive (about 470 MB)
 git clone --recursive https://github.com/mmdagent-ex/example C:\MMDAgent-EX\example
 
-# 3. MaAI-SDS 用の MDF と FST をサンプル集の中へコピーする
-Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMDAgent-EX\example\
+# 3. Copy the MDF and FST for MaAI-SDS into the sample collection
+Copy-Item -Recurse <MaAI-SDS folder>\assets\mmdagent\maai_sds C:\MMDAgent-EX\example\
 ```
 
-この配置にすると、設定画面の「MMDAgent-EX起動設定」に、実行ファイル（`C:\MMDAgent-EX\MMDAgent-EX.exe`）と MDF
-（`C:\MMDAgent-EX\example\maai_sds\maai_sds.mdf`）が自動で入ります。別の場所に置いた場合は「ファイル設定」で指定してください。
+With this layout, the executable (`C:\MMDAgent-EX\MMDAgent-EX.exe`) and the MDF (`C:\MMDAgent-EX\example\maai_sds\maai_sds.mdf`)
+are filled in automatically in 「MMDAgent-EX起動設定」 (MMDAgent-EX launch settings). If you put them elsewhere, set them in
+「ファイル設定」 (file settings).
 
-`maai_sds.mdf` の内容：
+What `maai_sds.mdf` does:
 
-- 対話サーバーへ TCP で接続します（MMDAgent-EX がクライアントになり、対話サーバーが `localhost:39001` で待ち受けます）。
-  WebSocket で接続する場合や MDF の書き方は [docs/running.md](docs/running.md) を参照してください。
-- サンプル集のジェネを、上半身のカメラ・1024×1024 のウィンドウで表示します。待機モーションは、頷きが見やすいように
-  体の揺れが小さいもの（`01_Wait.vmd`）にしてあります。
-- 口パクは MMDAgent-EX が受け取った音声から作り、頷き（首）・視線・まばたきは MaAI-SDS が送ります。首を頷きに使うため、
-  待機モーションの首の動きは止まります。
+- Connects to the dialogue server over TCP (MMDAgent-EX is the client; the dialogue server listens on `localhost:39001`).
+  For WebSocket connections and how to write the MDF, see [docs/running.md](docs/running.md) (Japanese).
+- Shows Gene from the sample collection with an upper-body camera in a 1024×1024 window. The idle motion is one with little
+  body sway (`01_Wait.vmd`) so that nods are easy to see.
+- Lip sync is produced by MMDAgent-EX from the audio it receives; nods (neck), gaze and blinks are sent by MaAI-SDS. Because the
+  neck is used for nodding, the neck movement of the idle motion stops.
 
 > [!NOTE]
-> MaAI-SDS のリポジトリには、MMDAgent-EX 本体・アバター・モーションは含まれていません（上の手順で各配布元から取得します）。
-> 同梱の `maai_sds.mdf` / `maai_sds.fst` は、それらのファイル名を指す設定だけです。
+> This repository does not include MMDAgent-EX, the avatars or the motions (get them from their distributors with the steps above).
+> The bundled `maai_sds.mdf` / `maai_sds.fst` only contain settings that refer to those files by name.
 >
-> - **ジェネ**（`gene/`）は CC BY 4.0 で公開されています。ジェネを映した動画や発表を公開するときは、次のクレジットを表記してください。
->   商標権・意匠権は名古屋工業大学が保持しており、学術活動（論文・発表など）と個人の非営利の利用は許諾不要、それ以外の営利・商用の
->   利用には別途許諾が必要です（[mmdagent-ex/gene](https://github.com/mmdagent-ex/gene) のライセンスの節）。
+> - **Gene** (`gene/`) is released under CC BY 4.0. When you publish videos or presentations showing Gene, include the credit below.
+>   Nagoya Institute of Technology holds the trademark and design rights: academic use (papers, presentations, etc.) and personal
+>   non-commercial use need no permission, but other commercial use requires separate permission (see the license section of
+>   [mmdagent-ex/gene](https://github.com/mmdagent-ex/gene)).
 >
 >   ```text
 >   CG-CA Gene (c) 2023 by Nagoya Institute of Technology, Moonshot R&D Goal 1 Avatar Symbiotic Society
 >   ```
 >
-> - **サンプル集のモーションと画像**（`maai_sds.fst` が使う待機モーション `motions/wait/01_Wait.vmd`、背景の
->   `images/floor_block.png`・`images/back_white.png` など）は、ライセンスが明記されていません。これらを映した動画などを
->   公開する場合は、配布元（[mmdagent-ex/example](https://github.com/mmdagent-ex/example)）に確認してください。
+> - **The motions and images of the sample collection** (the idle motion `motions/wait/01_Wait.vmd` and the backgrounds
+>   `images/floor_block.png` and `images/back_white.png` used by `maai_sds.fst`, among others) have no stated license. Check with the
+>   distributor ([mmdagent-ex/example](https://github.com/mmdagent-ex/example)) before publishing videos that show them.
 
-### 4. 外部アプリケーション
+### 4. External applications
 
-| 対象 | 準備 |
+| Application | Preparation |
 |---|---|
-| [LM Studio](https://lmstudio.ai/)（既定の LLM） | [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b) を取得し（`lms get google/gemma-4-e4b`）、ローカルサーバーを起動する（モデルは設定で変更可） |
-| [VOICEVOX](https://voicevox.hiroshiba.jp/) / [AivisSpeech](https://aivis-project.com/) | 各エンジンを導入して起動する |
-| OpenAI 互換サーバー | [vLLM](https://github.com/vllm-project/vllm) などで API を公開する（LLM の Custom） |
-| Qwen3-ASR | [Docker Desktop](https://www.docker.com/products/docker-desktop/) と NVIDIA GPU。ASR の起動時に設定画面がコンテナを自動で起動する |
+| [LM Studio](https://lmstudio.ai/) (default LLM) | Download [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b) (`lms get google/gemma-4-e4b`) and start the local server (the model can be changed in the settings) |
+| [VOICEVOX](https://voicevox.hiroshiba.jp/) / [AivisSpeech](https://aivis-project.com/) | Install and start each engine |
+| OpenAI-compatible server | Expose an API with [vLLM](https://github.com/vllm-project/vllm) or similar (LLM backend "Custom") |
+| Qwen3-ASR | [Docker Desktop](https://www.docker.com/products/docker-desktop/) and an NVIDIA GPU. The settings window starts the container automatically when the ASR starts |
 
 ---
 
-## 起動
+## Running
 
-### Qt アプリ
+### Qt app
 
 ```powershell
 .venv\Scripts\python main.py
 ```
 
-設定画面で ASR・LLM・TTS・MaAI・MMDAgent-EX を設定し、対話を開始します。初回起動時には
-`controller_config.example.json` から `controller_config.json`（Git 管理外）を作成します。
+Configure ASR, LLM, TTS, MaAI and MMDAgent-EX in the settings window and start the dialogue. On first launch,
+`controller_config.json` (not tracked by Git) is created from `controller_config.example.json`.
 
 > [!IMPORTANT]
-> `uv run python main.py` は使わないでください。extra なしで環境を同期するため、PySide6 が削除され、
-> PyTorch も CPU 版に置き換わります。uv 経由で起動する場合は `uv run --no-sync python main.py` を使います。
+> Do not use `uv run python main.py`. It syncs the environment without extras, which removes PySide6 and replaces PyTorch
+> with the CPU build. To launch through uv, use `uv run --no-sync python main.py`.
 
 ### Web UI
 
@@ -223,146 +234,147 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
 .venv\Scripts\python -m maai_sds.web.server
 ```
 
-<http://127.0.0.1:8000/> を開きます（`MAAI_SDS_WEB_HOST`・`MAAI_SDS_WEB_PORT` で変更可）。
-手順は [docs/running.md](docs/running.md) を参照してください。
+Open <http://127.0.0.1:8000/> (configurable with `MAAI_SDS_WEB_HOST` and `MAAI_SDS_WEB_PORT`).
+See [docs/running.md](docs/running.md) (Japanese) for the steps.
 
 ### Docker
 
 ```powershell
-copy controller_config.docker.example.json controller_config.docker.json   # 初回のみ
-copy .env.example .env                                                     # MMDAgent-EX の素材の場所などを記入
-if (-not (Test-Path enabled_engines.json)) { Set-Content enabled_engines.json "[]" }  # 初回のみ
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d       # GPU 構成（Web UI）
-docker compose -f docker-compose.yml -f docker-compose.cpu.yml up -d       # CPU 構成（Web UI）
+copy controller_config.docker.example.json controller_config.docker.json   # first time only
+copy .env.example .env                                                     # fill in the location of the MMDAgent-EX assets, etc.
+if (-not (Test-Path enabled_engines.json)) { Set-Content enabled_engines.json "[]" }  # first time only
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d       # GPU (Web UI)
+docker compose -f docker-compose.yml -f docker-compose.cpu.yml up -d       # CPU (Web UI)
 ```
 
-- **Web UI**：<http://127.0.0.1:8000/>（[docs/running.md](docs/running.md)）
-- **Qt アプリ**：`scripts\start_qt_docker.ps1` で起動（[docs/running.md](docs/running.md)）。
-  compose の `web` と `orchestrator` は同じポートを使うため、同時には起動しません
-- **追加サービス**：`--profile qwen3`・`--profile nemotron`・`--profile audiocpp` を指定したときのみ起動
-- **Qwen3-ASR**：compose の `qwen3-asr` サービス（GPU 構成のみ）で動作します。Qt アプリとホストの Web UI からは
-  ASR の起動に合わせて自動で起動・停止します。compose 内の Web UI から使う場合は、最初から `--profile qwen3` を
-  付けて起動してください。初回はイメージとモデルの取得に数分かかります
+- **Web UI**: <http://127.0.0.1:8000/> ([docs/running.md](docs/running.md), Japanese)
+- **Qt app**: start with `scripts\start_qt_docker.ps1` ([docs/running.md](docs/running.md), Japanese).
+  The compose services `web` and `orchestrator` use the same ports, so do not run them at the same time
+- **Additional services**: started only with `--profile qwen3`, `--profile nemotron` or `--profile audiocpp`
+- **Qwen3-ASR**: runs as the compose service `qwen3-asr` (GPU only). The Qt app and the host Web UI start and stop it together
+  with the ASR. To use it from the Web UI inside compose, start with `--profile qwen3` from the beginning. The first start takes a
+  few minutes to fetch the image and the model
 
-Docker の対話サーバーに同時に接続できる設定画面は 1 つです。
+Only one settings window can be connected to the dialogue server in Docker at a time.
 
 ---
 
-## 対応エンジン
+## Supported engines
 
-設定画面のエンジンの一覧は「モデル（実行系）」の組み合わせで並びます（例：Haas-ja v1.0（speech.cpp））。
-下の表の左の列は、設定ファイルに保存される値です。
+In the settings window, the engine lists show one "model (runtime)" combination per row (for example, Haas-ja v1.0 (speech.cpp)).
+The left column of the tables below is the value stored in the configuration file.
 
-日本語の ASR・TTS・LLM を実行系ごとに測った速さ・精度・メモリの比較は、
-[Awesome Japanese Spoken Dialogue Stack](https://github.com/kazu44ttaka/awesome-japanese-spoken-dialogue-stack) にまとめています。
+Speed, accuracy and memory comparisons of Japanese ASR, TTS and LLMs, measured per runtime, are collected in
+[Awesome Japanese Spoken Dialogue Stack](https://github.com/kazu44ttaka/awesome-japanese-spoken-dialogue-stack).
 
-### ASR（音声認識）
+### ASR (speech recognition)
 
-| エンジン | 実行形態 | 備考 |
+| Engine | Runs on | Notes |
 |---|---|---|
-| `sherpa-onnx` | ローカル（[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)） | [ReazonSpeech k2-v2](https://huggingface.co/reazon-research/reazonspeech-k2-v2)。既定 |
-| `speechcpp-asr` | ローカル（[speech.cpp](https://github.com/nyosegawa/speech.cpp)） | [Haas-ja v1.0](https://huggingface.co/third-intelligence/Haas-ja-v1.0)・[ReazonSpeech NeMo v2](https://huggingface.co/reazon-research/reazonspeech-nemo-v2)・[Parakeet TDT-CTC 0.6B ja](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja)・[Qwen3-ASR 1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B)。Haas-ja は GPU で 1 発話 約 30 ms・GPU メモリ 0.8 GB。Windows は Vulkan、Docker の GPU 構成は CUDA で動作 |
-| `sensevoice-onnx` | ローカル（sherpa-onnx） | [SenseVoiceSmall](https://huggingface.co/FunAudioLLM/SenseVoiceSmall) |
-| `parakeet-onnx` | ローカル（sherpa-onnx） | [Parakeet TDT-CTC 0.6B 日本語](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja) |
-| `cohere-asr-onnx` | ローカル（sherpa-onnx） | [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026)（14 言語） |
-| `funasr-nano-onnx` | ローカル（sherpa-onnx） | [Fun-ASR-Nano-2512](https://huggingface.co/FunAudioLLM/Fun-ASR-Nano-2512) |
-| `qwen3-asr-onnx` | ローカル（sherpa-onnx） | [Qwen3-ASR 0.6B](https://huggingface.co/Qwen/Qwen3-ASR-0.6B) |
-| `nemotron-onnx` | ローカル（パッチ適用済み sherpa-onnx） | [Nemotron 3.5 streaming](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b)。逐次（真の）ストリーミング認識 |
-| `faster-whisper` | ローカル（[faster-whisper](https://github.com/SYSTRAN/faster-whisper)） | Whisper 系 |
-| `qwen3-asr` | Docker（[`qwenllm/qwen3-asr`](https://hub.docker.com/r/qwenllm/qwen3-asr)） | [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR)（vLLM）。ASR の起動に合わせてコンテナを起動・停止 |
-| `nemotron-asr` | 専用環境（[NeMo](https://github.com/NVIDIA/NeMo)） | `.venv_nemotron` をエンジン管理または `setup_env.ps1 -WithNemotron` で作成 |
-| `external-asr-tcp` | 外部 | TCP で外部の ASR に接続 |
+| `sherpa-onnx` | Local ([sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)) | [ReazonSpeech k2-v2](https://huggingface.co/reazon-research/reazonspeech-k2-v2). Default |
+| `speechcpp-asr` | Local ([speech.cpp](https://github.com/nyosegawa/speech.cpp)) | [Haas-ja v1.0](https://huggingface.co/third-intelligence/Haas-ja-v1.0), [ReazonSpeech NeMo v2](https://huggingface.co/reazon-research/reazonspeech-nemo-v2), [Parakeet TDT-CTC 0.6B ja](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja), [Qwen3-ASR 1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B). Haas-ja takes about 30 ms per utterance on a GPU with 0.8 GB of GPU memory. Uses Vulkan on Windows and CUDA in the Docker GPU image |
+| `sensevoice-onnx` | Local (sherpa-onnx) | [SenseVoiceSmall](https://huggingface.co/FunAudioLLM/SenseVoiceSmall) |
+| `parakeet-onnx` | Local (sherpa-onnx) | [Parakeet TDT-CTC 0.6B Japanese](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja) |
+| `cohere-asr-onnx` | Local (sherpa-onnx) | [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) (14 languages) |
+| `funasr-nano-onnx` | Local (sherpa-onnx) | [Fun-ASR-Nano-2512](https://huggingface.co/FunAudioLLM/Fun-ASR-Nano-2512) |
+| `qwen3-asr-onnx` | Local (sherpa-onnx) | [Qwen3-ASR 0.6B](https://huggingface.co/Qwen/Qwen3-ASR-0.6B) |
+| `nemotron-onnx` | Local (patched sherpa-onnx) | [Nemotron 3.5 streaming](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b). True streaming recognition |
+| `faster-whisper` | Local ([faster-whisper](https://github.com/SYSTRAN/faster-whisper)) | Whisper models |
+| `qwen3-asr` | Docker ([`qwenllm/qwen3-asr`](https://hub.docker.com/r/qwenllm/qwen3-asr)) | [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR) (vLLM). The container starts and stops with the ASR |
+| `nemotron-asr` | Dedicated environment ([NeMo](https://github.com/NVIDIA/NeMo)) | Create `.venv_nemotron` from the Engine Manager or with `setup_env.ps1 -WithNemotron` |
+| `external-asr-tcp` | External | Connects to an external ASR over TCP |
 
-音声区間検出は `maai` / [`silero`](https://github.com/snakers4/silero-vad)、ターン検出は `maai` / [`smart-turn`](https://github.com/pipecat-ai/smart-turn) から選択できます（既定の設定では、音声区間検出が `silero`、
-ターン検出が `maai`）。
-各エンジンの実測値と既定値の根拠は [docs/asr-engine-notes.md](docs/asr-engine-notes.md) にまとめています。
+Voice activity detection can be `maai` or [`silero`](https://github.com/snakers4/silero-vad), and turn detection `maai` or
+[`smart-turn`](https://github.com/pipecat-ai/smart-turn) (the default settings use `silero` and `maai`).
+Measurements of each engine and the reasoning behind the defaults are in [docs/asr-engine-notes.md](docs/asr-engine-notes.md) (Japanese).
 
-### TTS（音声合成）
+### TTS (speech synthesis)
 
-| エンジン | 実行形態 | 備考 |
+| Engine | Runs on | Notes |
 |---|---|---|
-| `VOICEVOX-Core` | ローカル（[voicevox_core](https://github.com/VOICEVOX/voicevox_core)） | 既定。GPU 対応 |
-| `VOICEVOX` | HTTP | [VOICEVOX](https://voicevox.hiroshiba.jp/) エンジン |
-| `AivisSpeech` | HTTP | [AivisSpeech](https://aivis-project.com/) エンジン |
-| `Irodori-v4` | ローカル（speech.cpp / audio.cpp / PyTorch） | [Irodori-TTS](https://github.com/Aratako/Irodori-TTS)。既定は speech.cpp（[v4.1 Small MF](https://huggingface.co/Aratako/Irodori-TTS-v4.1-Small-MF)、GPU で 1 文 0.15〜0.3 秒）。audio.cpp 版（500M v3 / 600M v3 VoiceDesign、読みの CER 0.004）と PyTorch 版（専用環境）にも切り替え可 |
-| `Qwen3-TTS-CPP` | ローカル（[audio.cpp](https://github.com/0xShug0/audio.cpp)） | [Qwen3-TTS 1.7B CustomVoice](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice)（GGUF）。最初の声まで 約 70 ms（ストリーミング） |
-| `LFM2.5-Audio` | ローカル（audio.cpp） | [LFM2.5-Audio-1.5B-JP](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-JP)。1 文 約 0.33 秒・最初の声まで 約 50 ms（ストリーミング）。声は 1 つ。LFM Open License v1.0（年商 1000 万ドル未満なら商用可） |
-| `Supertonic-3` | ローカル（audio.cpp） | [Supertonic 3](https://huggingface.co/Supertone/supertonic-3) |
-| `Kokoro-RealtimeTTS` | ローカル（[RealtimeTTS](https://github.com/KoljaB/RealtimeTTS)） | [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) |
-| `Tsukasa` | ローカル（PyTorch） | [Tsukasa Speech](https://huggingface.co/Respair/Tsukasa_Speech)。非商用ライセンス |
-| `Cartesia-Realtime` | クラウド（[Cartesia](https://cartesia.ai/)） | API キーが必要 |
-| `TEMPLATE` | HTTP | 任意の TTS API を JSON テンプレートで指定 |
+| `VOICEVOX-Core` | Local ([voicevox_core](https://github.com/VOICEVOX/voicevox_core)) | Default. GPU supported |
+| `VOICEVOX` | HTTP | The [VOICEVOX](https://voicevox.hiroshiba.jp/) engine |
+| `AivisSpeech` | HTTP | The [AivisSpeech](https://aivis-project.com/) engine |
+| `Irodori-v4` | Local (speech.cpp / audio.cpp / PyTorch) | [Irodori-TTS](https://github.com/Aratako/Irodori-TTS). speech.cpp by default ([v4.1 Small MF](https://huggingface.co/Aratako/Irodori-TTS-v4.1-Small-MF), 0.15–0.3 s per sentence on a GPU). Can also use audio.cpp (500M v3 / 600M v3 VoiceDesign, reading CER 0.004) or PyTorch (dedicated environment) |
+| `Qwen3-TTS-CPP` | Local ([audio.cpp](https://github.com/0xShug0/audio.cpp)) | [Qwen3-TTS 1.7B CustomVoice](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice) (GGUF). About 70 ms to the first audio (streaming) |
+| `LFM2.5-Audio` | Local (audio.cpp) | [LFM2.5-Audio-1.5B-JP](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-JP). About 0.33 s per sentence and about 50 ms to the first audio (streaming). One voice. LFM Open License v1.0 (commercial use allowed below USD 10 million in annual revenue) |
+| `Supertonic-3` | Local (audio.cpp) | [Supertonic 3](https://huggingface.co/Supertone/supertonic-3) |
+| `Kokoro-RealtimeTTS` | Local ([RealtimeTTS](https://github.com/KoljaB/RealtimeTTS)) | [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) |
+| `Tsukasa` | Local (PyTorch) | [Tsukasa Speech](https://huggingface.co/Respair/Tsukasa_Speech). Non-commercial license |
+| `Cartesia-Realtime` | Cloud ([Cartesia](https://cartesia.ai/)) | Requires an API key |
+| `TEMPLATE` | HTTP | Any TTS API, described with a JSON template |
 
-`Irodori-v4`・`Qwen3-TTS-CPP`・`LFM2.5-Audio`（と `Kokoro-RealtimeTTS`・`Cartesia-Realtime`）は、1 文を作り終える前に
-届いた音から再生を始めます（ストリーミング）。アバターの口の動きは、TCP・WebSocket のどちらでつないでも
-MMDAgent-EX が受け取った音声から自分で作るので、ストリーミングでも音声とずれません。
+`Irodori-v4`, `Qwen3-TTS-CPP` and `LFM2.5-Audio` (as well as `Kokoro-RealtimeTTS` and `Cartesia-Realtime`) start playing audio before
+a sentence is fully synthesized (streaming). MMDAgent-EX produces the avatar's mouth movement from the audio it receives, over either
+TCP or WebSocket, so lip sync stays in time with streamed audio.
 
 ### LLM
 
-[LM Studio](https://lmstudio.ai/)（既定）・[OpenAI](https://platform.openai.com/)・Custom（OpenAI 互換 API）に対応しています。既定のモデルは LM Studio が
-[Gemma 4 E4B](https://huggingface.co/google/gemma-4-E4B-it)（`google/gemma-4-e4b`）、OpenAI が `gpt-5-nano` です。
+[LM Studio](https://lmstudio.ai/) (default), [OpenAI](https://platform.openai.com/) and Custom (OpenAI-compatible APIs) are supported.
+The default models are [Gemma 4 E4B](https://huggingface.co/google/gemma-4-E4B-it) (`google/gemma-4-e4b`) for LM Studio and
+`gpt-5-nano` for OpenAI.
 
 ---
 
-## ドキュメント
+## Documentation (Japanese)
 
-| 文書 | 内容 |
+| Document | Contents |
 |---|---|
-| [docs/running.md](docs/running.md) | 実行構成ごとの起動手順・動作確認・トラブルシューティング |
-| [docs/architecture.md](docs/architecture.md) | プロセス構成・起動形態（ヘッドレス CLI を含む）・プロセス間通信・データの流れ |
-| [docs/internals.md](docs/internals.md) | モジュールごとの内部仕様（対話制御・音声入出力・ASR・MaAI・LLM・TTS・MMDAgent-EX 連携・設定画面） |
-| [docs/asr-engine-notes.md](docs/asr-engine-notes.md) | ASR エンジンの実測と既定値の根拠 |
-| [docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md) | sherpa-onnx のパッチとビルド |
-| [docs/ui-guidelines.md](docs/ui-guidelines.md) | UI の設計方針と表記・用語の規則 |
+| [docs/running.md](docs/running.md) | Start-up steps, checks and troubleshooting for each run configuration |
+| [docs/architecture.md](docs/architecture.md) | Processes, launch modes (including the headless CLI), inter-process communication and data flow |
+| [docs/internals.md](docs/internals.md) | Internals of each module (dialogue control, audio I/O, ASR, MaAI, LLM, TTS, MMDAgent-EX, settings window) |
+| [docs/asr-engine-notes.md](docs/asr-engine-notes.md) | Measurements of the ASR engines and the reasoning behind the defaults |
+| [docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md) | The sherpa-onnx patches and how to build them |
+| [docs/ui-guidelines.md](docs/ui-guidelines.md) | UI design principles and wording rules |
 
-## ディレクトリ構成
+## Repository layout
 
 ```
-main.py                    Qt アプリのエントリーポイント（実体は src/maai_sds/main.py）
+main.py                    Entry point of the Qt app (the code is in src/maai_sds/main.py)
 src/maai_sds/
-  gui/                     Qt アプリ（controller.py：制御、ui.py：画面の構築）
-  web/                     Web UI サーバー
-  dialog/                  対話サーバー（orchestrator.py：対話の状態遷移）
-  asr/ llm/ tts/           各エンジンとワーカー
-  audio/                   音声入出力・アバターへの送出
-  maai/                    MaAI（ターンテイキング・相槌・頷き）
-  mmd/                     MMDAgent-EX 連携
-  obs/                     OBS の録画操作
-  ipc/                     プロセス管理と JSON Lines 通信
-web/app/                   Web UI のフロントエンド
-scripts/                   セットアップ・起動・ビルド
+  gui/                     Qt app (controller.py: control, ui.py: building the screens)
+  web/                     Web UI server
+  dialog/                  Dialogue server (orchestrator.py: dialogue state machine)
+  asr/ llm/ tts/           Engines and workers
+  audio/                   Audio input/output and sending audio to the avatar
+  maai/                    MaAI (turn-taking, backchannels, nods)
+  mmd/                     MMDAgent-EX integration
+  obs/                     OBS recording control
+  ipc/                     Process management and JSON Lines communication
+web/app/                   Web UI front end
+scripts/                   Setup, launch and build scripts
 docker/ Dockerfile docker-compose*.yml
-assets/                    同梱の小規模な資産（Nemotron 前処理 ONNX）
-docs/                      設計文書
-tests/                     テスト
+assets/                    Small bundled assets (Nemotron preprocessor ONNX)
+docs/                      Design documents (Japanese)
+tests/                     Tests
 ```
 
-ワーカーは `python -m maai_sds.<サブパッケージ>.<名前>`（例：`maai_sds.asr.worker`）で起動します。
-設定ファイル・`maai_assets/`・`logs/`・相対パスで指定したモデルは、リポジトリのルートを基準に解決します（`src/maai_sds/paths.py`）。
+Workers are started as `python -m maai_sds.<subpackage>.<name>` (for example `maai_sds.asr.worker`).
+Configuration files, `maai_assets/`, `logs/` and models given as relative paths are resolved from the repository root (`src/maai_sds/paths.py`).
 
-## テスト
+## Tests
 
 ```powershell
 .venv\Scripts\python -B -m unittest discover -s tests -p "test_*.py"
 ```
 
-`-B` は古いバイトコード（`.pyc`）の再利用を防ぐためのものです。CPython は `.pyc` の鮮度を元ファイルの更新時刻（秒単位）と
-サイズで判定するため、同じサイズの編集が同じ秒に行われると古い `.pyc` が使われることがあります。
+`-B` prevents stale bytecode (`.pyc`) from being reused. CPython decides whether a `.pyc` is fresh from the source file's
+modification time (in seconds) and size, so an edit of the same size within the same second can leave an old `.pyc` in use.
 
 ---
 
-## 謝辞
+## Acknowledgements
 
-MaAI-SDS は以下のプロジェクトを利用しています。利用にあたっては、各プロジェクトのライセンスと利用規約（モデルの再配布・
-クレジット表記・商用利用の条件など）に従ってください。詳細は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) にあります。
+MaAI-SDS uses the projects below. Follow each project's license and terms (model redistribution, credit requirements,
+conditions for commercial use, etc.). Details are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-- [MaAI](https://github.com/MaAI-Kyoto/MaAI) — VAP によるターンテイキング・相槌・頷き
-- [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) — アバター
-- ASR：[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)・[speech.cpp](https://github.com/nyosegawa/speech.cpp)・[ReazonSpeech](https://github.com/reazon-research/ReazonSpeech)・[Haas-ja](https://huggingface.co/third-intelligence/Haas-ja-v1.0)・[faster-whisper](https://github.com/SYSTRAN/faster-whisper)・[Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR)・[NVIDIA NeMo](https://github.com/NVIDIA/NeMo)（Nemotron）・[silero-vad](https://github.com/snakers4/silero-vad)・[smart-turn](https://github.com/pipecat-ai/smart-turn)
-- TTS：[VOICEVOX](https://voicevox.hiroshiba.jp/) / [VOICEVOX Core](https://github.com/VOICEVOX/voicevox_core)・[AivisSpeech](https://aivis-project.com/)・[Irodori-TTS](https://github.com/Aratako/Irodori-TTS)・[Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) / [RealtimeTTS](https://github.com/KoljaB/RealtimeTTS)・[Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS)・[LFM2.5-Audio](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-JP)・[audio.cpp](https://github.com/0xShug0/audio.cpp)・[Supertonic](https://github.com/supertone-inc/supertonic)・[Tsukasa Speech](https://huggingface.co/Respair/Tsukasa_Speech)・[Cartesia](https://cartesia.ai/)
-- LLM：[LM Studio](https://lmstudio.ai/)・[Gemma 4](https://huggingface.co/google/gemma-4-E4B-it)
+- [MaAI](https://github.com/MaAI-Kyoto/MaAI) — turn-taking, backchannels and nods with VAP
+- [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) — avatar
+- ASR: [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), [speech.cpp](https://github.com/nyosegawa/speech.cpp), [ReazonSpeech](https://github.com/reazon-research/ReazonSpeech), [Haas-ja](https://huggingface.co/third-intelligence/Haas-ja-v1.0), [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR), [NVIDIA NeMo](https://github.com/NVIDIA/NeMo) (Nemotron), [silero-vad](https://github.com/snakers4/silero-vad), [smart-turn](https://github.com/pipecat-ai/smart-turn)
+- TTS: [VOICEVOX](https://voicevox.hiroshiba.jp/) / [VOICEVOX Core](https://github.com/VOICEVOX/voicevox_core), [AivisSpeech](https://aivis-project.com/), [Irodori-TTS](https://github.com/Aratako/Irodori-TTS), [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) / [RealtimeTTS](https://github.com/KoljaB/RealtimeTTS), [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS), [LFM2.5-Audio](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-JP), [audio.cpp](https://github.com/0xShug0/audio.cpp), [Supertonic](https://github.com/supertone-inc/supertonic), [Tsukasa Speech](https://huggingface.co/Respair/Tsukasa_Speech), [Cartesia](https://cartesia.ai/)
+- LLM: [LM Studio](https://lmstudio.ai/), [Gemma 4](https://huggingface.co/google/gemma-4-E4B-it)
 
-## ライセンス
+## License
 
-本体のソースコードは [MIT ライセンス](LICENSE)（Copyright (c) 2026 Kazushi Kato）で公開しています。
-第三者のソフトウェアとモデルのライセンスは [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を参照してください。
+The source code is released under the [MIT License](LICENSE) (Copyright (c) 2026 Kazushi Kato).
+For the licenses of third-party software and models, see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
