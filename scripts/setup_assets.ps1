@@ -75,7 +75,9 @@ function Invoke-Download([string]$url, [string]$dest) {
     $dir = Split-Path -Parent $dest
     if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
     Write-Host "[get] $url"
-    & curl.exe -L --fail --retry 3 --retry-delay 5 --connect-timeout 30 -o "$dest.part" $url
+    # 途中で切れても続きから取り直す（-C -）。--retry-all-errors が無いと、転送の途中で接続が切れた場合
+    # （curl のエラー 56 など）は再試行されない。60 秒ほとんど進まなければ切って再試行する。
+    & curl.exe -L --fail --retry 5 --retry-all-errors --retry-delay 5 -C - --speed-limit 1024 --speed-time 60 --connect-timeout 30 -o "$dest.part" $url
     if ($LASTEXITCODE -ne 0) { throw "download 失敗: $url" }
     Move-Item -Force "$dest.part" $dest
 }

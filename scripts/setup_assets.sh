@@ -46,7 +46,9 @@ download() {
     local url="$1" dest="$2"
     mkdir -p "$(dirname "$dest")"
     printf '[get] %s\n' "$url"
-    curl -L --fail --retry 3 --retry-delay 5 --connect-timeout 30 -o "${dest}.part" "$url"
+    # 途中で切れても続きから取り直す（-C -）。--retry-all-errors が無いと、転送の途中で接続が切れた場合
+    # （curl のエラー 56 など）は再試行されない。60 秒ほとんど進まなければ切って再試行する。
+    curl -L --fail --retry 5 --retry-all-errors --retry-delay 5 -C - --speed-limit 1024 --speed-time 60 --connect-timeout 30 -o "${dest}.part" "$url"
     mv -f "${dest}.part" "$dest"
 }
 
