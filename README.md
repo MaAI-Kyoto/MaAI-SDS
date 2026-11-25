@@ -253,6 +253,9 @@ Docker の対話サーバーに同時に接続できる設定画面は 1 つで�
 設定画面のエンジンの一覧は「モデル（実行系）」の組み合わせで並びます（例：Haas-ja v1.0（speech.cpp））。
 下の表の左の列は、設定ファイルに保存される値です。
 
+日本語の ASR・TTS・LLM を実行系ごとに測った速さ・精度・メモリの比較は、
+[Awesome Japanese Spoken Dialogue Stack](https://github.com/kazu44ttaka/awesome-japanese-spoken-dialogue-stack) にまとめています。
+
 ### ASR（音声認識）
 
 | エンジン | 実行形態 | 備考 |
