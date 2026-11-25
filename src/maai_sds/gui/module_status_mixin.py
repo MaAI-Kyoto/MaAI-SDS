@@ -79,6 +79,9 @@ class ModuleStatusPanelMixin:
 
         self._sync_stop_all_button()
         self._refresh_dialog_server_row()
+        status = getattr(self, "status_label", None)
+        if status is not None and status.toolTip() != status.text():
+            status.setToolTip(status.text())  # 窓が狭くて切れたときに全文を見られるように
         chips = getattr(self, "header_chips", None) or {}
         values = self._header_status_values()
         for key, (lamp, text) in chips.items():

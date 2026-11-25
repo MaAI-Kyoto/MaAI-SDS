@@ -25,6 +25,7 @@ WINDOWS: tuple[tuple[str, str], ...] = (
     ("console", "console_window"),
     ("maai_plot", "maai_plot_window"),
     ("nod_motion_chart", "nod_motion_chart_window"),
+    ("chat", "chat_window"),
 )
 
 
@@ -65,3 +66,7 @@ def restore_children(controller: Any, settings_factory: Callable[[], QSettings] 
         geometry = s.value(f"{key}/geometry")
         if isinstance(geometry, QByteArray) and not geometry.isEmpty():
             widget.restoreGeometry(geometry)
+    # 前回の終了時に会話を別ウィンドウにしていたら、別ウィンドウで開く（位置は上で戻してある）
+    popout = getattr(controller, "chat_popout", None)
+    if popout is not None:
+        popout.restore()

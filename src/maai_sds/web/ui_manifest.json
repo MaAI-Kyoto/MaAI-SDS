@@ -33,6 +33,24 @@
       "qt_title": "MaAI-SDS",
       "groups": [
         {
+          "title": "",
+          "rows": [
+            {
+              "label": "",
+              "widgets": [
+                {
+                  "attr": "chat_popout_btn",
+                  "config_key": null,
+                  "scope": "app",
+                  "tooltip": "会話の欄を別ウィンドウに出します（別のモニターに大きく出すときなど）。",
+                  "kind": "button",
+                  "text": "会話を別ウィンドウに"
+                }
+              ]
+            }
+          ]
+        },
+        {
           "title": "MMDAgent-EX",
           "rows": [
             {

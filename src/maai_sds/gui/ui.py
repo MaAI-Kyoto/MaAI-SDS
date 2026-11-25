@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from .chat_view import ChatView
+from .chat_window import ChatPopout
 from .choice_combo import ChoiceCombo
 from .collapsible import CollapsibleSection
 from .engine_choices import ASR_ENGINE_CHOICES, TTS_ENGINE_CHOICES, EngineChoiceCombo, unique_engines
@@ -463,8 +464,10 @@ def _finish_main_layout(
     # 左ペイン: 会話。履歴（新しいものが下に増える）の下に生成中の応答を置き、上から下へ読めるようにする。
     # voice_dialog_llm_stream_view（生成中の文の欄）は会話の吹き出しに統合したので画面には置かない
     # （中身の更新は従来どおり続く）。
-    conversation_layout = QVBoxLayout()
-    conversation_layout.setContentsMargins(4, 8, 4, 4)
+    # 中身はひとつの QWidget にまとめる（別ウィンドウへ丸ごと移せるように。gui/chat_window.py）。
+    conversation_content = QWidget()
+    conversation_layout = QVBoxLayout(conversation_content)
+    conversation_layout.setContentsMargins(0, 0, 0, 0)
     conversation_layout.addWidget(controller.voice_dialog_history_view, 1)
     # 進行中（まだ確定していないもの）: 認識中の発話と生成中の応答。会話の欄には確定だけを出す。
     live_panel = QFrame()
@@ -489,8 +492,12 @@ def _finish_main_layout(
     live_grid.setColumnStretch(1, 1)
     conversation_layout.addWidget(live_panel)
     conversation_box = QGroupBox("会話")
-    conversation_box.setLayout(conversation_layout)
-    left_panel = QVBoxLayout()
+    conversation_box_layout = QVBoxLayout(conversation_box)
+    conversation_box_layout.setContentsMargins(4, 8, 4, 4)
+    conversation_box_layout.addWidget(conversation_content, 1)
+    left_widget = QWidget()
+    left_panel = QVBoxLayout(left_widget)
+    left_panel.setContentsMargins(0, 0, 0, 0)
     left_panel.addWidget(conversation_box, 1)
 
     # 右ペイン: 操作ボタン系すべて（MMDAgent 起動・各ウィンドウ・音声対話操作）＋状態。
@@ -510,9 +517,16 @@ def _finish_main_layout(
 
     split = QHBoxLayout()
     split.setSpacing(12)
-    split.addLayout(left_panel, 1)
-    split.addWidget(right_widget, 0)
+    split.addWidget(left_widget, 1)
+    # 会話を別ウィンドウにして左の列を隠したときも、右の列が真ん中に浮かないよう左寄せにする
+    split.addWidget(right_widget, 0, Qt.AlignmentFlag.AlignLeft)
     root.addWidget(_build_header_bar(controller))
+    # 会話の欄を別ウィンドウに出す・戻す（ボタンは上の帯の右端）
+    controller.chat_popout = ChatPopout(
+        controller, conversation_content, conversation_box_layout, left_widget,
+        toggle_button=controller.chat_popout_btn,
+    )
+    controller.chat_window = controller.chat_popout.window
     root.addLayout(split, 1)
     status_timer = QTimer(controller)
     status_timer.setInterval(500)
@@ -558,7 +572,12 @@ def _build_header_bar(controller) -> QWidget:
         controller.header_chips[key] = (lamp, text)
     layout.addStretch(1)
     controller.status_label.setProperty("role", "status")
-    layout.addWidget(controller.status_label)
+    # 状態の文は長くなるので、窓を狭めたときは端を切って縮む（全文はツールチップ。_refresh_header_status）
+    controller.status_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+    layout.addWidget(controller.status_label, 1)
+    # 押したときの動きは _finish_main_layout で ChatPopout がつなぐ
+    controller.chat_popout_btn = QPushButton("会話を別ウィンドウに")
+    layout.addWidget(controller.chat_popout_btn)
     return bar
 
 

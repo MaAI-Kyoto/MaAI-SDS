@@ -6688,6 +6688,9 @@ class MMDAgentController(
         hub = getattr(self, "settings_hub_window", None)
         if hub is not None:
             hub.close()
+        popout = getattr(self, "chat_popout", None)
+        if popout is not None:
+            popout.shutdown()  # 別ウィンドウだったことは覚えたまま閉じる
         if hasattr(self, "settings_window") and self.settings_window is not None:
             self.settings_window.close()
         if hasattr(self, "audio_input_settings_window") and self.audio_input_settings_window is not None:
