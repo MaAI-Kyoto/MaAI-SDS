@@ -8,6 +8,7 @@ from typing import Callable
 
 import httpx
 
+from .common import lmstudio_model_error_hint
 from .common import normalize_lmstudio_base_url as _shared_normalize_lmstudio_base_url
 from .common import resolve_openai_api_key as _shared_resolve_openai_api_key
 
@@ -115,6 +116,17 @@ class LLMService:
                 sent[name] = how
         return sent
 
+    @staticmethod
+    def _lmstudio_hint(client, backend: str, params: dict[str, object], error: Exception) -> str | None:
+        """LM Studio の「No models loaded」を「モデルが入っていない」などの分かる知らせにする。"""
+        if backend != "LM Studio":
+            return None
+        try:
+            base = str(getattr(client, "base_url", "") or "")
+            return lmstudio_model_error_hint(base, str(params.get("model", "")), error)
+        except Exception:  # noqa: BLE001 - 知らせを作れなくても元のエラーをそのまま出す
+            return None
+
     def _create_completion(self, client, backend: str, params: dict[str, object]):
         """chat.completions.create。使えないパラメータ（値）で断られたら直して送り直す。
 
@@ -130,6 +142,9 @@ class LLMService:
             except Exception as ex:
                 bad, supported = self._rejected_param(ex)
                 if not bad or bad not in sent:
+                    hint = self._lmstudio_hint(client, backend, params, ex)
+                    if hint:
+                        raise RuntimeError(f"{hint}（LM Studio の応答: {ex}）") from ex
                     raise
                 value = sent[bad]
                 lighter = ""

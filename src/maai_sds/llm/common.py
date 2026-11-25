@@ -70,3 +70,61 @@ def resolve_openai_api_key(api_key: str, api_key_env: str) -> str:
     if not resolved_key and (api_key_env or "").strip():
         resolved_key = os.environ.get(api_key_env.strip(), "").strip()
     return resolved_key
+
+
+# LM Studio が「モデルが無い・読み込まれていない」ときに返すエラーの言い回し
+_LMSTUDIO_MODEL_ERRORS = ("No models loaded", "model_not_found", "Model not found", "not found", "does not exist")
+
+
+def lmstudio_model_keys(base_url: str, timeout_sec: float = 3.0) -> list[str] | None:
+    """LM Studio に入っている（ダウンロード済みの）LLM のキーの一覧。取れなければ None。"""
+    import json
+    from urllib.request import urlopen
+
+    base = normalize_lmstudio_base_url(base_url)
+    try:
+        with urlopen(f"{base}/api/v1/models", timeout=max(0.1, float(timeout_sec))) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="replace"))
+    except Exception:  # noqa: BLE001 - 取れなければ知らせを足さないだけ
+        return None
+    return [
+        str(m.get("key"))
+        for m in (data.get("models") or [])
+        if isinstance(m, dict) and m.get("key") and m.get("type", "llm") == "llm"
+    ]
+
+
+def _same_lmstudio_model(requested: str, key: str) -> bool:
+    """`gemma@q4_k_m` と `gemma` のように、量子化の指定（@ 以降）の有無が違っても同じモデルとみなす。"""
+    a, b = requested.strip().lower(), key.strip().lower()
+    return a == b or a.split("@", 1)[0] == b or b.split("@", 1)[0] == a
+
+
+def lmstudio_model_error_hint(base_url: str, model: str, error: object, keys: list[str] | None = None) -> str | None:
+    """LM Studio の「No models loaded」などのエラーを、何をすればよいかが分かる文にする（当てはまらなければ None）。
+
+    LM Studio は、頼まれたモデルが入っていれば自動で読み込む（Just-in-Time）。入っていないモデルを頼むと
+    「No models loaded」と返すので、それだけでは「取っていない」ことが分からない。
+    """
+    message = str(error)
+    if not any(s in message for s in _LMSTUDIO_MODEL_ERRORS):
+        return None
+    if keys is None:
+        keys = lmstudio_model_keys(base_url)
+    if keys is None:
+        return None
+    model = (model or "").strip()
+    if not model:
+        return "LLM のモデルが指定されていません。「LLM（応答生成）」の画面で、LM Studio のモデルを選んでください。"
+    if not any(_same_lmstudio_model(model, k) for k in keys):
+        return (
+            f"LM Studio に {model} が入っていません。`lms get {model.split('@', 1)[0]}` で取得するか、"
+            "「LLM（応答生成）」の画面で、入っているモデルを選び直してください"
+            "（LM Studio は入っているモデルだけを自動で読み込みます）。"
+        )
+    if "No models loaded" in message:
+        return (
+            f"LM Studio に {model} は入っていますが、読み込まれていません。LM Studio の Developer の設定で"
+            "「Just-in-Time Model Loading」を有効にするか、LM Studio でモデルを読み込んでください。"
+        )
+    return None
