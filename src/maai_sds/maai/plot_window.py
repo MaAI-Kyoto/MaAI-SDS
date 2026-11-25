@@ -207,7 +207,7 @@ class MaaiPlotWindow(QWidget):
 
     def _relayout_panels(self) -> None:
         """非表示パネルをレイアウトから除去してスペースを詰め、
-        可視パネル数が 9 以上なら 2 列、それ未満なら 1 列にする。"""
+        可視パネル数が 10 以上なら 2 列、9 以下なら 1 列にする。"""
         if not self._plot_enabled or self.graph is None or not self.initialized:
             return
         ci = self.graph.ci
@@ -255,7 +255,8 @@ class MaaiPlotWindow(QWidget):
                 visible.append(("__voice_latency__", self._voice_latency_plot))
 
         n_visible = len(visible)
-        use_two_cols = n_visible >= 9
+        # 9 個までは 1 列（縦に並べたほうが時間軸をそろえて読みやすい）。10 個以上で 2 列にする（Web の plot.js と同じ）。
+        use_two_cols = n_visible > 9
 
         if use_two_cols:
             left = [(k, p) for k, p in visible if k not in self._RIGHT_COLUMN_KEYS]

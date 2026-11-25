@@ -550,7 +550,8 @@ export function createMaaiPlot(root, options = {}) {
 
   function applyVisibility() {
     const visibleCount = ROWS.reduce((n, row) => n + (vis[row.id] === false ? 0 : 1), 0);
-    const twoColumns = visibleCount >= 9;
+    // 9 個までは 1 列、10 個以上で 2 列（Qt の maai/plot_window.py と同じ）
+    const twoColumns = visibleCount > 9;
     body.classList.toggle('one-column', !twoColumns);
     for (const row of ROWS) {
       const { wrap } = canvases.get(row.id);
