@@ -262,8 +262,12 @@ class VoiceDialogRuntime:
                     self.fire_tts_done_safe(playback_aborted=aborted)
                     if self.consume_scheduled_exit_pending():
                         event_queue.put({"type": "stop_voice_dialog"})
+                # 終了時の発話は、ユーザーが話していても最後まで流す（開始時の発話と同じ）。
+                # 直前の割り込みの停止フラグが残っていると、合成した音声が捨てられて無音のまま対話が止まる。
+                self.clear_interrupt_stop()
                 self.speak_nonstream_async(
                     text, allow_inactive=False, silent=False, source="scheduled_exit", on_done=_on_done,
+                    ignore_user_vad=True,
                 )
 
         def _on_commit_prefetch() -> None:
@@ -2573,6 +2577,7 @@ class VoiceDialogRuntime:
         no_inject: bool = False,
         source: str = "",
         on_done: Callable[[bool], None] | None = None,
+        ignore_user_vad: bool = False,
     ) -> None:
         """Controller 経由でなく worker 内で nonstream TTS を再生する。
 
@@ -2581,6 +2586,7 @@ class VoiceDialogRuntime:
           MaAI 入力へだけ流す（相槌「再生しない（MaAI注入のみ）」）。
         - `no_inject=True` のとき合成・再生はするが MaAI 入力へは流さない
           （相槌「再生する（MaAI注入しない）」）。`inject_only` と同時指定時は `inject_only` 優先。
+        - `ignore_user_vad=True` のときは、ユーザーが話していても再生をやめない（終了時の発話）。
         - 完了後は `on_done(playback_aborted: bool)` を呼ぶ。
         """
         utterance = (text or "").strip()
@@ -2622,7 +2628,11 @@ class VoiceDialogRuntime:
 
                     if tps.is_binary_stream_engine(engine):
                         # streaming path: VAD precheck は合成前に行う
-                        if (not allow_inactive) and self.silero_vad_at_or_above_interrupt_threshold():
+                        if (
+                            (not allow_inactive)
+                            and (not ignore_user_vad)
+                            and self.silero_vad_at_or_above_interrupt_threshold()
+                        ):
                             self._emit({"type": "log", "message": "[VD-Nonstream] 合成前にユーザー VAD が閾値以上のため再生をスキップします。"})
                             return
                         if not allow_inactive:
@@ -2679,8 +2689,12 @@ class VoiceDialogRuntime:
                         if self._vd_nonstream_stop_flag.is_set():
                             return
 
-                        # VAD precheck: メイン発話のみ。相槌(allow_inactive=True)はスキップ。
-                        if (not allow_inactive) and self.silero_vad_at_or_above_interrupt_threshold():
+                        # VAD precheck: メイン発話のみ。相槌(allow_inactive=True)と終了時の発話はスキップ。
+                        if (
+                            (not allow_inactive)
+                            and (not ignore_user_vad)
+                            and self.silero_vad_at_or_above_interrupt_threshold()
+                        ):
                             self._emit(
                                 {
                                     "type": "log",

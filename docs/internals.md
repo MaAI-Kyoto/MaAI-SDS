@@ -115,7 +115,7 @@ MaAI ワーカー（`maai`）から EventServer に届き、`VoiceDialogRuntime.
 | イベント | 処理 |
 |---|---|
 | `trigger_llm` | `VoiceDialogRuntime` が LLM 要求を送出する。Controller にも emit する（表示の更新用） |
-| `request_nonstream_tts` / `request_opening_tts` / `request_scheduled_exit_tts` | 対話サーバー内で合成・再生する。Controller には観測用に emit する |
+| `request_nonstream_tts` / `request_opening_tts` / `request_scheduled_exit_tts` | 対話サーバー内で合成・再生する。Controller には観測用に emit する。開始時と終了時の発話は、ユーザーが話していても最後まで流す（終了時の発話を出したら `scheduled_exit_speaking` を立て、割り込み・ターン取得・沈黙後のターン取得を止める。runtime は直前の割り込みの停止フラグを下ろし、再生前の VAD の確認を飛ばす） |
 | `request_force_finalize` | ASR ワーカーへ `force_finalize` を送る |
 | `request_interrupt` | `VoiceDialogRuntime.execute_user_interrupt` が音声・LLM・キューを停止する |
 | `interrupt_condition` | 割り込み条件の立ち上がり（ログ用） |

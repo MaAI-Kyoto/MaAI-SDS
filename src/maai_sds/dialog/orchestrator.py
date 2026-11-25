@@ -92,6 +92,9 @@ class DialogOrchestratorState:
     scheduled_exit_waiting_for_turn: bool = False
     # 開始時システム発話の TTS が未完了（再生中）のとき True。終了後はターン取得ブロックを解除する。
     opening_tts_pending: bool = False
+    # 終了時の発話を出したら True（そのあと対話は止まる）。開始時の発話と同じく最後まで流すため、
+    # この間はユーザー発話による割り込み・ターン取得・終了時の発話の出し直しをしない。
+    scheduled_exit_speaking: bool = False
     # on_maai_result で user_side となった最終時刻（wall）。アイドル経過後ターン取得用。
     last_user_speech_detect_wall_ts: float | None = None
 
@@ -269,6 +272,8 @@ class DialogOrchestrator:
 
     def _maybe_arm_scheduled_exit(self) -> None:
         if not self.state.active or self.state.scheduled_exit_waiting_for_turn:
+            return
+        if self.state.scheduled_exit_speaking:
             return
         sec = _safe_float(self.settings.get("voice_dialog_scheduled_exit_sec", 0), 0.0)
         if sec <= 0.0:
@@ -769,6 +774,7 @@ class DialogOrchestrator:
             and self.state.vad_active
             and p_now < self._interrupt_p_now_threshold()
             and (not self.state.opening_tts_pending)
+            and (not self.state.scheduled_exit_speaking)
         )
         was_interrupt = bool(getattr(self.state, "_interrupt_condition_active", False))
         self.state._interrupt_condition_active = interrupt_wanted
@@ -1259,6 +1265,7 @@ class DialogOrchestrator:
         if (
             self.state.turn_blocked_until_user_speech
             or self.state.opening_tts_pending
+            or self.state.scheduled_exit_speaking
             or self.state.llm_in_progress
             or self.state.prefetch_active
         ):
@@ -1289,6 +1296,9 @@ class DialogOrchestrator:
         self, probability: float, *, p_future: float | None = None
     ) -> list[dict[str, object]]:
         if not self.state.active:
+            return []
+        if self.state.scheduled_exit_speaking:
+            # 終了時の発話を流している間は、次のターンを取らない（流し終えたら対話が止まる）
             return []
         threshold = self._maai_turn_threshold()
         p_now = float(probability)
@@ -1339,6 +1349,7 @@ class DialogOrchestrator:
             if exit_text and sec > 0.0:
                 cancel_ev = self._cancel_prefetch_events(reason="scheduled_exit")
                 self.state.scheduled_exit_waiting_for_turn = False
+                self.state.scheduled_exit_speaking = True
                 self.state.messages.append({"role": "assistant", "content": exit_text})
                 self.state.pending_assistant_text = exit_text
                 self.state.waiting_tts_audible = True
