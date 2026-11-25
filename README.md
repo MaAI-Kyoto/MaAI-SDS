@@ -6,8 +6,7 @@
 </p>
 
 <p align="center">
-  <b>日本語リアルタイム音声対話システム</b><br>
-  ASR・LLM・TTS と VAP によるターンテイキング・相槌・頷きを統合し、MMDAgent-EX のアバターと対話する
+  <b>MaAI（VAP）によるターンテイキング・相槌・頷きを用いたリアルタイム音声対話システム</b>
 </p>
 
 <p align="center">
