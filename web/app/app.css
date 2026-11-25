@@ -360,6 +360,20 @@ body.plot-page {
 .module .m-link { cursor: pointer; }
 .module-btn.module-settings { width: auto; padding: 0 8px; }
 .engine-table .tag.add { color: var(--accent); }
+/* 会話を別ウィンドウに出したとき（gui/chat_window.py と同じ）。メイン画面は操作の列だけにする */
+.chat-only-show { display: none; }
+body.chat-detached #chat-dock { display: none; }
+body.chat-detached #main-screen { grid-template-columns: 420px; justify-content: start; }
+/* 会話だけの窓（?chat=1）。会話の欄だけを窓いっぱいに出す */
+body.chat-only .app-header,
+body.chat-only .control-column,
+body.chat-only #hud-error,
+body.chat-only #settings-drawer,
+body.chat-only #plot-overlay { display: none !important; }
+body.chat-only #main-screen { inset: 10px; grid-template-columns: minmax(0, 1fr); }
+body.chat-only .chat-only-show { display: inline-flex; margin-left: auto; }
+.chat-main-show { margin-left: auto; }
+body.chat-only .chat-main-show { display: none; }
 .row-detail { margin: 4px 0; }
 .row-detail > summary { cursor: pointer; color: var(--muted); font-size: 12px; padding: 4px 0; }
 .row-detail[open] > summary { margin-bottom: 4px; }

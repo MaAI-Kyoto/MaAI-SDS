@@ -47,15 +47,14 @@ class ChatPopoutTest(unittest.TestCase):
 
     def test_toggle_moves_the_chat_out_and_back(self) -> None:
         main, left, box, content, button, popout = self._build()
-        self.assertEqual(button.text(), "会話を別ウィンドウに")
+        self.assertEqual(button.text(), "別ウィンドウ")
         button.click()
         self.app.processEvents()
         self.assertTrue(popout.is_detached())
         self.assertIs(content.window(), popout.window)
         self.assertTrue(popout.window.isVisible())
         self.assertFalse(left.isVisible())
-        self.assertEqual(button.text(), "会話をメイン画面に戻す")
-        button.click()
+        popout.attach()  # 戻すのは会話の窓の側（ボタンは欄ごと隠れている）
         self.app.processEvents()
         self.assertFalse(popout.is_detached())
         self.assertIs(content.parentWidget(), box)

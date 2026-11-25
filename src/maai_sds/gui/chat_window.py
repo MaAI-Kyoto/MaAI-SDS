@@ -47,6 +47,7 @@ class ChatPopout:
         left_host: QWidget,
         toggle_button: QPushButton | None = None,
         settings_factory: Callable[[], QSettings] = _default_settings,
+        hide_when_detached: list[QWidget] | None = None,
     ) -> None:
         self._controller = controller
         self._content = content
@@ -54,6 +55,9 @@ class ChatPopout:
         self._left_host = left_host
         self._toggle_button = toggle_button
         self._settings_factory = settings_factory
+        # 別ウィンドウにしている間に隠すもの（上の帯の状態の印。同じ情報は右の列にもある）。
+        # 隠さないと上の帯の幅で窓が右の列の幅まで縮まない。
+        self._hide_when_detached = list(hide_when_detached or [])
         self._main_width: int | None = None
         self._detached = False
 
@@ -63,8 +67,11 @@ class ChatPopout:
         layout = QVBoxLayout(self.window)
         layout.setContentsMargins(10, 10, 10, 10)
         bar = QHBoxLayout()
+        bar.setContentsMargins(0, 0, 0, 0)
         bar.addStretch(1)
         back = QPushButton("メイン画面に戻す")
+        back.setStyleSheet("QPushButton { padding: 1px 8px; font-size: 11px; }")
+        back.setFixedHeight(22)
         back.setToolTip("会話の欄をメイン画面の左に戻します（このウィンドウを閉じても戻ります）。")
         back.clicked.connect(self.attach)
         bar.addWidget(back)
@@ -92,6 +99,8 @@ class ChatPopout:
         self._main_width = self._controller.width()
         self._window_layout.addWidget(self._content, 1)
         self._left_host.setVisible(False)
+        for w in self._hide_when_detached:
+            w.setVisible(False)
         self.window.show()
         self.window.raise_()
         self._save(True)
@@ -105,6 +114,8 @@ class ChatPopout:
         self._detached = False
         self._box_layout.addWidget(self._content, 1)
         self._left_host.setVisible(True)
+        for w in self._hide_when_detached:
+            w.setVisible(True)
         if self.window.isVisible():
             self.window.hide()
         self._save(False)
@@ -124,6 +135,10 @@ class ChatPopout:
         self.window.close()
 
     def _shrink_main(self) -> None:
+        """メイン画面を、もともとの右の列だけの幅にする。"""
+        layout = self._controller.layout()
+        if layout is not None:
+            layout.activate()
         hint = self._controller.minimumSizeHint().width()
         if hint > 0:
             self._controller.resize(hint, self._controller.height())
@@ -131,12 +146,11 @@ class ChatPopout:
     def _update_button(self) -> None:
         if self._toggle_button is None:
             return
-        if self._detached:
-            self._toggle_button.setText("会話をメイン画面に戻す")
-            self._toggle_button.setToolTip("別ウィンドウにした会話の欄を、メイン画面の左に戻します。")
-        else:
-            self._toggle_button.setText("会話を別ウィンドウに")
-            self._toggle_button.setToolTip("会話の欄を別ウィンドウに出します（別のモニターに大きく出すときなど）。")
+        # ボタンは会話の欄の右上にあり、別ウィンドウにしている間は欄ごと隠れる。戻すのは会話の窓の側で行う。
+        self._toggle_button.setText("別ウィンドウ")
+        self._toggle_button.setToolTip(
+            "会話の欄を別ウィンドウに出します（別のモニターに大きく出すときなど）。"
+            "メイン画面は右の操作の列だけになります。戻すときは会話の窓の「メイン画面に戻す」か、窓を閉じます。")
 
     def _save(self, detached: bool) -> None:
         try:

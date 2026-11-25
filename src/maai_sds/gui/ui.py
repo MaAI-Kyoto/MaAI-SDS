@@ -494,6 +494,15 @@ def _finish_main_layout(
     conversation_box = QGroupBox("会話")
     conversation_box_layout = QVBoxLayout(conversation_box)
     conversation_box_layout.setContentsMargins(4, 8, 4, 4)
+    # 右上の小さなボタンで、会話の欄を別ウィンドウに出す（gui/chat_window.py）
+    controller.chat_popout_btn = QPushButton("別ウィンドウ")
+    controller.chat_popout_btn.setStyleSheet("QPushButton { padding: 1px 8px; font-size: 11px; }")
+    controller.chat_popout_btn.setFixedHeight(22)
+    _popout_row = QHBoxLayout()
+    _popout_row.setContentsMargins(0, 0, 0, 0)
+    _popout_row.addStretch(1)
+    _popout_row.addWidget(controller.chat_popout_btn)
+    conversation_box_layout.addLayout(_popout_row)
     conversation_box_layout.addWidget(conversation_content, 1)
     left_widget = QWidget()
     left_panel = QVBoxLayout(left_widget)
@@ -525,6 +534,7 @@ def _finish_main_layout(
     controller.chat_popout = ChatPopout(
         controller, conversation_content, conversation_box_layout, left_widget,
         toggle_button=controller.chat_popout_btn,
+        hide_when_detached=list(getattr(controller, "header_chip_widgets", [])),
     )
     controller.chat_window = controller.chat_popout.window
     root.addLayout(split, 1)
@@ -570,14 +580,12 @@ def _build_header_bar(controller) -> QWidget:
         chip_layout.addWidget(text)
         layout.addWidget(chip)
         controller.header_chips[key] = (lamp, text)
+        controller.header_chip_widgets = [*getattr(controller, "header_chip_widgets", []), chip]
     layout.addStretch(1)
     controller.status_label.setProperty("role", "status")
     # 状態の文は長くなるので、窓を狭めたときは端を切って縮む（全文はツールチップ。_refresh_header_status）
     controller.status_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
     layout.addWidget(controller.status_label, 1)
-    # 押したときの動きは _finish_main_layout で ChatPopout がつなぐ
-    controller.chat_popout_btn = QPushButton("会話を別ウィンドウに")
-    layout.addWidget(controller.chat_popout_btn)
     return bar
 
 

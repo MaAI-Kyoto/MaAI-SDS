@@ -3177,7 +3177,93 @@ function connect() {
   });
 }
 
+// ---- 会話の欄を別ウィンドウに出す（Qt の gui/chat_window.py と同じ） -------------------------
+// メイン画面は ?chat=1 の窓を開いて自分の会話の欄を隠す。会話だけの窓は /ws/events から会話に関わる
+// イベントだけを受けて描く。handleEvent は使わない（音声対話の最中に開くとブラウザのマイクを取り直したり、
+// WAV の確認音を鳴らしたりして、音声が二重になるため）。
+const CHAT_WINDOW_NAME = 'maai-sds-chat';
+
+function isChatOnlyWindow() {
+  return new URLSearchParams(location.search).get('chat') === '1';
+}
+
+function setChatDetached(detached) {
+  state.chatDetached = Boolean(detached);
+  document.body.classList.toggle('chat-detached', state.chatDetached);
+  window.clearInterval(state.chatWatch);
+  if (state.chatDetached) {
+    // 会話の窓が閉じられたら（「メイン画面に戻す」や窓の × で）、メイン画面に戻す
+    state.chatWatch = window.setInterval(() => {
+      if (!state.chatWin || state.chatWin.closed) setChatDetached(false);
+    }, 700);
+  }
+}
+
+function toggleChatPopout() {
+  if (state.chatDetached) {
+    try { state.chatWin?.close(); } catch { /* 閉じられなくても戻す */ }
+    setChatDetached(false);
+    return;
+  }
+  const win = window.open(`${location.pathname}?chat=1`, CHAT_WINDOW_NAME, 'popup,width=560,height=760');
+  if (!win) {
+    showError(new Error('別ウィンドウを開けませんでした。ブラウザのポップアップの許可を確認してください。'));
+    return;
+  }
+  state.chatWin = win;
+  win.focus();
+  setChatDetached(true);
+}
+
+function handleChatEvent(ev) {
+  switch (ev.type) {
+    case 'runtime_snapshot':
+      if (ev.history && typeof ev.history === 'object') renderHistory(ev.history);
+      break;
+    case 'history_snapshot':
+      renderHistory(ev.history);
+      break;
+    case 'llm_chunk':
+    case 'llm_done':
+    case 'llm_test_finished':
+      if (ev.assistant_text || ev.type === 'llm_chunk') {
+        state.streamText = String(ev.assistant_text ?? '');
+        renderStream();
+      }
+      break;
+    case 'llm_test_chat_chunk': {
+      const full = String(ev.assistant_text ?? ev.delta ?? '');
+      state.streamText = full || state.streamText + String(ev.text ?? '');
+      renderStream();
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+function connectChatEvents() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const sock = new WebSocket(`${proto}://${location.host}/ws/events`);
+  sock.addEventListener('close', () => setTimeout(connectChatEvents, 3000));
+  sock.addEventListener('message', (m) => {
+    try { handleChatEvent(JSON.parse(m.data)); } catch { /* 不正なフレームは無視 */ }
+  });
+}
+
+function chatMain() {
+  document.body.classList.add('chat-only');
+  document.title = '会話 - MaAI-SDS';
+  $('#btn-chat-back')?.addEventListener('click', () => window.close());
+  renderChat();
+  connectChatEvents();
+}
+
 async function main() {
+  if (isChatOnlyWindow()) {
+    chatMain();
+    return;
+  }
   connectWavMonitorWs();
   renderModules();
   renderStream();
@@ -3185,6 +3271,9 @@ async function main() {
   setVoiceControls('stopped');
 
   $('#btn-settings').addEventListener('click', toggleSettings);
+  $('#btn-chat-popout').addEventListener('click', toggleChatPopout);
+  // メイン画面を閉じる・読み込み直すときは、開いた会話の窓も閉じる（取り残さない）
+  window.addEventListener('pagehide', () => { try { state.chatWin?.close(); } catch { /* 無視 */ } });
   $('#btn-settings-close').addEventListener('click', closeSettings);
   $('#btn-plot').addEventListener('click', togglePlot);
   for (const button of document.querySelectorAll('[data-view-id]')) {
