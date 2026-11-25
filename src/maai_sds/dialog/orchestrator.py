@@ -71,6 +71,8 @@ class DialogOrchestratorState:
     streaming_anonymous_seq: int = 0
     last_backchannel_ts: float = 0.0
     backchannel_consecutive_over_threshold: int = 0
+    # 前の相槌のあと、p_bc が相槌のしきい値を一度下回ったか（下回るまで次の相槌を打たない）
+    backchannel_prob_dropped: bool = True
     backchannel_buf_ts_start: list[float] = field(default_factory=list)
     backchannel_buf_ts_end: list[float] = field(default_factory=list)
     # nod_para state
@@ -1026,11 +1028,11 @@ class DialogOrchestrator:
             return self._dispatch_then_return(events)
 
         # --- timing model ---
-        if p_nod < 0.5:
-            self.state.nod_para_prob_dropped = True
-
+        # 前の頷きのあと、p_nod が頷き確率のしきい値を一度下回るまで次の頷きをしない
+        # （以前は固定の 0.5 で見ていたので、しきい値が 0.5 以外だとずれていた）。
         threshold = self._nod_para_prob_threshold()
         if p_nod < threshold:
+            self.state.nod_para_prob_dropped = True
             self._clear_nod_para_buffer()
             return self._dispatch_then_return(events)
 
@@ -1151,12 +1153,15 @@ class DialogOrchestrator:
                 self.state.backchannel_buf_ts_start.append(frame_ts_start)
                 self.state.backchannel_buf_ts_end.append(frame_ts_end)
             else:
+                # 相槌のあと、しきい値を一度下回ったら次の相槌を許す（頷きと同じ）
+                self.state.backchannel_prob_dropped = True
                 self.state.backchannel_consecutive_over_threshold = 0
                 self.state.backchannel_buf_ts_start.clear()
                 self.state.backchannel_buf_ts_end.clear()
             required_frames = self._backchannel_required_consecutive_frames()
             if (
-                self.state.backchannel_consecutive_over_threshold >= required_frames
+                self.state.backchannel_prob_dropped
+                and self.state.backchannel_consecutive_over_threshold >= required_frames
                 and elapsed >= self._backchannel_min_interval_sec()
                 and (not self._main_assistant_tts_busy())
             ):
@@ -1167,6 +1172,7 @@ class DialogOrchestrator:
                     used_start_ts = float(used_ts_start[0]) if used_ts_start else now
                     used_end_ts = float(used_ts_end[-1]) if used_ts_end else used_start_ts
                     self.state.last_backchannel_ts = now
+                    self.state.backchannel_prob_dropped = False
                     self.state.backchannel_consecutive_over_threshold = 0
                     self.state.backchannel_buf_ts_start.clear()
                     self.state.backchannel_buf_ts_end.clear()
