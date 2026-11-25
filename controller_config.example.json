@@ -31,7 +31,6 @@
   "asr_nemotron_onnx_tokens": "sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-320ms-int8-2026-06-11/tokens.txt",
   "asr_nemotron_python": ".venv_nemotron/Scripts/python.exe",
   "asr_nemotron_window_sec": "10.0",
-  "asr_nonstream_pseudo_bootstrap_sec": "0.5",
   "asr_nonstream_pseudo_chunk_sec": "0.25",
   "asr_nonstream_pseudo_enabled": true,
   "asr_pre_roll_buffer_sec": "0.2",
