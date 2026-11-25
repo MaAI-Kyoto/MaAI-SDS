@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-DEFAULT_FST_CONTENT = """0 10  <eps> STAGE|suna2.png,background-red.jpg
-10 20  <eps> MODEL_ADD|0|ms_generic/MS_Generic_Gene.pmd
-20 30  MODEL_EVENT_ADD|0  MOTION_ADD|0|base|01_Wait.vmd|FULL|LOOP|OFF|OFF
-#30 100 <eps> CAMERA|0,17.8,0|0,0,0|10.4|27.0
+# MDF と同じ名前の FST が無いときに書き出す FST。同梱の assets/mmdagent/maai_sds/maai_sds.fst と同じ中身で、
+# 公式のサンプル集（mmdagent-ex/example）のジェネ・待機モーション・画像を使う。パスはサンプル集の 1 段下の
+# フォルダー（README の手順の C:\MMDAgent-EX\example\maai_sds\ など）に MDF を置いた場合のもの。
+# （以前は非公開版の環境の FST のままで、公式の配布物に無いモデルと画像を指していた）
+DEFAULT_FST_CONTENT = """0 10 <eps> STAGE|../images/floor_block.png,../images/back_white.png
+10 20 <eps> MODEL_ADD|gene|../gene/gene.pmd
+20 30 MODEL_EVENT_ADD|gene MOTION_ADD|gene|base|../motions/wait/01_Wait.vmd|FULL|LOOP|OFF|OFF
 30 40 <eps> CAMERA|0,16.5,0|0,0,0|20.2|30.0
-40 100 <eps>  AVATAR_LOGSAVE_START|message_output.txt
 """
 
 REMOVED_LEGACY_KEYS = {

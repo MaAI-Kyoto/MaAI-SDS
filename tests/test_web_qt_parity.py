@@ -266,9 +266,9 @@ class WebQtParityTests(unittest.TestCase):
         """PARITY-13: EXE / MDF が未設定なら Qt と同じ場所を探して埋める。"""
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
-            (base / "Release").mkdir()
-            exe = base / "Release" / "MMDAgent-EX.exe"
-            mdf = base / "Release" / "MMDAgent-EX_gene.mdf"
+            (base / "example" / "maai_sds").mkdir(parents=True)
+            exe = base / "MMDAgent-EX.exe"
+            mdf = base / "example" / "maai_sds" / "maai_sds.mdf"
             exe.write_text("", encoding="utf-8")
             mdf.write_text("", encoding="utf-8")
             filled = default_paths.fill_default_mmdagent_paths({"exec_path": "", "mdf_path": "Z:/missing.mdf"}, base)

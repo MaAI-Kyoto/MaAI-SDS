@@ -25,7 +25,7 @@ class AvatarModelAliasTest(unittest.TestCase):
 
     def test_classic_four_column_fst_and_comments(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            mdf = self._mdf_with_fst(tmp, "# 0 10 <eps> MODEL_ADD|old|x.pmd\n10 20  <eps> MODEL_ADD|0|ms_generic/Gene.pmd\n")
+            mdf = self._mdf_with_fst(tmp, "# 0 10 <eps> MODEL_ADD|old|x.pmd\n10 20  <eps> MODEL_ADD|0|gene/gene.pmd\n")
             self.assertEqual(vds.avatar_model_alias_from_mdf(mdf), "0")
 
     def test_gui_alias_survives_when_mdf_path_is_removed(self) -> None:

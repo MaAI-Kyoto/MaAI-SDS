@@ -10,15 +10,27 @@ from maai_sds.mmd.default_paths import detect_default_exec_path, detect_default_
 
 
 class DefaultMdfPathTest(unittest.TestCase):
-    def test_tcp_gene_mdf_is_preferred_over_the_websocket_one(self) -> None:
+    def test_files_that_only_exist_in_a_private_build_are_not_picked(self) -> None:
+        """自作の MDF（非公開版の環境のもの）は候補にしない。公式のサンプル集の MaAI-SDS 用の MDF を選ぶ。"""
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             (base / "Release").mkdir()
-            for name in ("MMDAgent-EX_gene_websocket.mdf", "MMDAgent-EX_gene.mdf"):
-                (base / "Release" / name).write_text("", encoding="utf-8")
-            self.assertEqual(detect_default_mdf_path(base), str(base / "Release" / "MMDAgent-EX_gene.mdf"))
-            (base / "Release" / "MMDAgent-EX_gene.mdf").unlink()
-            self.assertEqual(detect_default_mdf_path(base), str(base / "Release" / "MMDAgent-EX_gene_websocket.mdf"))
+            (base / "Release" / "MMDAgent-EX_gene.mdf").write_text("", encoding="utf-8")
+            self.assertEqual(detect_default_mdf_path(base), "")
+            (base / "example" / "maai_sds").mkdir(parents=True)
+            (base / "example" / "maai_sds" / "maai_sds.mdf").write_text("", encoding="utf-8")
+            self.assertEqual(detect_default_mdf_path(base), str(base / "example" / "maai_sds" / "maai_sds.mdf"))
+
+    def test_default_fst_is_the_bundled_one_and_uses_only_official_assets(self) -> None:
+        """MDF と同名の FST が無いときに書き出す FST は、同梱の maai_sds.fst と同じ（公式のサンプル集の素材だけ）。"""
+        from maai_sds.gui.settings import DEFAULT_FST_CONTENT
+
+        repo = Path(__file__).resolve().parents[1]
+        bundled = (repo / "assets" / "mmdagent" / "maai_sds" / "maai_sds.fst").read_text(encoding="utf-8")
+        body = [ln for ln in bundled.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
+        self.assertEqual(DEFAULT_FST_CONTENT.splitlines(), body)
+        for name in ("ms_generic", "MS_Generic", "suna2", "background-red"):
+            self.assertNotIn(name, DEFAULT_FST_CONTENT)
 
     def test_official_release_layout_and_example_repo(self) -> None:
         """公式の zip を C:\MMDAgent-EX に展開し、サンプル集を example に clone した置き方（README の手順）。"""

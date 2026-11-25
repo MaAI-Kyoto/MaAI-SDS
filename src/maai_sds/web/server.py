@@ -90,17 +90,16 @@ def resolve_mdf_path(cfg: dict[str, Any] | None, assets_root: Path) -> Path:
         path = Path(mdf)
         if path.is_file():
             return path
-    # 設定が無いか見つからないときの候補。自分で用意した gene の MDF と、公式のサンプル集
-    # （MMDAGENT_ASSETS_HOST=C:/MMDAgent-EX/example）に入れた MaAI-SDS 用の MDF、サンプル集の WebSocket の例。
-    gene = assets_root / "MMDAgent-EX_gene.mdf"
+    # 設定が無いか見つからないときの候補。公式のサンプル集（MMDAGENT_ASSETS_HOST=C:/MMDAgent-EX/example）に
+    # 入れた MaAI-SDS 用の MDF と、サンプル集の WebSocket の例。
+    maai_sds_mdf = assets_root / "maai_sds" / "maai_sds.mdf"
     for candidate in (
-        gene,
-        assets_root / "maai_sds" / "maai_sds.mdf",
+        maai_sds_mdf,
         assets_root / "example_websocket" / "example_websocket.mdf",
     ):
         if candidate.is_file():
             return candidate
-    return Path(mdf) if mdf else gene
+    return Path(mdf) if mdf else maai_sds_mdf
 
 
 class HostPathView:
