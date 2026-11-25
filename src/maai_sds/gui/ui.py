@@ -3373,6 +3373,7 @@ def build_ui(controller) -> None:
     controller.asr_maai_turn_condition_combo = QComboBox()
     controller.asr_maai_turn_condition_combo.addItem("p_nowがしきい値を超えたとき", "p_now")
     controller.asr_maai_turn_condition_combo.addItem("p_nowが超えた時点でp_futureも超えているとき", "p_now_and_future")
+    controller.asr_maai_turn_condition_combo.setCurrentIndex(1)  # 既定は p_now_and_future
     controller.asr_maai_turn_condition_combo.setToolTip(
         "システムがターンを取る条件です。どちらもしきい値は「MaAIターンしきい値」を使います。"
         "「p_futureも超えているとき」では、p_nowがしきい値を超えたその時点でp_futureがしきい値未満なら"

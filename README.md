@@ -99,9 +99,9 @@ the hatched bars are prefetches (audio that is generated and held without playin
 - **B. A hesitation discards the prefetch**: a pause in the middle of the user's speech can also make `p_future` go past the
   threshold and start a prefetch (①). When the user keeps talking and `p_future` falls back below the threshold, the prefetch is
   discarded (②). `p_now` never goes past, so the system does not take the turn.
-- **C. Turn condition**: chosen with 「ターンを取る条件」 (turn condition). The default `p_now` takes the turn when `p_now` goes
-  past the threshold (①); if the user then keeps talking, the system speech is stopped by barge-in. `p_now_and_future` takes the
-  turn only if `p_future` is also past the threshold when `p_now` goes past it, so it waits at ① and takes the turn at ②.
+- **C. Turn condition**: chosen with 「ターンを取る条件」 (turn condition). `p_now` takes the turn when `p_now` goes past the
+  threshold (①); if the user then keeps talking, the system speech is stopped by barge-in. The default `p_now_and_future` takes
+  the turn only if `p_future` is also past the threshold when `p_now` goes past it, so it waits at ① and takes the turn at ②.
 
 Other mechanisms:
 

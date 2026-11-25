@@ -28,9 +28,11 @@ class TurnConditionTest(unittest.TestCase):
         orch = self._orch("p_now")
         self.assertEqual(self._feed(orch, [(0.2, 0.1), (0.7, 0.1)]), [False, True])
 
-    def test_default_is_p_now(self) -> None:
+    def test_default_is_p_now_and_future(self) -> None:
         orch = self._orch(None)
-        self.assertEqual(self._feed(orch, [(0.2, 0.1), (0.7, 0.1)]), [False, True])
+        self.assertEqual(self._feed(orch, [(0.2, 0.1), (0.7, 0.1)]), [False, False])
+        orch = self._orch(None)
+        self.assertEqual(self._feed(orch, [(0.2, 0.1), (0.7, 0.7)]), [False, True])
 
     def test_and_mode_takes_turn_when_p_future_is_above_at_the_crossing(self) -> None:
         orch = self._orch("p_now_and_future")
@@ -134,9 +136,10 @@ class TurnConditionTest(unittest.TestCase):
 
     def test_setting_reaches_the_orchestrator(self) -> None:
         build = vds.build_dialog_orchestrator_settings
-        self.assertEqual(build({})["maai_turn_condition"], "p_now")
+        self.assertEqual(build({})["maai_turn_condition"], "p_now_and_future")
         self.assertEqual(build({"asr_maai_turn_condition": "p_now_and_future"})["maai_turn_condition"], "p_now_and_future")
-        self.assertEqual(build({"asr_maai_turn_condition": "nonsense"})["maai_turn_condition"], "p_now")
+        self.assertEqual(build({"asr_maai_turn_condition": "nonsense"})["maai_turn_condition"], "p_now_and_future")
+        self.assertEqual(build({"asr_maai_turn_condition": "p_now"})["maai_turn_condition"], "p_now")
 
 
 if __name__ == "__main__":

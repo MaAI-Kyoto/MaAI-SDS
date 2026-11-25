@@ -16,7 +16,7 @@
   "asr_external_start_script_path": "",
   "asr_maai_gui_plot": true,
   "asr_maai_turn_threshold": "0.55",
-  "asr_maai_turn_condition": "p_now",
+  "asr_maai_turn_condition": "p_now_and_future",
   "asr_maai_turn_hold_frames": "1",
   "asr_min_segment_sec": "0.4",
   "asr_nemotron_chunk_size_ms": "80",

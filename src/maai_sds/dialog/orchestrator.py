@@ -101,18 +101,20 @@ class DialogOrchestratorState:
     last_user_speech_detect_wall_ts: float | None = None
 
 # ターンを取る条件（設定 `asr_maai_turn_condition`）。
-# p_now：p_now がしきい値を上にまたいだらターンを取る（従来どおり）。
-# p_now_and_future：p_now がしきい値を上にまたいだフレームで、p_future もしきい値以上のときだけ取る。
+# p_now：p_now がしきい値を上にまたいだらターンを取る。
+# p_now_and_future（既定）：p_now がしきい値を上にまたいだフレームで、p_future もしきい値以上のときだけ取る。
+# p_future を送らない経路（smart-turn・ASR ワーカーの MaAI VAD）では、どちらでも p_now だけで判定する。
 TURN_CONDITION_P_NOW = "p_now"
 TURN_CONDITION_P_NOW_AND_FUTURE = "p_now_and_future"
 TURN_CONDITIONS = (TURN_CONDITION_P_NOW, TURN_CONDITION_P_NOW_AND_FUTURE)
+DEFAULT_TURN_CONDITION = TURN_CONDITION_P_NOW_AND_FUTURE
 # 「ターンを取るまでの連続フレーム数」の上限（12.5 Hz で 2 秒）
 MAX_TURN_HOLD_FRAMES = 25
 
 
 def normalize_turn_condition(value: object) -> str:
     text = str(value or "").strip().lower()
-    return text if text in TURN_CONDITIONS else TURN_CONDITION_P_NOW
+    return text if text in TURN_CONDITIONS else DEFAULT_TURN_CONDITION
 
 
 class DialogOrchestrator:

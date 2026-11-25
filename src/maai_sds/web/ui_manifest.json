@@ -5640,7 +5640,7 @@
                       "label": "p_nowが超えた時点でp_futureも超えているとき"
                     }
                   ],
-                  "value": "p_now"
+                  "value": "p_now_and_future"
                 }
               ]
             }
