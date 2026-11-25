@@ -73,6 +73,48 @@ flowchart LR
 
 See [docs/architecture.md](docs/architecture.md) (Japanese) for details.
 
+### Turn-taking
+
+For every frame, MaAI outputs two probabilities from the user's and the system's audio.
+
+- `p_now`: the probability that the system may start speaking now (short-term prediction)
+- `p_future`: the probability that it will be the system's turn a little later (longer-term prediction)
+
+The dialogue controller (`DialogOrchestrator`) uses these two values and VAD (voice activity detection) as follows (in the diagram, "up" and "down" mean that the probability crosses the threshold from below or from above).
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    state "User's turn" as L
+    state "Prefetching<br/>generate, hold the audio" as P
+    state "System's turn<br/>generate and play the response" as S
+    state "Waiting for the user<br/>(turn lock)" as W
+    [*] --> L
+    L --> P : p_future up
+    P --> L : p_future down<br/>(discard the prefetch)
+    P --> S : p_now up<br/>(play the held audio)
+    L --> S : p_now up<br/>or long enough silence
+    S --> W : playback ends
+    S --> L : user speech<br/>(barge-in)
+    W --> L : user speech
+```
+
+| Behavior | Description | Setting (value in the example config) |
+|---|---|---|
+| Taking the turn | Takes the turn in the frame where `p_now` crosses the threshold from below, and has the LLM generate a response | 「MaAIターンしきい値」 (MaAI turn threshold, 0.55) |
+| Turn condition | By default only `p_now` is used. With `p_now_and_future`, the turn is taken only if `p_future` is also at or above the threshold when `p_now` crosses it | 「ターンを取る条件」 (turn condition, `p_now`) |
+| Prefetch | When `p_future` crosses above the threshold, the LLM and TTS run before the turn is taken, and the audio is held without playing. When `p_now` takes the turn, the held audio plays at once, which shortens the response time. It is discarded when `p_future` crosses below the threshold | — |
+| Turn lock | After taking the turn, the system does not take the next turn until user speech is detected (so it does not keep talking on its own) | — |
+| Detecting user speech | A frame where VAD is at or above its threshold and `p_now` is below its threshold | 「割り込みVADしきい値」 (barge-in VAD threshold, 0.7), 「割り込みp_nowしきい値」 (barge-in p_now threshold, 0.5) |
+| Barge-in | If user speech is detected while the system is speaking, playback and LLM generation stop and the turn goes back to the user (backchannels are not stopped) | 「ユーザー発話でシステム発話を割り込み停止」 (stop system speech on user speech, on) |
+| Taking the turn after silence | If silence continues after the user's speech without `p_now` crossing the threshold, the turn is taken after this many seconds | 「ターン取得までの沈黙（秒）」 (silence before taking the turn, 1.5 s) |
+
+- With streaming ASR (including pseudo streaming, the default), the LLM is called with the recognition result at the moment the turn is
+  taken. Otherwise, the ASR is asked to finalize, and the LLM is called once the final text arrives.
+- With `smart-turn` as the turn detector, its probability is used instead of `p_now`. It has no `p_future`, so there is no prefetch.
+- Backchannels and nods are separate from the turn: they are given while the user is speaking, from the outputs of MaAI's backchannel
+  and nodding models.
+
 ### Run configurations
 
 The dialogue server and the settings window work in four combinations. Audio input/output and the avatar are always
