@@ -745,23 +745,56 @@
                     {
                       "value": "sherpa-onnx",
                       "label": "ReazonSpeech k2（sherpa-onnx）",
+                      "group": "sherpa-onnx",
                       "engine": "sherpa-onnx",
                       "subs": []
                     },
                     {
-                      "value": "speechcpp-asr::asr_speechcpp_model_combo=reazonspeech-v2",
-                      "label": "ReazonSpeech NeMo v2（speech.cpp）",
-                      "engine": "speechcpp-asr",
-                      "subs": [
-                        {
-                          "config_key": "asr_speechcpp_model",
-                          "value": "reazonspeech-v2"
-                        }
-                      ]
+                      "value": "qwen3-asr-onnx",
+                      "label": "Qwen3-ASR（sherpa-onnx）",
+                      "group": "sherpa-onnx",
+                      "engine": "qwen3-asr-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "parakeet-onnx",
+                      "label": "Parakeet TDT-CTC ja（sherpa-onnx）",
+                      "group": "sherpa-onnx",
+                      "engine": "parakeet-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "nemotron-onnx",
+                      "label": "Nemotron 3.5 streaming（sherpa-onnx）",
+                      "group": "sherpa-onnx",
+                      "engine": "nemotron-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "sensevoice-onnx",
+                      "label": "SenseVoiceSmall（sherpa-onnx）",
+                      "group": "sherpa-onnx",
+                      "engine": "sensevoice-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "cohere-asr-onnx",
+                      "label": "Cohere Transcribe（sherpa-onnx）",
+                      "group": "sherpa-onnx",
+                      "engine": "cohere-asr-onnx",
+                      "subs": []
+                    },
+                    {
+                      "value": "funasr-nano-onnx",
+                      "label": "Fun-ASR-Nano（sherpa-onnx）",
+                      "group": "sherpa-onnx",
+                      "engine": "funasr-nano-onnx",
+                      "subs": []
                     },
                     {
                       "value": "speechcpp-asr::asr_speechcpp_model_combo=haas-ja-v1.0",
                       "label": "Haas-ja v1.0（speech.cpp）",
+                      "group": "speech.cpp",
                       "engine": "speechcpp-asr",
                       "subs": [
                         {
@@ -771,14 +804,33 @@
                       ]
                     },
                     {
-                      "value": "qwen3-asr-onnx",
-                      "label": "Qwen3-ASR（sherpa-onnx）",
-                      "engine": "qwen3-asr-onnx",
-                      "subs": []
+                      "value": "speechcpp-asr::asr_speechcpp_model_combo=reazonspeech-v2",
+                      "label": "ReazonSpeech NeMo v2（speech.cpp）",
+                      "group": "speech.cpp",
+                      "engine": "speechcpp-asr",
+                      "subs": [
+                        {
+                          "config_key": "asr_speechcpp_model",
+                          "value": "reazonspeech-v2"
+                        }
+                      ]
+                    },
+                    {
+                      "value": "speechcpp-asr::asr_speechcpp_model_combo=parakeet-tdt_ctc-0.6b-ja",
+                      "label": "Parakeet TDT-CTC ja（speech.cpp）",
+                      "group": "speech.cpp",
+                      "engine": "speechcpp-asr",
+                      "subs": [
+                        {
+                          "config_key": "asr_speechcpp_model",
+                          "value": "parakeet-tdt_ctc-0.6b-ja"
+                        }
+                      ]
                     },
                     {
                       "value": "speechcpp-asr::asr_speechcpp_model_combo=qwen3-asr-0.6b",
                       "label": "Qwen3-ASR 0.6B（speech.cpp）",
+                      "group": "speech.cpp",
                       "engine": "speechcpp-asr",
                       "subs": [
                         {
@@ -790,6 +842,7 @@
                     {
                       "value": "speechcpp-asr::asr_speechcpp_model_combo=qwen3-asr-1.7b",
                       "label": "Qwen3-ASR 1.7B（speech.cpp）",
+                      "group": "speech.cpp",
                       "engine": "speechcpp-asr",
                       "subs": [
                         {
@@ -799,67 +852,30 @@
                       ]
                     },
                     {
-                      "value": "qwen3-asr",
-                      "label": "Qwen3-ASR（vLLM・Docker）",
-                      "engine": "qwen3-asr",
-                      "subs": []
-                    },
-                    {
-                      "value": "parakeet-onnx",
-                      "label": "Parakeet TDT-CTC ja（sherpa-onnx）",
-                      "engine": "parakeet-onnx",
-                      "subs": []
-                    },
-                    {
-                      "value": "speechcpp-asr::asr_speechcpp_model_combo=parakeet-tdt_ctc-0.6b-ja",
-                      "label": "Parakeet TDT-CTC ja（speech.cpp）",
-                      "engine": "speechcpp-asr",
-                      "subs": [
-                        {
-                          "config_key": "asr_speechcpp_model",
-                          "value": "parakeet-tdt_ctc-0.6b-ja"
-                        }
-                      ]
-                    },
-                    {
-                      "value": "nemotron-onnx",
-                      "label": "Nemotron 3.5 streaming（sherpa-onnx）",
-                      "engine": "nemotron-onnx",
+                      "value": "faster-whisper",
+                      "label": "Whisper（faster-whisper）",
+                      "group": "faster-whisper",
+                      "engine": "faster-whisper",
                       "subs": []
                     },
                     {
                       "value": "nemotron-asr",
                       "label": "Nemotron 3.5 streaming（NeMo）",
+                      "group": "NeMo",
                       "engine": "nemotron-asr",
                       "subs": []
                     },
                     {
-                      "value": "sensevoice-onnx",
-                      "label": "SenseVoiceSmall（sherpa-onnx）",
-                      "engine": "sensevoice-onnx",
-                      "subs": []
-                    },
-                    {
-                      "value": "cohere-asr-onnx",
-                      "label": "Cohere Transcribe（sherpa-onnx）",
-                      "engine": "cohere-asr-onnx",
-                      "subs": []
-                    },
-                    {
-                      "value": "funasr-nano-onnx",
-                      "label": "Fun-ASR-Nano（sherpa-onnx）",
-                      "engine": "funasr-nano-onnx",
-                      "subs": []
-                    },
-                    {
-                      "value": "faster-whisper",
-                      "label": "Whisper（faster-whisper）",
-                      "engine": "faster-whisper",
+                      "value": "qwen3-asr",
+                      "label": "Qwen3-ASR（vLLM・Docker）",
+                      "group": "vLLM（Docker）",
+                      "engine": "qwen3-asr",
                       "subs": []
                     },
                     {
                       "value": "external-asr-tcp",
                       "label": "外部ASR（TCP）",
+                      "group": "外部",
                       "engine": "external-asr-tcp",
                       "subs": []
                     }
@@ -922,16 +938,16 @@
                   "kind": "combo",
                   "items": [
                     "sherpa-onnx",
-                    "speechcpp-asr",
                     "qwen3-asr-onnx",
-                    "qwen3-asr",
                     "parakeet-onnx",
                     "nemotron-onnx",
-                    "nemotron-asr",
                     "sensevoice-onnx",
                     "cohere-asr-onnx",
                     "funasr-nano-onnx",
+                    "speechcpp-asr",
                     "faster-whisper",
+                    "nemotron-asr",
+                    "qwen3-asr",
                     "external-asr-tcp"
                   ],
                   "value": "sherpa-onnx"
@@ -944,16 +960,16 @@
                   "kind": "combo",
                   "items": [
                     "sherpa-onnx",
-                    "speechcpp-asr",
                     "qwen3-asr-onnx",
-                    "qwen3-asr",
                     "parakeet-onnx",
                     "nemotron-onnx",
-                    "nemotron-asr",
                     "sensevoice-onnx",
                     "cohere-asr-onnx",
                     "funasr-nano-onnx",
+                    "speechcpp-asr",
                     "faster-whisper",
+                    "nemotron-asr",
+                    "qwen3-asr",
                     "external-asr-tcp"
                   ],
                   "value": "faster-whisper"
@@ -2843,24 +2859,14 @@
                     {
                       "value": "VOICEVOX-Core",
                       "label": "VOICEVOX（VOICEVOX Core）",
+                      "group": "VOICEVOX Core",
                       "engine": "VOICEVOX-Core",
-                      "subs": []
-                    },
-                    {
-                      "value": "VOICEVOX",
-                      "label": "VOICEVOX（アプリ）",
-                      "engine": "VOICEVOX",
-                      "subs": []
-                    },
-                    {
-                      "value": "AivisSpeech",
-                      "label": "AivisSpeech（アプリ）",
-                      "engine": "AivisSpeech",
                       "subs": []
                     },
                     {
                       "value": "Irodori-v4::irodori_backend_combo=speechcpp",
                       "label": "Irodori-TTS v4.1 Small MF（speech.cpp）",
+                      "group": "speech.cpp",
                       "engine": "Irodori-v4",
                       "subs": [
                         {
@@ -2872,6 +2878,7 @@
                     {
                       "value": "Irodori-v4::irodori_backend_combo=audiocpp&irodori_audiocpp_model_combo=500m-v3",
                       "label": "Irodori-TTS 500M v3（audio.cpp）",
+                      "group": "audio.cpp",
                       "engine": "Irodori-v4",
                       "subs": [
                         {
@@ -2887,6 +2894,7 @@
                     {
                       "value": "Irodori-v4::irodori_backend_combo=audiocpp&irodori_audiocpp_model_combo=600m-v3-voicedesign",
                       "label": "Irodori-TTS 600M v3 VoiceDesign（audio.cpp）",
+                      "group": "audio.cpp",
                       "engine": "Irodori-v4",
                       "subs": [
                         {
@@ -2900,8 +2908,30 @@
                       ]
                     },
                     {
+                      "value": "Qwen3-TTS-CPP",
+                      "label": "Qwen3-TTS 1.7B CustomVoice（audio.cpp）",
+                      "group": "audio.cpp",
+                      "engine": "Qwen3-TTS-CPP",
+                      "subs": []
+                    },
+                    {
+                      "value": "LFM2.5-Audio",
+                      "label": "LFM2.5-Audio（audio.cpp）",
+                      "group": "audio.cpp",
+                      "engine": "LFM2.5-Audio",
+                      "subs": []
+                    },
+                    {
+                      "value": "Supertonic-3",
+                      "label": "Supertonic 3（audio.cpp）",
+                      "group": "audio.cpp",
+                      "engine": "Supertonic-3",
+                      "subs": []
+                    },
+                    {
                       "value": "Irodori-v4::irodori_backend_combo=pytorch",
                       "label": "Irodori-TTS（PyTorch）",
+                      "group": "PyTorch",
                       "engine": "Irodori-v4",
                       "subs": [
                         {
@@ -2911,44 +2941,44 @@
                       ]
                     },
                     {
-                      "value": "Qwen3-TTS-CPP",
-                      "label": "Qwen3-TTS 1.7B CustomVoice（audio.cpp）",
-                      "engine": "Qwen3-TTS-CPP",
-                      "subs": []
-                    },
-                    {
-                      "value": "LFM2.5-Audio",
-                      "label": "LFM2.5-Audio（audio.cpp）",
-                      "engine": "LFM2.5-Audio",
-                      "subs": []
-                    },
-                    {
-                      "value": "Supertonic-3",
-                      "label": "Supertonic 3（audio.cpp）",
-                      "engine": "Supertonic-3",
+                      "value": "Tsukasa",
+                      "label": "Tsukasa Speech（PyTorch）",
+                      "group": "PyTorch",
+                      "engine": "Tsukasa",
                       "subs": []
                     },
                     {
                       "value": "Kokoro-RealtimeTTS",
                       "label": "Kokoro（RealtimeTTS）",
+                      "group": "RealtimeTTS",
                       "engine": "Kokoro-RealtimeTTS",
                       "subs": []
                     },
                     {
-                      "value": "Tsukasa",
-                      "label": "Tsukasa Speech（PyTorch）",
-                      "engine": "Tsukasa",
+                      "value": "VOICEVOX",
+                      "label": "VOICEVOX（アプリ）",
+                      "group": "アプリ（HTTP）",
+                      "engine": "VOICEVOX",
+                      "subs": []
+                    },
+                    {
+                      "value": "AivisSpeech",
+                      "label": "AivisSpeech（アプリ）",
+                      "group": "アプリ（HTTP）",
+                      "engine": "AivisSpeech",
                       "subs": []
                     },
                     {
                       "value": "Cartesia-Realtime",
                       "label": "Cartesia（クラウド）",
+                      "group": "クラウド",
                       "engine": "Cartesia-Realtime",
                       "subs": []
                     },
                     {
                       "value": "TEMPLATE",
                       "label": "任意のHTTP API（TEMPLATE）",
+                      "group": "HTTP",
                       "engine": "TEMPLATE",
                       "subs": []
                     }

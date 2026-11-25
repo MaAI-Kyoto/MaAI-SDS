@@ -416,11 +416,22 @@ function renderWidget(w) {
         // 行が決める隠した欄の値（speech.cpp のモデル・Irodori の実行系など）。
         node = el('select');
         node.dataset.engineChoice = '1';
+        // 実行系ごとの見出し（optgroup）の下に並べる（Qt は選べない見出し行）。
+        let group = null;
         for (const item of w.items ?? []) {
           const opt = new Option(String(item.label ?? item.value), String(item.value));
           opt.dataset.engine = String(item.engine ?? item.value);
           opt.dataset.subs = JSON.stringify(item.subs ?? []);
-          node.append(opt);
+          if (item.group) {
+            if (!group || group.label !== item.group) {
+              group = document.createElement('optgroup');
+              group.label = item.group;
+              node.append(group);
+            }
+            group.append(opt);
+          } else {
+            node.append(opt);
+          }
         }
         selectEngineChoice(node, currentValue(w));
         node.addEventListener('change', () => {

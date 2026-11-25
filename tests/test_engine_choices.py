@@ -74,6 +74,26 @@ class ComboTest(unittest.TestCase):
         model.currentIndexChanged.connect(lambda _i: ctrl.tts_engine_combo.resync())
         return ctrl
 
+    def test_runtime_headers_cannot_be_selected(self) -> None:
+        from PySide6.QtCore import Qt
+
+        combo = self._controller().tts_engine_combo
+        headers = [i for i in range(combo.count()) if combo.itemData(i) is None]
+        self.assertEqual([combo.itemText(i) for i in headers],
+                         list(dict.fromkeys(c.runtime for c in TTS_ENGINE_CHOICES)))
+        for i in headers:
+            self.assertEqual(combo.model().item(i).flags(), Qt.ItemFlag.NoItemFlags)
+        self.assertEqual(combo.current_label(), "VOICEVOX（VOICEVOX Core）")  # 先頭の見出しではなく最初の行
+
+    def test_every_row_sits_under_its_runtime(self) -> None:
+        for choices in (ASR_ENGINE_CHOICES, TTS_ENGINE_CHOICES):
+            seen: list[str] = []
+            for c in choices:
+                self.assertTrue(c.runtime, c.label)
+                if not seen or seen[-1] != c.runtime:
+                    self.assertNotIn(c.runtime, seen, f"{c.runtime} の行が離れている")
+                    seen.append(c.runtime)
+
     def test_current_text_is_the_engine_value(self) -> None:
         ctrl = self._controller()
         self.assertEqual(ctrl.tts_engine_combo.currentText(), "VOICEVOX-Core")
@@ -84,7 +104,7 @@ class ComboTest(unittest.TestCase):
     def test_picking_a_row_sets_the_hidden_runtime_and_model(self) -> None:
         ctrl = self._controller()
         combo = ctrl.tts_engine_combo
-        row = next(i for i, c in enumerate(TTS_ENGINE_CHOICES) if "600M" in c.label)
+        row = combo.row_of("Irodori-TTS 600M v3 VoiceDesign（audio.cpp）")
         emitted: list[str] = []
         combo.engineChanged.connect(emitted.append)
         combo.setCurrentIndex(row)
@@ -94,7 +114,7 @@ class ComboTest(unittest.TestCase):
         self.assertEqual(combo.current_label(), "Irodori-TTS 600M v3 VoiceDesign（audio.cpp）")
         self.assertEqual(emitted, ["Irodori-v4"])
         # 同じエンジンの別の行へ移っても engineChanged は出ない（実行系だけ変わる）
-        row2 = next(i for i, c in enumerate(TTS_ENGINE_CHOICES) if "PyTorch" in c.label)
+        row2 = combo.row_of("Irodori-TTS（PyTorch）")
         combo.setCurrentIndex(row2)
         combo.activated.emit(row2)
         self.assertEqual(emitted, ["Irodori-v4"])

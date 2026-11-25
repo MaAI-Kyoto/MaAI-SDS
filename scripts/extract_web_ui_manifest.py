@@ -298,6 +298,7 @@ def _describe(widget: QWidget, attrs: dict[int, str], keys: dict[str, str]) -> d
             items.append({
                 "value": choice_id(c),
                 "label": c.label,
+                "group": c.runtime,
                 "engine": c.engine,
                 "subs": [{"config_key": keys.get(a), "value": v} for a, v in c.subs],
             })

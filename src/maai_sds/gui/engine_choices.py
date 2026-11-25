@@ -14,10 +14,10 @@ Web の画面定義（scripts/extract_web_ui_manifest.py）は同じ一覧と、
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QComboBox, QFormLayout, QWidget
 
 
@@ -27,50 +27,86 @@ class EngineChoice:
     engine: str
     # 行を選んだときに合わせる隠した欄（controller の属性名, その欄の itemData）
     subs: tuple[tuple[str, str], ...] = ()
+    # 一覧の見出し（実行系）。_grouped が埋める。
+    runtime: str = ""
 
 
 _SPEECHCPP = "asr_speechcpp_model_combo"
 _IRODORI_BACKEND = "irodori_backend_combo"
 _IRODORI_AUDIOCPP_MODEL = "irodori_audiocpp_model_combo"
 
-# 並びはモデルごと（同じモデルの実行系違いを隣に置く）。先頭は既定のエンジン。
-ASR_ENGINE_CHOICES: tuple[EngineChoice, ...] = (
-    EngineChoice("ReazonSpeech k2（sherpa-onnx）", "sherpa-onnx"),
-    EngineChoice("ReazonSpeech NeMo v2（speech.cpp）", "speechcpp-asr", ((_SPEECHCPP, "reazonspeech-v2"),)),
-    EngineChoice("Haas-ja v1.0（speech.cpp）", "speechcpp-asr", ((_SPEECHCPP, "haas-ja-v1.0"),)),
-    EngineChoice("Qwen3-ASR（sherpa-onnx）", "qwen3-asr-onnx"),
-    EngineChoice("Qwen3-ASR 0.6B（speech.cpp）", "speechcpp-asr", ((_SPEECHCPP, "qwen3-asr-0.6b"),)),
-    EngineChoice("Qwen3-ASR 1.7B（speech.cpp）", "speechcpp-asr", ((_SPEECHCPP, "qwen3-asr-1.7b"),)),
-    EngineChoice("Qwen3-ASR（vLLM・Docker）", "qwen3-asr"),
-    EngineChoice("Parakeet TDT-CTC ja（sherpa-onnx）", "parakeet-onnx"),
-    EngineChoice("Parakeet TDT-CTC ja（speech.cpp）", "speechcpp-asr", ((_SPEECHCPP, "parakeet-tdt_ctc-0.6b-ja"),)),
-    EngineChoice("Nemotron 3.5 streaming（sherpa-onnx）", "nemotron-onnx"),
-    EngineChoice("Nemotron 3.5 streaming（NeMo）", "nemotron-asr"),
-    EngineChoice("SenseVoiceSmall（sherpa-onnx）", "sensevoice-onnx"),
-    EngineChoice("Cohere Transcribe（sherpa-onnx）", "cohere-asr-onnx"),
-    EngineChoice("Fun-ASR-Nano（sherpa-onnx）", "funasr-nano-onnx"),
-    EngineChoice("Whisper（faster-whisper）", "faster-whisper"),
-    EngineChoice("外部ASR（TCP）", "external-asr-tcp"),
-)
 
-TTS_ENGINE_CHOICES: tuple[EngineChoice, ...] = (
-    EngineChoice("VOICEVOX（VOICEVOX Core）", "VOICEVOX-Core"),
-    EngineChoice("VOICEVOX（アプリ）", "VOICEVOX"),
-    EngineChoice("AivisSpeech（アプリ）", "AivisSpeech"),
-    EngineChoice("Irodori-TTS v4.1 Small MF（speech.cpp）", "Irodori-v4", ((_IRODORI_BACKEND, "speechcpp"),)),
-    EngineChoice("Irodori-TTS 500M v3（audio.cpp）", "Irodori-v4",
-                 ((_IRODORI_BACKEND, "audiocpp"), (_IRODORI_AUDIOCPP_MODEL, "500m-v3"))),
-    EngineChoice("Irodori-TTS 600M v3 VoiceDesign（audio.cpp）", "Irodori-v4",
-                 ((_IRODORI_BACKEND, "audiocpp"), (_IRODORI_AUDIOCPP_MODEL, "600m-v3-voicedesign"))),
-    EngineChoice("Irodori-TTS（PyTorch）", "Irodori-v4", ((_IRODORI_BACKEND, "pytorch"),)),
-    EngineChoice("Qwen3-TTS 1.7B CustomVoice（audio.cpp）", "Qwen3-TTS-CPP"),
-    EngineChoice("LFM2.5-Audio（audio.cpp）", "LFM2.5-Audio"),
-    EngineChoice("Supertonic 3（audio.cpp）", "Supertonic-3"),
-    EngineChoice("Kokoro（RealtimeTTS）", "Kokoro-RealtimeTTS"),
-    EngineChoice("Tsukasa Speech（PyTorch）", "Tsukasa"),
-    EngineChoice("Cartesia（クラウド）", "Cartesia-Realtime"),
-    EngineChoice("任意のHTTP API（TEMPLATE）", "TEMPLATE"),
-)
+def _grouped(groups: tuple[tuple[str, tuple[EngineChoice, ...]], ...]) -> tuple[EngineChoice, ...]:
+    return tuple(replace(c, runtime=runtime) for runtime, rows in groups for c in rows)
+
+
+# 実行系ごとに見出しを付けて並べる（選ぶときに実行系で探せるように）。行の名前にも実行系を残すのは、
+# 一覧を閉じたとき（選んだ 1 行だけが見えるとき）にも実行系が分かるようにするため。
+ASR_ENGINE_CHOICES: tuple[EngineChoice, ...] = _grouped((
+    ("sherpa-onnx", (
+        EngineChoice("ReazonSpeech k2（sherpa-onnx）", "sherpa-onnx"),
+        EngineChoice("Qwen3-ASR（sherpa-onnx）", "qwen3-asr-onnx"),
+        EngineChoice("Parakeet TDT-CTC ja（sherpa-onnx）", "parakeet-onnx"),
+        EngineChoice("Nemotron 3.5 streaming（sherpa-onnx）", "nemotron-onnx"),
+        EngineChoice("SenseVoiceSmall（sherpa-onnx）", "sensevoice-onnx"),
+        EngineChoice("Cohere Transcribe（sherpa-onnx）", "cohere-asr-onnx"),
+        EngineChoice("Fun-ASR-Nano（sherpa-onnx）", "funasr-nano-onnx"),
+    )),
+    ("speech.cpp", (
+        EngineChoice("Haas-ja v1.0（speech.cpp）", "speechcpp-asr", ((_SPEECHCPP, "haas-ja-v1.0"),)),
+        EngineChoice("ReazonSpeech NeMo v2（speech.cpp）", "speechcpp-asr", ((_SPEECHCPP, "reazonspeech-v2"),)),
+        EngineChoice("Parakeet TDT-CTC ja（speech.cpp）", "speechcpp-asr", ((_SPEECHCPP, "parakeet-tdt_ctc-0.6b-ja"),)),
+        EngineChoice("Qwen3-ASR 0.6B（speech.cpp）", "speechcpp-asr", ((_SPEECHCPP, "qwen3-asr-0.6b"),)),
+        EngineChoice("Qwen3-ASR 1.7B（speech.cpp）", "speechcpp-asr", ((_SPEECHCPP, "qwen3-asr-1.7b"),)),
+    )),
+    ("faster-whisper", (
+        EngineChoice("Whisper（faster-whisper）", "faster-whisper"),
+    )),
+    ("NeMo", (
+        EngineChoice("Nemotron 3.5 streaming（NeMo）", "nemotron-asr"),
+    )),
+    ("vLLM（Docker）", (
+        EngineChoice("Qwen3-ASR（vLLM・Docker）", "qwen3-asr"),
+    )),
+    ("外部", (
+        EngineChoice("外部ASR（TCP）", "external-asr-tcp"),
+    )),
+))
+
+TTS_ENGINE_CHOICES: tuple[EngineChoice, ...] = _grouped((
+    ("VOICEVOX Core", (
+        EngineChoice("VOICEVOX（VOICEVOX Core）", "VOICEVOX-Core"),
+    )),
+    ("speech.cpp", (
+        EngineChoice("Irodori-TTS v4.1 Small MF（speech.cpp）", "Irodori-v4", ((_IRODORI_BACKEND, "speechcpp"),)),
+    )),
+    ("audio.cpp", (
+        EngineChoice("Irodori-TTS 500M v3（audio.cpp）", "Irodori-v4",
+                     ((_IRODORI_BACKEND, "audiocpp"), (_IRODORI_AUDIOCPP_MODEL, "500m-v3"))),
+        EngineChoice("Irodori-TTS 600M v3 VoiceDesign（audio.cpp）", "Irodori-v4",
+                     ((_IRODORI_BACKEND, "audiocpp"), (_IRODORI_AUDIOCPP_MODEL, "600m-v3-voicedesign"))),
+        EngineChoice("Qwen3-TTS 1.7B CustomVoice（audio.cpp）", "Qwen3-TTS-CPP"),
+        EngineChoice("LFM2.5-Audio（audio.cpp）", "LFM2.5-Audio"),
+        EngineChoice("Supertonic 3（audio.cpp）", "Supertonic-3"),
+    )),
+    ("PyTorch", (
+        EngineChoice("Irodori-TTS（PyTorch）", "Irodori-v4", ((_IRODORI_BACKEND, "pytorch"),)),
+        EngineChoice("Tsukasa Speech（PyTorch）", "Tsukasa"),
+    )),
+    ("RealtimeTTS", (
+        EngineChoice("Kokoro（RealtimeTTS）", "Kokoro-RealtimeTTS"),
+    )),
+    ("アプリ（HTTP）", (
+        EngineChoice("VOICEVOX（アプリ）", "VOICEVOX"),
+        EngineChoice("AivisSpeech（アプリ）", "AivisSpeech"),
+    )),
+    ("クラウド", (
+        EngineChoice("Cartesia（クラウド）", "Cartesia-Realtime"),
+    )),
+    ("HTTP", (
+        EngineChoice("任意のHTTP API（TEMPLATE）", "TEMPLATE"),
+    )),
+))
 
 # 一覧で選ぶようになったので画面から隠す欄（Web の画面定義でも隠す）。
 HIDDEN_SUB_ATTRS: frozenset[str] = frozenset(
@@ -103,8 +139,22 @@ class EngineChoiceCombo(QComboBox):
         self._controller = controller
         self._choices = choices
         self._applying = False
+        # 実行系ごとに選べない見出し行を挟む。itemData は選択肢の番号（見出しは None）。
+        self._rows: list[int] = []
+        runtime = None
+        header_font = self.font()
+        header_font.setBold(True)
         for i, c in enumerate(choices):
+            if c.runtime and c.runtime != runtime:
+                runtime = c.runtime
+                self.addItem(c.runtime, None)
+                item = self.model().item(self.count() - 1)
+                if item is not None:
+                    item.setFlags(Qt.ItemFlag.NoItemFlags)
+                    item.setFont(header_font)
             self.addItem(c.label, i)
+            self._rows.append(self.count() - 1)
+        self.setCurrentIndex(self._rows[0] if self._rows else -1)
         self._last_engine = self.currentText()
         self.currentIndexChanged.connect(self._on_index_changed)
         self.activated.connect(self._on_activated)
@@ -115,11 +165,19 @@ class EngineChoiceCombo(QComboBox):
         return c.engine if c is not None else ""
 
     def current_choice(self) -> EngineChoice | None:
-        i = self.currentIndex()
-        return self._choices[i] if 0 <= i < len(self._choices) else None
+        i = self.currentData()
+        return self._choices[i] if isinstance(i, int) and 0 <= i < len(self._choices) else None
 
     def current_label(self) -> str:
-        return super().currentText()
+        c = self.current_choice()
+        return c.label if c is not None else ""
+
+    def row_of(self, label: str) -> int:
+        """表示名の行の位置（見出しを含めた QComboBox の番号）。"""
+        for i, c in enumerate(self._choices):
+            if c.label == label:
+                return self._rows[i]
+        return -1
 
     def choices(self) -> tuple[EngineChoice, ...]:
         return self._choices
@@ -138,21 +196,23 @@ class EngineChoiceCombo(QComboBox):
         return all(self._sub_value(attr) == value for attr, value in c.subs)
 
     def _best_index(self, engine: str) -> int | None:
+        """engine の行のうち、隠した欄も合う行の位置（QComboBox の番号）。"""
         candidates = [i for i, c in enumerate(self._choices) if c.engine == engine]
         if not candidates:
             return None
         for i in candidates:
             if self._matches(self._choices[i]):
-                return i
-        return candidates[0]
+                return self._rows[i]
+        return self._rows[candidates[0]]
 
     def _on_activated(self, index: int) -> None:
         """ユーザーが行を選んだら、隠した欄をその行のモデル・実行系に合わせる。"""
-        if not (0 <= index < len(self._choices)):
+        i = self.itemData(index)
+        if not (isinstance(i, int) and 0 <= i < len(self._choices)):
             return
         self._applying = True
         try:
-            for attr, value in self._choices[index].subs:
+            for attr, value in self._choices[i].subs:
                 combo = getattr(self._controller, attr, None)
                 if isinstance(combo, QComboBox):
                     j = combo.findData(value)
