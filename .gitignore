@@ -115,6 +115,8 @@ scripts/*
 !scripts/verify_sherpa_import.py
 !scripts/setup_assets.ps1
 !scripts/extract_web_ui_manifest.py
+# README のターンテイキングの図（docs/img/turn-taking-*.svg）を作り直す。
+!scripts/make_turn_taking_figure.py
 !scripts/setup_assets.sh
 # Qwen3-ASR ONNX の fp32 / 1.7B は GitHub に無い。setup_assets の
 # Qwen3AsrOnnxFp32Model / Qwen3AsrOnnx17BModel が ModelScope 取得に使う。

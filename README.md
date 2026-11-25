@@ -80,24 +80,25 @@ For every frame, MaAI outputs two probabilities from the user's and the system's
 - `p_now`: the probability that the system may start speaking now (short-term prediction)
 - `p_future`: the probability that it will be the system's turn a little later (longer-term prediction)
 
-The dialogue controller (`DialogOrchestrator`) uses these two values and VAD (voice activity detection) as follows (in the diagram, "up" and "down" mean that the probability crosses the threshold from below or from above).
+The dialogue controller (`DialogOrchestrator`) acts when these values cross the threshold ("up" and "down" mean that the
+probability crosses the threshold from below or from above).
 
-```mermaid
-stateDiagram-v2
-    direction LR
-    state "User's turn" as L
-    state "Prefetching<br/>generate, hold the audio" as P
-    state "System's turn<br/>generate and play the response" as S
-    state "Waiting for the user<br/>(turn lock)" as W
-    [*] --> L
-    L --> P : p_future up
-    P --> L : p_future down<br/>(discard the prefetch)
-    P --> S : p_now up<br/>(play the held audio)
-    L --> S : p_now up<br/>or long enough silence
-    S --> W : playback ends
-    S --> L : user speech<br/>(barge-in)
-    W --> L : user speech
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/turn-taking-en-dark.svg">
+    <img src="docs/img/turn-taking-en-light.svg" alt="p_now and p_future over time, with examples of prefetching, taking the turn, discarding the prefetch and the turn condition" width="100%">
+  </picture>
+</p>
+
+- **A. Prefetch**: when the user is about to finish, `p_future` crosses up first. At that point the LLM and TTS start, and the
+  audio is held without playing (①). When `p_now` crosses up, the system takes the turn and plays the held audio at once (②).
+  Without prefetching, generation would only start at ②, and the response would be late by that much.
+- **B. Hesitation**: a short pause in the middle of the user's speech can also make `p_future` cross up and start a prefetch (①).
+  When the user keeps talking and `p_future` crosses down, the prefetch is discarded (②). `p_now` never crosses up, so the
+  system does not take the turn.
+- **C. Turn condition**: with the default `p_now`, the system takes the turn when `p_now` crosses up (①). If the user then keeps
+  talking, the system speech is stopped by barge-in. With `p_now_and_future`, the turn is taken only if `p_future` is also at or
+  above the threshold when `p_now` crosses up, so the system waits at ① and takes the turn at ②.
 
 | Behavior | Description | Setting (value in the example config) |
 |---|---|---|
