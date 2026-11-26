@@ -161,6 +161,8 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1 -Device cpu  # CP
 
 スクリプトは次の順に実行します：`uv sync` → パッチ適用済み sherpa-onnx の導入 → エンジン資産の取得
 （`scripts/setup_assets.ps1`）→ 検証（sherpa-onnx の版・ワーカーの起動・GUI の構築・テスト）。
+最初に前提（スマート アプリ コントロール・MSVC・CMake・Python 3.11・Node.js）を確認し、MSVC の環境を読み込むので、
+Developer PowerShell から実行する必要はありません。
 
 | オプション | 説明 |
 |---|---|
@@ -169,6 +171,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1 -Device cpu  # CP
 | `-SkipAssets` | エンジン資産を取得しない |
 | `-SkipSherpa` | パッチ適用済み sherpa-onnx を導入しない（PyPI 版のままになり、`nemotron-onnx` の精度が下がる） |
 | `-ForceSherpaBuild` | ビルド済みの sherpa-onnx を使わず、ソースからビルドする（Git・CMake・MSVC Build Tools の C++ が必要。[docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md)） |
+| `-InstallPrereqs` | 足りない前提（VS 2022 Build Tools の C++・CMake・Python 3.11・Node.js）を winget で導入する。Build Tools は数 GB で、管理者の確認が出る。既定では導入せず、足りないものと導入方法を表示する |
 | `-VerifyOnly` | 導入せず検証のみ行う |
 
 既定で取得するのは、既定の設定（ASR：ReazonSpeech〔sherpa-onnx〕、TTS：VOICEVOX Core）で対話できる最小限の資産です。
@@ -185,7 +188,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1 -Device cpu  # CP
 >   （`os error 4551`、`DLL load failed`）。Windows セキュリティでオフにしてください（`setup_env.ps1` も確認します）。
 > - ビルドに失敗したあとで MSVC や CMake を入れた場合は、失敗したときのビルド設定が uv のキャッシュに残っています。
 >   `uv cache clean <パッケージ名>`（例：`uv cache clean pyopenjtalk`）で消してから再実行してください。
->   それでも失敗するときは、Developer PowerShell for VS 2022 から実行してください。
+>   それでも失敗するときは、Developer PowerShell for VS 2022 から実行してみてください。
 
 ### 2. API キー
 

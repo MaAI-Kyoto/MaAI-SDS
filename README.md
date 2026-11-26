@@ -169,6 +169,8 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1 -Device cpu  # CP
 
 The script runs, in order: `uv sync` → install the patched sherpa-onnx → fetch the engine assets
 (`scripts/setup_assets.ps1`) → verify (sherpa-onnx version, worker start-up, GUI construction, tests).
+It first checks the prerequisites (Smart App Control, MSVC, CMake, Python 3.11, Node.js) and loads the MSVC environment,
+so it does not need to be run from Developer PowerShell.
 
 | Option | Description |
 |---|---|
@@ -177,6 +179,7 @@ The script runs, in order: `uv sync` → install the patched sherpa-onnx → fet
 | `-SkipAssets` | Do not fetch the engine assets |
 | `-SkipSherpa` | Do not install the patched sherpa-onnx (the PyPI build stays, and `nemotron-onnx` becomes less accurate) |
 | `-ForceSherpaBuild` | Build sherpa-onnx from source instead of using the prebuilt package (needs Git, CMake and the C++ workload of MSVC Build Tools; [docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md), Japanese) |
+| `-InstallPrereqs` | Install missing prerequisites (the C++ workload of VS 2022 Build Tools, CMake, Python 3.11, Node.js) with winget. Build Tools is several GB and asks for administrator approval. By default nothing is installed; the script shows what is missing and how to install it |
 | `-VerifyOnly` | Only verify, without installing anything |
 
 By default, only the assets needed to talk with the default settings (ASR: ReazonSpeech on sherpa-onnx, TTS: VOICEVOX Core)
@@ -193,7 +196,7 @@ are fetched. Other engines are installed by selecting them in 「エンジン管
 >   (`os error 4551`, `DLL load failed`). Turn it off in Windows Security (`setup_env.ps1` also checks it).
 > - If you installed MSVC or CMake after a build had failed, the failed build settings remain in the uv cache.
 >   Remove them with `uv cache clean <package>` (for example `uv cache clean pyopenjtalk`) and run again.
->   If it still fails, run from Developer PowerShell for VS 2022.
+>   If it still fails, try running from Developer PowerShell for VS 2022.
 
 ### 2. API keys
 

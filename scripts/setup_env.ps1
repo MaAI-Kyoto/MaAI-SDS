@@ -35,6 +35,10 @@
 .PARAMETER ForceSherpaBuild
     ローカルのスナップショットがあってもソースからビルドする（新しいマシンと同じ経路を試す）。
 
+.PARAMETER InstallPrereqs
+    足りない前提を winget で入れる（VS 2022 Build Tools の C++・CMake・Python 3.11・Node.js のうち、無いものだけ）。
+    Build Tools は数 GB あり、管理者の確認が出る。既定では入れず、足りないものと入れ方を示すだけ。
+
 .PARAMETER VerifyOnly
     何もインストールせず、検証だけ実行する。
 
@@ -57,6 +61,7 @@ param(
     [switch]$WithNemotron,
     [switch]$ForceSherpaBuild,
     [switch]$SkipAssets,
+    [switch]$InstallPrereqs,
     [switch]$VerifyOnly
 )
 
@@ -84,12 +89,74 @@ function Get-SmartAppControlState {
     return $null
 }
 
-function Test-MsvcBuildTools {
-    # MSVC の C++ ツールセット（VCTools）が入っているか。vswhere は VS / Build Tools のインストーラーが置く。
+function Get-MsvcInstallPath {
+    # MSVC の C++ ツールセット（VCTools）を含む VS / Build Tools の場所。無ければ $null。
+    # vswhere は VS / Build Tools のインストーラーが置く。
     $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
-    if (-not (Test-Path $vswhere)) { return $false }
+    if (-not (Test-Path $vswhere)) { return $null }
     $path = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-    return [bool]$path
+    if ($path) { return "$path".Trim() }
+    return $null
+}
+
+function Test-MsvcBuildTools { return [bool](Get-MsvcInstallPath) }
+
+function Test-Python311 {
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $found = (& uv python find 3.11 2>$null)
+        if ($LASTEXITCODE -eq 0 -and $found) { return "$found".Trim() }
+        return $null
+    } finally { $ErrorActionPreference = $prevEap }
+}
+
+function Update-PathFromRegistry {
+    # winget で入れたものは、今の PowerShell の PATH には入らない。レジストリから読み直す。
+    $machine = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $user    = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path = (@($machine, $user) | Where-Object { $_ }) -join ";"
+}
+
+function Install-WingetPackage([string]$id, [string[]]$extra = @()) {
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        throw "winget が無いので $id を自動で入れられません。手で入れてから再実行してください。"
+    }
+    Write-Host "[install] winget install $id（管理者の確認が出たら許可してください）"
+    $wingetArgs = @("install", "--id", $id, "--exact", "--source", "winget",
+                    "--accept-package-agreements", "--accept-source-agreements") + $extra
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { & winget @wingetArgs } finally { $ErrorActionPreference = $prev }
+    $rc = $LASTEXITCODE
+    Update-PathFromRegistry
+    if ($rc -ne 0) { Write-Warn "winget install $id が終了コード $rc を返しました（下で入ったかを確かめます）。" }
+}
+
+# -InstallPrereqs のときに winget で入れるもの（足りないものだけ）。
+$wingetBuildTools = @("Microsoft.VisualStudio.2022.BuildTools",
+    @("--override", "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"))
+
+function Enter-MsvcEnvironment {
+    # MSVC の環境（cl.exe・INCLUDE・LIB など）を、この PowerShell に読み込む。
+    # これで Developer PowerShell for VS から実行しなくても、uv sync 中のソースビルドが MSVC を見つけられる
+    # （今の PowerShell から起動する uv・cmake・子の powershell はこの環境を引き継ぐ）。
+    if (Get-Command cl.exe -ErrorAction SilentlyContinue) { Write-Ok "MSVC の環境は読み込み済み"; return }
+    $vs = Get-MsvcInstallPath
+    if (-not $vs) { return }
+    $dll = Join-Path $vs "Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+    if (-not (Test-Path $dll)) { Write-Warn "見つからない: $dll（MSVC の環境を読み込まずに続けます）"; return }
+    # VsDevCmd の中で vswhere を PATH から呼ぶ箇所がある（無いと「認識されていません」と出る）
+    $installerDir = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer"
+    if (($env:Path -split ";") -notcontains $installerDir) { $env:Path = "$installerDir;$env:Path" }
+    try {
+        Import-Module $dll
+        Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64" | Out-Null
+        if (Get-Command cl.exe -ErrorAction SilentlyContinue) { Write-Ok "MSVC の環境を読み込んだ ($vs)" }
+        else { Write-Warn "MSVC の環境を読み込んだが cl.exe が見つからない" }
+    } catch {
+        Write-Warn "MSVC の環境を読み込めなかった: $_（Developer PowerShell for VS 2022 から実行すると確実です）"
+    }
 }
 
 function Test-Prereqs {
@@ -116,25 +183,30 @@ function Test-Prereqs {
 
     # Python 3.11。.python-version で 3.11 を指定している（配布している sherpa-onnx のビルド済みパッケージが cp311 向け）。
     # 見つからなければ uv が python-build-standalone を取ってくる（署名が無い）。python.org の公式版を勧める。
-    $prevEap = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
-    $py311 = (& uv python find 3.11 2>$null)
-    $ErrorActionPreference = $prevEap
-    if ($LASTEXITCODE -eq 0 -and $py311) {
+    $py311 = Test-Python311
+    if ((-not $py311) -and $InstallPrereqs) {
+        Install-WingetPackage "Python.Python.3.11"
+        $py311 = Test-Python311
+    }
+    if ($py311) {
         Write-Ok "Python 3.11: $py311"
     } else {
         Write-Warn ("Python 3.11 が見つからないので、uv が python-build-standalone を取ってきます。" +
-                    "python.org の公式版を勧めます（winget install Python.Python.3.11）。")
+                    "python.org の公式版を勧めます（-InstallPrereqs を付けるか、winget install Python.Python.3.11）。")
     }
 
     # MSVC と CMake。pyopenjtalk などは Windows 向けのビルド済みパッケージが無く、uv sync の中でソースからビルドする。
     # 環境を新しく作るときは必須。既に .venv があれば（ビルド済みのものが入っていれば）警告にとどめる。
+    if ($InstallPrereqs) {
+        if (-not (Test-MsvcBuildTools)) { Install-WingetPackage $wingetBuildTools[0] $wingetBuildTools[1] }
+        if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { Install-WingetPackage "Kitware.CMake" }
+    }
     $needBuild = @()
-    if (-not (Test-MsvcBuildTools)) { $needBuild += "Visual Studio 2022 Build Tools（C++。winget install Microsoft.VisualStudio.2022.BuildTools --override `"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive`"）" }
+    if (-not (Test-MsvcBuildTools)) { $needBuild += "Visual Studio 2022 Build Tools（C++。winget install Microsoft.VisualStudio.2022.BuildTools --override `"--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended`"）" }
     if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { $needBuild += "CMake（winget install Kitware.CMake）" }
     if ($needBuild.Count -gt 0) {
         $msg = "ソースからのビルドに必要なものが見つからない:`n  - " + ($needBuild -join "`n  - ") +
-               "`n  入れたあとは新しい PowerShell を開いて再実行してください。"
+               "`n  -InstallPrereqs を付けて再実行すると winget で入れます（手で入れた場合は、新しい PowerShell を開いて再実行）。"
         if (-not (Test-Path $venvPython)) { throw $msg }
         Write-Warn $msg
     } else {
@@ -142,8 +214,11 @@ function Test-Prereqs {
     }
 
     # Node.js。テストの一部（Web UI の JavaScript）だけが使う。無ければそのテストは飛ばす。
+    if ((-not (Get-Command node -ErrorAction SilentlyContinue)) -and $InstallPrereqs) {
+        Install-WingetPackage "OpenJS.NodeJS.LTS"
+    }
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-        Write-Warn "node が無いので、Web UI の JavaScript のテストは飛ばします（winget install OpenJS.NodeJS.LTS）。"
+        Write-Warn "node が無いので、Web UI の JavaScript のテストは飛ばします（-InstallPrereqs か winget install OpenJS.NodeJS.LTS）。"
     }
     $nvidia = Get-Command nvidia-smi -ErrorAction SilentlyContinue
     if ($nvidia) {
@@ -371,6 +446,8 @@ if ($VerifyOnly) {
 }
 
 Test-Prereqs
+# Developer PowerShell でなくても、uv sync 中のソースビルドが MSVC を見つけられるようにする
+Enter-MsvcEnvironment
 
 if (-not $SkipSherpa) {
     # uv sync の前に待避する。ここが順番の要点。
