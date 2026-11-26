@@ -1,0 +1,6 @@
+# MaAI-SDS 用の MDF（ブラウザ版 MMDAgent-EX Web 用）。同じフォルダーの maai_sds_web.fst を読む。
+# MaAI-SDS の「アバターの表示先」を「ブラウザ」にすると、MaAI-SDS が WebSocket で待ち受ける（既定 localhost:9001/chat）。
+# ブラウザは TCP を開けないので、Plugin_Remote の TCP 設定（EnableClient / EnableServer）は書かない。
+Plugin_Remote_Websocket_Host=localhost
+Plugin_Remote_Websocket_Port=9001
+Plugin_Remote_Websocket_Directory=/chat

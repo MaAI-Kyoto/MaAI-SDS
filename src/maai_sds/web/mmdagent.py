@@ -322,6 +322,15 @@ class WebMmdAgentController:
             raise MmdAgentLaunchUnavailable(reason)
 
         cfg = self._config()
+        if vds.avatar_in_browser(cfg):
+            # アバターはブラウザ版（MMDAgent-EX Web）に出す設定：MMDAgent-EX は起動せず、受け口だけ用意する
+            self.sync_audio_output()
+            result = self.status()
+            result["message"] = (
+                "アバターはブラウザ（MMDAgent-EX Web）に表示する設定です。MMDAgent-EX Web で maai_sds_web.mdf を開始し、"
+                f"ws://localhost:{vds.avatar_browser_ws_port(cfg)}/chat に接続してください。"
+            )
+            return result
         exec_path = Path(str(cfg.get("exec_path") or "").strip())
         mdf_path = Path(str(cfg.get("mdf_path") or "").strip())
         if not exec_path.is_file():

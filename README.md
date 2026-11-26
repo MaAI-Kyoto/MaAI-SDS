@@ -232,6 +232,24 @@ What `maai_sds.mdf` does:
 - Lip sync is produced by MMDAgent-EX from the audio it receives; nods (neck), gaze and blinks are sent by MaAI-SDS. Because the
   neck is used for nodding, the neck movement of the idle motion stops.
 
+**Showing the avatar in a browser instead**: the browser version [MMDAgent-EX Web](https://github.com/kazu44ttaka/mmdagent-ex-web)
+can show the avatar in place of MMDAgent-EX. MMDAgent-EX itself (step 1 above) is not needed; prepare only the example
+collection and the `maai_sds` folder (steps 2 and 3).
+
+1. Set up MMDAgent-EX Web and open its page. It needs Chrome or Edge and an HTTP server for the page (Python below).
+
+   ```powershell
+   git clone https://github.com/kazu44ttaka/mmdagent-ex-web.git C:\mmdagent-ex-web
+   cd C:\mmdagent-ex-web
+   python -m http.server 8000   # keep it running and open http://localhost:8000 in the browser
+   ```
+
+2. Set 「アバターの表示先」 (avatar display) in 「MMDAgent-EX起動設定」 to 「ブラウザ（MMDAgent-EX Web）」. MaAI-SDS then does not
+   start MMDAgent-EX and listens on `ws://localhost:9001/chat` (the port can be changed there; browsers cannot open TCP,
+   so the TCP settings of the MDF are not used).
+3. In MMDAgent-EX Web, choose the example collection folder (for example `C:\MMDAgent-EX\example`), start
+   `maai_sds/maai_sds_web.mdf` and connect.
+
 > [!NOTE]
 > This repository does not include MMDAgent-EX, the avatars or the motions (get them from their distributors with the steps above).
 > The bundled `maai_sds.mdf` / `maai_sds.fst` only contain settings that refer to those files by name.

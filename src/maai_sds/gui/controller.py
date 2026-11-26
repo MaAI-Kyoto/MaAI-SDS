@@ -2278,7 +2278,7 @@ class MMDAgentController(
         if self._should_obs_link_maai():
             if self._obs_remote_try_start():
                 self._obs_acquired_maai = True
-        self._maai_mmd_av_preamble_wait_for_mmd = not self.process_service.is_running()
+        self._maai_mmd_av_preamble_wait_for_mmd = not self._avatar_output_available()
         self._try_send_maai_mmd_av_preamble_once()
         self._try_reset_dialog_orchestrator_nod_para_timing()
 
@@ -2295,7 +2295,7 @@ class MMDAgentController(
             return
         if (
             self._maai_mmd_av_preamble_wait_for_mmd
-            and not self.process_service.is_running()
+            and not self._avatar_output_available()
         ):
             return
         if not self._is_dialog_orchestrator_runtime_active():
@@ -3365,13 +3365,39 @@ class MMDAgentController(
             # The container cannot inspect the host-side MMD process.  In this
             # mode the published Remote bridge is the only supported output.
             return mode
-        if mode == "mmd" and not self.process_service.is_running():
+        if mode == "mmd" and not self._avatar_output_available():
             return "local"
         return mode
 
+    def _avatar_in_browser(self) -> bool:
+        """アバターをブラウザ版（MMDAgent-EX Web）に表示する設定か。"""
+        combo = getattr(self, "avatar_display_combo", None)
+        return combo is not None and combo.currentData() == vds.AVATAR_DISPLAY_BROWSER
+
+    def _avatar_output_available(self) -> bool:
+        """音声と頷きをアバターへ送れるか。MMDAgent-EX は起動中のとき、ブラウザ版はいつでも
+        （ページを開けば WebSocket でつながり、つながる前に送った分は捨てられるだけ）。"""
+        return self.process_service.is_running() or self._avatar_in_browser()
+
+    def _on_avatar_display_changed(self, _index: int = 0) -> None:
+        """表示先を切り替えたら、保存して音声の出口とブリッジ（TCP / WebSocket）を取り直す。"""
+        browser = self._avatar_in_browser()
+        edit = getattr(self, "avatar_browser_ws_port_edit", None)
+        if edit is not None:
+            edit.setEnabled(browser)
+        if getattr(self, "_is_loading_app_config", False):
+            return
+        # 保存すると音声の出口を取り直し、出せるならブリッジの設定も送る（_save_app_config）
+        self._save_app_config()
+        if browser and self.process_service.is_running():
+            self.status_label.setText("状態：ブラウザ表示に切り替えました（MMDAgent-EX は停止してください）")
+        self._maai_mmd_av_preamble_sent = False
+        self._maai_mmd_av_preamble_wait_for_mmd = not self._avatar_output_available()
+        self._try_send_maai_mmd_av_preamble_once()
+
     def _teardown_fallback_audio_output_if_unused(self) -> None:
         """MMD 起動後は SND を Orchestrator へ送るため、未起動時フォールバック用のローカル Audio Output を止める。"""
-        if self._get_audio_output_mode() != "mmd" or not self.process_service.is_running():
+        if self._get_audio_output_mode() != "mmd" or not self._avatar_output_available():
             return
         if not self._audio_output_worker_ready_event.is_set():
             return
@@ -3507,7 +3533,7 @@ class MMDAgentController(
         built = vds.build_audio_output_worker_config_dict(
             cfg,
             output_mode=self._get_audio_output_mode(),
-            assume_mmd_running=(self._remote_backend_enabled or self.process_service.is_running()),
+            assume_mmd_running=(self._remote_backend_enabled or self._avatar_output_available()),
         )
         if self._remote_backend_enabled:
             built["remote_plugin_settings"] = self._build_remote_plugin_tcp_settings_dict()
@@ -3724,7 +3750,7 @@ class MMDAgentController(
             cfg,
             tts_engine,
             audio_output_mode=self._get_audio_output_mode(),
-            assume_mmd_running=(self._remote_backend_enabled or self.process_service.is_running()),
+            assume_mmd_running=(self._remote_backend_enabled or self._avatar_output_available()),
             force_browser_mic=self._remote_backend_enabled,
         )
         if self._remote_backend_enabled:
@@ -6030,7 +6056,7 @@ class MMDAgentController(
             QMessageBox.warning(self, "Dockerバックエンドの制約", str(ex))
             return
         stream_mode = self._tts_stream_mode(engine)
-        mmd_running = self.process_service.is_running()
+        mmd_running = self._avatar_output_available()
         if self._tts_test_in_progress:
             QMessageBox.information(self, "情報", "TTSテストは実行中です。完了までお待ちください。")
             return
@@ -6601,6 +6627,16 @@ class MMDAgentController(
             self._save_app_config()
 
     def launch_mmdagent(self) -> None:
+        if self._avatar_in_browser():
+            port = vds.avatar_browser_ws_port(self._widget_config_snapshot())
+            QMessageBox.information(
+                self,
+                "ブラウザ表示",
+                "アバターはブラウザ（MMDAgent-EX Web）に表示する設定なので、MMDAgent-EX は起動しません。\n\n"
+                "MMDAgent-EX Web でコンテンツのフォルダーを選び、maai_sds_web.mdf を開始して、"
+                f"ws://localhost:{port}/chat に接続してください。",
+            )
+            return
         exec_path = Path(self.exec_edit.text().strip())
         mdf_path = self._current_mdf_host_path(warn=True)
         if mdf_path is None:

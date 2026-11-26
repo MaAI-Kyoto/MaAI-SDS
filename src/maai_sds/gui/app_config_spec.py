@@ -41,6 +41,8 @@ APP_CONFIG_FIELDS: tuple[tuple[str, str, str, bool, object, object, str, object]
     ('asr_speechcpp_model', 'asr_speechcpp_model_combo', 'combo', False, None, 'haas-ja-v1.0', 'setCurrentIndex', None),
     ('audio_input_noise_suppression', 'audio_input_noise_suppression_combo', 'combo', False, None, 'off', 'setCurrentIndex', None),
     ('asr_maai_turn_condition', 'asr_maai_turn_condition_combo', 'combo', False, None, 'p_now_and_future', 'setCurrentIndex', None),
+    ('avatar_display', 'avatar_display_combo', 'combo', False, None, 'mmdagent', 'setCurrentIndex', None),
+    ('avatar_browser_ws_port', 'avatar_browser_ws_port_edit', 'text', False, None, '9001', 'setText', None),
     ('voice_dialog_interrupt_condition', 'voice_dialog_interrupt_condition_combo', 'combo', False, None, 'p_now', 'setCurrentIndex', None),
     ('asr_speechcpp_device', 'asr_speechcpp_device_combo', 'combo', False, None, 'gpu', 'setCurrentIndex', None),
     ('asr_speechcpp_threads', 'asr_speechcpp_threads_edit', 'text', False, None, '0', 'setText', None),

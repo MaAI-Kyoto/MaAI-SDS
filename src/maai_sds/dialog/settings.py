@@ -937,6 +937,23 @@ def avatar_model_alias_from_mdf(mdf_path: str) -> str:
     return "0"
 
 
+AVATAR_DISPLAY_MMDAGENT = "mmdagent"
+AVATAR_DISPLAY_BROWSER = "browser"
+AVATAR_BROWSER_WS_DEFAULT_PORT = 9001
+AVATAR_BROWSER_WS_DIRECTORY = "/chat"
+
+
+def avatar_in_browser(cfg: dict) -> bool:
+    """アバターをブラウザ版（MMDAgent-EX Web）に表示する設定か（`avatar_display`）。"""
+    return cfg_str(cfg, "avatar_display", AVATAR_DISPLAY_MMDAGENT).strip().lower() == AVATAR_DISPLAY_BROWSER
+
+
+def avatar_browser_ws_port(cfg: dict) -> int:
+    """ブラウザ版がつなぐ WebSocket のポート（`avatar_browser_ws_port`、既定 9001）。"""
+    port = cfg_int(cfg, "avatar_browser_ws_port", AVATAR_BROWSER_WS_DEFAULT_PORT)
+    return port if 1 <= port <= 65535 else AVATAR_BROWSER_WS_DEFAULT_PORT
+
+
 def build_remote_plugin_tcp_settings_dict(
     cfg: dict,
     *,
@@ -974,6 +991,15 @@ def build_remote_plugin_tcp_settings_dict(
         "model_alias": cfg_str(cfg, "avatar_model_alias", "")
         or avatar_model_alias_from_mdf(cfg_str(cfg, "mdf_path", "")),
     }
+
+    if avatar_in_browser(cfg):
+        # ブラウザ版（MMDAgent-EX Web）はブラウザから WebSocket でつなぐ。ブラウザは TCP を開けないので、
+        # MDF の TCP 設定（EnableClient / EnableServer）は使わず、WebSocket の受け口を開く。
+        settings["tcp_enable_server"] = False
+        settings["tcp_enable_client"] = False
+        settings["ws_host"] = "localhost"
+        settings["ws_port"] = avatar_browser_ws_port(cfg)
+        settings["ws_directory"] = AVATAR_BROWSER_WS_DIRECTORY
 
     if not docker:
         return settings
@@ -1031,7 +1057,8 @@ def build_audio_output_worker_config_dict(
         "ローカルスピーカー": "local",
         "tcp 送出": "tcp",
     }.get(saved, saved)
-    if saved == "mmd" and not assume_mmd_running:
+    # ブラウザ版はこのプロセスから起動状態を確かめられない（ページを開けばつながる）ので、常に送る
+    if saved == "mmd" and not (assume_mmd_running or avatar_in_browser(cfg)):
         eff_mode = "local"
     else:
         eff_mode = saved

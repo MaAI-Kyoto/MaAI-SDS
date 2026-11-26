@@ -221,6 +221,22 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
 - 口パクは MMDAgent-EX が受け取った音声から作り、頷き（首）・視線・まばたきは MaAI-SDS が送ります。首を頷きに使うため、
   待機モーションの首の動きは止まります。
 
+**ブラウザに表示する場合**：MMDAgent-EX 本体の代わりに、ブラウザ版の [MMDAgent-EX Web](https://github.com/kazu44ttaka/mmdagent-ex-web)
+でアバターを表示できます。本体（上の手順 1）は要らず、サンプル集と `maai_sds` フォルダー（手順 2・3）だけを用意します。
+
+1. MMDAgent-EX Web を導入し、ページを開きます。Chrome か Edge と、ページを配る HTTP サーバー（下では Python）を使います。
+
+   ```powershell
+   git clone https://github.com/kazu44ttaka/mmdagent-ex-web.git C:\mmdagent-ex-web
+   cd C:\mmdagent-ex-web
+   python -m http.server 8000   # 開いたままにして、ブラウザで http://localhost:8000 を開く
+   ```
+
+2. 「MMDAgent-EX起動設定」の「アバターの表示先」を「ブラウザ（MMDAgent-EX Web）」にします。MaAI-SDS は MMDAgent-EX を起動せず、
+   `ws://localhost:9001/chat` で待ち受けます（ポートは同じ画面で変えられます。ブラウザは TCP を開けないので、MDF の TCP の
+   設定は使いません）。
+3. MMDAgent-EX Web でサンプル集のフォルダー（例：`C:\MMDAgent-EX\example`）を選び、`maai_sds/maai_sds_web.mdf` を開始して接続します。
+
 > [!NOTE]
 > MaAI-SDS のリポジトリには、MMDAgent-EX 本体・アバター・モーションは含まれていません（上の手順で各配布元から取得します）。
 > 同梱の `maai_sds.mdf` / `maai_sds.fst` は、それらのファイル名を指す設定だけです。

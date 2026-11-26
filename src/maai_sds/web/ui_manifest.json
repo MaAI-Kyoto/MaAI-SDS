@@ -6999,6 +6999,43 @@
               "label": "",
               "widgets": [
                 {
+                  "attr": "avatar_display_combo",
+                  "config_key": "avatar_display",
+                  "scope": "app",
+                  "tooltip": "ブラウザにすると MMDAgent-EX は起動せず、MMDAgent-EX Web（ブラウザ版）が WebSocket でつなぎます。MDF の TCP 設定は使わず、localhost の下のポートの /chat で待ち受けます（ブラウザは TCP を開けないため）。ブラウザ版では assets/mmdagent/maai_sds の maai_sds_web.mdf を開いてください。",
+                  "kind": "combo",
+                  "items": [
+                    {
+                      "value": "mmdagent",
+                      "label": "MMDAgent-EX"
+                    },
+                    {
+                      "value": "browser",
+                      "label": "ブラウザ（MMDAgent-EX Web）"
+                    }
+                  ],
+                  "value": "mmdagent"
+                }
+              ]
+            },
+            {
+              "label": "",
+              "widgets": [
+                {
+                  "attr": "avatar_browser_ws_port_edit",
+                  "config_key": "avatar_browser_ws_port",
+                  "scope": "app",
+                  "tooltip": "ブラウザ版がつなぐ WebSocket のポート（ws://localhost:<ポート>/chat）。",
+                  "kind": "line",
+                  "value": "9001",
+                  "password": false
+                }
+              ]
+            },
+            {
+              "label": "",
+              "widgets": [
+                {
                   "attr": "exec_edit",
                   "config_key": "exec_path",
                   "scope": "app",

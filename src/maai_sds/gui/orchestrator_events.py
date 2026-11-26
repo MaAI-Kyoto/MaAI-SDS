@@ -30,7 +30,7 @@ class OrchestratorEventMixin:
             self.process_output_signal.emit("[AudioOutput] ready")
             # メイン ready の時点では Audio Output 未起動で remote_plugin がスキップされ得る。
             # ここで再送して MMDAgent ブリッジを確実に構成する。
-            if self.process_service.is_running():
+            if self._avatar_output_available():
                 self._send_remote_plugin_settings()
             self._try_send_maai_mmd_av_preamble_once()
             return
@@ -41,7 +41,7 @@ class OrchestratorEventMixin:
         QTimer.singleShot(0, self._sync_orchestrator_audio_io_after_ready)
         # MMD 起動が先で Orchestrator が後から立つ場合、launch_mmdagent 時点では
         # まだ IPC が無く Audio Output Worker へ remote_plugin が届いていない。
-        if self.process_service.is_running():
+        if self._avatar_output_available():
             self._send_remote_plugin_settings()
         self._try_send_maai_mmd_av_preamble_once()
         self.process_output_signal.emit("[DialogOrchestrator] ready")

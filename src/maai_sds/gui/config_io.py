@@ -661,6 +661,8 @@ class AppConfigIOMixin:
             )
             self._apply_app_config_field(cfg, "asr_maai_turn_threshold")
             self._apply_app_config_field(cfg, "asr_maai_turn_condition")
+            self._apply_app_config_field(cfg, "avatar_display")
+            self._apply_app_config_field(cfg, "avatar_browser_ws_port")
             self._apply_app_config_field(cfg, "asr_maai_turn_hold_frames")
             self._apply_app_config_field(cfg, "asr_smart_turn_threshold")
             self._apply_app_config_field(cfg, "asr_smart_turn_num_threads")
@@ -1021,5 +1023,5 @@ class AppConfigIOMixin:
         if sync_orchestrator:
             self._sync_orchestrator_audio_output_from_ui()
             self._sync_orchestrator_audio_input_from_ui()
-        if self.process_service.is_running():
+        if self._avatar_output_available():
             self._send_remote_plugin_settings()

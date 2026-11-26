@@ -1793,13 +1793,36 @@ def build_ui(controller) -> None:
     controller.asr_compare_top_engine_combo.currentTextChanged.connect(controller._update_asr_compare_result_labels)
     controller.asr_compare_bottom_engine_combo.currentTextChanged.connect(controller._update_asr_compare_result_labels)
 
+    # アバターの表示先：MMDAgent-EX（既定）か、ブラウザ版 MMDAgent-EX Web（WebSocket でつなぐ）
+    controller.avatar_display_combo = QComboBox()
+    controller.avatar_display_combo.addItem("MMDAgent-EX", "mmdagent")
+    controller.avatar_display_combo.addItem("ブラウザ（MMDAgent-EX Web）", "browser")
+    controller.avatar_display_combo.setToolTip(
+        "ブラウザにすると MMDAgent-EX は起動せず、MMDAgent-EX Web（ブラウザ版）が WebSocket でつなぎます。"
+        "MDF の TCP 設定は使わず、localhost の下のポートの /chat で待ち受けます（ブラウザは TCP を開けないため）。"
+        "ブラウザ版では assets/mmdagent/maai_sds の maai_sds_web.mdf を開いてください。"
+    )
+    controller.avatar_browser_ws_port_edit = QLineEdit("9001")
+    controller.avatar_browser_ws_port_edit.setToolTip("ブラウザ版がつなぐ WebSocket のポート（ws://localhost:<ポート>/chat）。")
+    controller.avatar_browser_ws_port_edit.setEnabled(False)
+    controller.avatar_browser_ws_port_edit.editingFinished.connect(controller._save_app_config)
+    controller.avatar_display_combo.currentIndexChanged.connect(controller._on_avatar_display_changed)
+    avatar_display_row = QHBoxLayout()
+    avatar_display_row.addWidget(controller.avatar_display_combo, 1)
+    avatar_display_row.addWidget(QLabel("ポート"))
+    avatar_display_row.addWidget(controller.avatar_browser_ws_port_edit)
+    avatar_display_widget = QWidget()
+    avatar_display_widget.setLayout(avatar_display_row)
+
     settings_file_form = QGridLayout()
-    settings_file_form.addWidget(QLabel("MMDAgent-EX実行ファイル"), 0, 0)
-    settings_file_form.addWidget(controller.exec_edit, 0, 1)
-    settings_file_form.addWidget(exec_browse_btn, 0, 2)
-    settings_file_form.addWidget(QLabel("MDFファイル"), 1, 0)
-    settings_file_form.addWidget(controller.mdf_edit, 1, 1)
-    settings_file_form.addWidget(mdf_browse_btn, 1, 2)
+    settings_file_form.addWidget(QLabel("アバターの表示先"), 0, 0)
+    settings_file_form.addWidget(avatar_display_widget, 0, 1, 1, 2)
+    settings_file_form.addWidget(QLabel("MMDAgent-EX実行ファイル"), 1, 0)
+    settings_file_form.addWidget(controller.exec_edit, 1, 1)
+    settings_file_form.addWidget(exec_browse_btn, 1, 2)
+    settings_file_form.addWidget(QLabel("MDFファイル"), 2, 0)
+    settings_file_form.addWidget(controller.mdf_edit, 2, 1)
+    settings_file_form.addWidget(mdf_browse_btn, 2, 2)
     settings_file_box = QGroupBox("ファイル設定")
     settings_file_box.setLayout(settings_file_form)
 
