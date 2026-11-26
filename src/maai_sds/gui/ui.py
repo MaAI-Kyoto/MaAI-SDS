@@ -254,6 +254,7 @@ def _finish_main_layout(
     vd_interrupt_form.addRow(controller.voice_dialog_interrupt_check)
     vd_interrupt_form.addRow(QLabel("割り込みVADしきい値"), controller.voice_dialog_interrupt_vad_threshold_edit)
     vd_interrupt_form.addRow(QLabel("割り込みp_nowしきい値"), controller.voice_dialog_interrupt_pnow_threshold_edit)
+    vd_interrupt_form.addRow(QLabel("割り込む条件"), controller.voice_dialog_interrupt_condition_combo)
     vd_interrupt_box = QGroupBox("割り込み")
     vd_interrupt_box.setLayout(vd_interrupt_form)
     vd_stream_form = QFormLayout()
@@ -1299,6 +1300,17 @@ def build_ui(controller) -> None:
     controller.voice_dialog_interrupt_check.setChecked(True)
     controller.voice_dialog_interrupt_vad_threshold_edit = QLineEdit("0.1")
     controller.voice_dialog_interrupt_pnow_threshold_edit = QLineEdit("0.5")
+    controller.voice_dialog_interrupt_condition_combo = QComboBox()
+    controller.voice_dialog_interrupt_condition_combo.addItem("p_nowがしきい値未満のとき", "p_now")
+    controller.voice_dialog_interrupt_condition_combo.addItem("p_nowとp_futureがどちらもしきい値未満のとき", "p_now_and_future")
+    controller.voice_dialog_interrupt_condition_combo.setCurrentIndex(0)  # 既定は p_now
+    controller.voice_dialog_interrupt_condition_combo.setToolTip(
+        "ユーザーの声（VADが割り込みVADしきい値以上）を検出したとき、システム発話を止める条件です。"
+        "しきい値はどちらも「割り込みp_nowしきい値」を使います。"
+        "「p_futureも」では、p_futureもしきい値未満（この先もユーザーが話しそう）のときだけ止めるので、"
+        "短い声や物音、相づちのようなユーザーの声では止まりにくくなります。"
+        "p_futureが届かない経路では、p_nowだけで判定します。"
+    )
     controller.voice_dialog_llm_stream_label = QLabel("LLMストリーミング（生成中）")
     controller.voice_dialog_llm_stream_view = QPlainTextEdit()
     controller.voice_dialog_llm_stream_view.setReadOnly(True)
@@ -1630,6 +1642,9 @@ def build_ui(controller) -> None:
     controller.voice_dialog_interrupt_check.stateChanged.connect(lambda _state: controller._save_app_config())
     controller.voice_dialog_interrupt_vad_threshold_edit.editingFinished.connect(controller._save_app_config)
     controller.voice_dialog_interrupt_pnow_threshold_edit.editingFinished.connect(controller._save_app_config)
+    controller.voice_dialog_interrupt_condition_combo.currentIndexChanged.connect(
+        lambda _i: controller._save_app_config()
+    )
     controller.voice_dialog_interrupt_vad_threshold_edit.editingFinished.connect(controller._sync_maai_plot_thresholds)
     controller.voice_dialog_interrupt_pnow_threshold_edit.editingFinished.connect(controller._sync_maai_plot_thresholds)
     controller.voice_dialog_opening_utterance_edit.editingFinished.connect(controller._save_app_config)

@@ -106,7 +106,7 @@ MaAI ワーカー（`maai`）から EventServer に届き、`VoiceDialogRuntime.
 |---|---|
 | `on_asr_result` | ストリーミング / 非ストリーミング、partial / final、`utterance_index` に応じて `messages` / `pending_texts` / `final_seq` を更新する。ストリーミング時は履歴行の差し替えと、TTS 分割位置の補正イベント（`tts_cumulative_strip_prefix`）を出す |
 | `on_turn_probability` | MaAI / smart-turn の閾値の上抜け（`crossed_up`）でターンを取得する。「ターンを取る条件」（`asr_maai_turn_condition`）が `p_now_and_future` のときは、上抜けのフレームで `p_future` も閾値以上の場合だけ取る（未満なら `branch=skip reason=p_future_below_threshold` を出し、`p_now` が閾値を下回って再び上抜けるまで待つ。`p_future` を送らない経路では `p_now` だけで判定）。既定は `p_now_and_future`。「ターンを取るまでの連続フレーム数」（`asr_maai_turn_hold_frames`、既定 1）を増やすと、上抜けてからしきい値以上が N フレーム続いたフレームでターンを取る（`turn_above_frames`。話の途中の短い間で p_now が一瞬だけ超えたときに取らないため）。ストリーミング時は `_trigger_llm_from_history_only`、非ストリーミング時は `wait_nonstream_maai_turn` と `request_force_finalize` などを使う |
-| `on_maai_result` | VAD と `p_now` から割り込み条件（`user_side`）とターンロックの解除を判定する。`last_user_speech_detect_wall_ts`（沈黙後のターン取得用）を更新する |
+| `on_maai_result` | VAD と `p_now` から割り込み条件（`user_side`）とターンロックの解除を判定する。「割り込む条件」（`voice_dialog_interrupt_condition`）が `p_now_and_future` のときは、割り込みに `p_future` もしきい値未満であることを求める（`p_future` が無ければ `p_now` だけ）。`last_user_speech_detect_wall_ts`（沈黙後のターン取得用）を更新する |
 | `on_maai_bc_result` / `on_maai_nod_result` | 相槌・頷き（nod_para）の発火判定。どちらも、出したあと確率がそれぞれのしきい値を一度下回るまで次を出さない（`backchannel_prob_dropped` / `nod_para_prob_dropped`） |
 | `on_tick` | `wait_nonstream_maai_turn` のタイムアウト、`final_seq` 待ち、`voice_dialog_idle_take_turn_sec` によるアイドル時のターン取得 |
 

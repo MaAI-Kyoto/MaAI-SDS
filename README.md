@@ -110,7 +110,8 @@ Other mechanisms:
   talking on its own).
 - **User speech and barge-in**: the user is considered to be speaking when VAD is at or above 「割り込みVADしきい値」 (barge-in
   VAD threshold) and `p_now` is below 「割り込みp_nowしきい値」 (barge-in p_now threshold). If the system is speaking, playback and
-  LLM generation stop (backchannels are not stopped).
+  LLM generation stop (backchannels are not stopped). Setting 「割り込む条件」 (barge-in condition) to `p_now_and_future`
+  stops it only when `p_future` is also below the same threshold (the default `p_now` looks at `p_now` only).
 - **Taking the turn after silence**: if 「ターン取得までの沈黙（秒）」 (silence before taking the turn) passes after the user's
   speech without `p_now` going past the threshold, the system takes the turn.
 - **Waiting for the ASR**: with streaming ASR (including pseudo streaming, the default), the LLM is called with the recognition

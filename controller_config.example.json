@@ -249,6 +249,7 @@
   "voice_dialog_idle_take_turn_sec": 1.5,
   "voice_dialog_interrupt_on_user_speech": true,
   "voice_dialog_interrupt_p_now_threshold": "0.5",
+  "voice_dialog_interrupt_condition": "p_now",
   "voice_dialog_interrupt_vad_threshold": "0.7",
   "voice_dialog_opening_utterance": "こんにちは！それではお話を始めましょう！",
   "voice_dialog_scheduled_exit_sec": 0.0,

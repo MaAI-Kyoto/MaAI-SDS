@@ -119,6 +119,22 @@ def normalize_turn_condition(value: object) -> str:
     return text if text in TURN_CONDITIONS else DEFAULT_TURN_CONDITION
 
 
+# 割り込む条件（設定 `voice_dialog_interrupt_condition`）。VAD が割り込みの VAD しきい値以上であることは共通。
+# p_now（既定）：p_now が割り込みの p_now しきい値未満なら割り込む。
+# p_now_and_future：p_now に加えて p_future も割り込みの p_now しきい値未満のときだけ割り込む
+#   （p_future もシステム側に寄っていない＝ユーザーがこの先も話しそうなときだけ止める）。
+# p_future が届かない経路では、どちらでも p_now だけで判定する。
+INTERRUPT_CONDITION_P_NOW = "p_now"
+INTERRUPT_CONDITION_P_NOW_AND_FUTURE = "p_now_and_future"
+INTERRUPT_CONDITIONS = (INTERRUPT_CONDITION_P_NOW, INTERRUPT_CONDITION_P_NOW_AND_FUTURE)
+DEFAULT_INTERRUPT_CONDITION = INTERRUPT_CONDITION_P_NOW
+
+
+def normalize_interrupt_condition(value: object) -> str:
+    text = str(value or "").strip().lower()
+    return text if text in INTERRUPT_CONDITIONS else DEFAULT_INTERRUPT_CONDITION
+
+
 class DialogOrchestrator:
     """UI非依存の音声対話状態機械。
 
@@ -302,6 +318,9 @@ class DialogOrchestrator:
             return
         if time.time() >= float(t0) + float(sec):
             self.state.scheduled_exit_waiting_for_turn = True
+
+    def _interrupt_condition(self) -> str:
+        return normalize_interrupt_condition(self.settings.get("interrupt_condition"))
 
     def _interrupt_maai_vad_threshold(self) -> float:
         """MaAI の vad[0] 用。Silero スコア用の interrupt_vad_threshold とスケールが異なるため分離する。"""
@@ -760,6 +779,14 @@ class DialogOrchestrator:
             p_now = float(pnow_obj[1] if isinstance(pnow_obj, (list, tuple)) else pnow_obj)
         except Exception:
             return self._dispatch_then_return(events)
+        # p_future（システム側）。届かない・読めないときは None（割り込みは p_now だけで判定する）
+        p_future: float | None = None
+        pfut_obj = result.get("p_future")
+        if pfut_obj is not None:
+            try:
+                p_future = float(pfut_obj[1] if isinstance(pfut_obj, (list, tuple)) else pfut_obj)
+            except Exception:
+                p_future = None
         # 割り込み・ターンロック解除: silero_vad_score を優先（controller が ASR Silero をマージ）
         try:
             if silero_vad_obj is not None:
@@ -785,10 +812,17 @@ class DialogOrchestrator:
             and (not self.state.opening_tts_pending)
         ):
             self.state.turn_blocked_until_user_speech = False
+        interrupt_p_thr = self._interrupt_p_now_threshold()
+        future_ok = (
+            self._interrupt_condition() != INTERRUPT_CONDITION_P_NOW_AND_FUTURE
+            or p_future is None
+            or p_future < interrupt_p_thr
+        )
         interrupt_wanted = (
             bool(self.settings.get("interrupt_on_user_speech", True))
             and self.state.vad_active
-            and p_now < self._interrupt_p_now_threshold()
+            and p_now < interrupt_p_thr
+            and future_ok
             and (not self.state.opening_tts_pending)
             and (not self.state.scheduled_exit_speaking)
         )
@@ -800,7 +834,7 @@ class DialogOrchestrator:
             # interrupt_condition はログ用で毎フレーム不要。立ち上がりだけ出す。
             if not was_interrupt:
                 events.append(
-                    {"type": "interrupt_condition", "vad": vad_for_interrupt, "p_now": p_now}
+                    {"type": "interrupt_condition", "vad": vad_for_interrupt, "p_now": p_now, "p_future": p_future}
                 )
             # LLM 完了後の TTS のみの区間では llm_in_progress も turn_blocked も false になり得る。
             # 再生有無の判定は _voice_dialog_interrupt_system_speech 側に任せる。

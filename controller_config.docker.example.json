@@ -48,6 +48,7 @@
   "openai_api_key": "",
   "llm_api_key": "",
   "voice_dialog_interrupt_p_now_threshold": "0.5",
+  "voice_dialog_interrupt_condition": "p_now",
   "voice_dialog_interrupt_on_user_speech": true,
   "voice_dialog_interrupt_vad_threshold": "0.7",
   "asr_sherpa_provider": "cpu",

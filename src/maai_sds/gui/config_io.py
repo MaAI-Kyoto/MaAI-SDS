@@ -285,6 +285,7 @@ class AppConfigIOMixin:
                     )
                 )
             )
+            self._apply_app_config_field(cfg, "voice_dialog_interrupt_condition")
             self._apply_app_config_field(cfg, "voice_dialog_opening_utterance")
             if hasattr(self, "voice_dialog_scheduled_exit_sec_edit"):
                 self.voice_dialog_scheduled_exit_sec_edit.setText(

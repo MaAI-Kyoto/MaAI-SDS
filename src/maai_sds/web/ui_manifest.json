@@ -684,6 +684,29 @@
                   }
                 }
               ]
+            },
+            {
+              "label": "割り込む条件",
+              "widgets": [
+                {
+                  "attr": "voice_dialog_interrupt_condition_combo",
+                  "config_key": "voice_dialog_interrupt_condition",
+                  "scope": "app",
+                  "tooltip": "ユーザーの声（VADが割り込みVADしきい値以上）を検出したとき、システム発話を止める条件です。しきい値はどちらも「割り込みp_nowしきい値」を使います。「p_futureも」では、p_futureもしきい値未満（この先もユーザーが話しそう）のときだけ止めるので、短い声や物音、相づちのようなユーザーの声では止まりにくくなります。p_futureが届かない経路では、p_nowだけで判定します。",
+                  "kind": "combo",
+                  "items": [
+                    {
+                      "value": "p_now",
+                      "label": "p_nowがしきい値未満のとき"
+                    },
+                    {
+                      "value": "p_now_and_future",
+                      "label": "p_nowとp_futureがどちらもしきい値未満のとき"
+                    }
+                  ],
+                  "value": "p_now"
+                }
+              ]
             }
           ]
         },
