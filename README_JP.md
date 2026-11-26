@@ -133,12 +133,13 @@ MaAI はユーザーとシステムの音声から、フレームごとに次の
 | 項目 | 要件 |
 |---|---|
 | OS | Windows（Windows 11 で確認。Qt アプリ・セットアップスクリプト・MMDAgent-EX）。対話サーバーは Docker（Linux）でも動作 |
-| Python | [3.11](https://www.python.org/downloads/) |
+| Python | [3.11](https://www.python.org/downloads/)（python.org の公式版を推奨。sherpa-onnx のビルド済みパッケージが 3.11 向けのため、`.python-version` で 3.11 を指定） |
+| ビルドツール | [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)（C++ によるデスクトップ開発）と [CMake](https://cmake.org/)。pyopenjtalk などをソースからビルドするため |
 | パッケージ管理 | [uv](https://docs.astral.sh/uv/) |
 | GPU | NVIDIA GPU（CUDA 12.8）を推奨。CPU のみの構成にも対応 |
 | アバター | [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX)（Windows 版。v2.1 で確認）と CG アバター（[セットアップ](#3-mmdagent-ex-とアバター)） |
 | LLM | 既定は [LM Studio](https://lmstudio.ai/) と [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b)（`google/gemma-4-e4b`）。OpenAI API・OpenAI 互換サーバーも利用可 |
-| その他（任意） | [Docker Desktop](https://www.docker.com/products/docker-desktop/)、[VOICEVOX](https://voicevox.hiroshiba.jp/)、[AivisSpeech](https://aivis-project.com/) |
+| その他（任意） | [Node.js](https://nodejs.org/)（一部のテストで使用）、[Docker Desktop](https://www.docker.com/products/docker-desktop/)、[VOICEVOX](https://voicevox.hiroshiba.jp/)、[AivisSpeech](https://aivis-project.com/) |
 
 macOS での動作は確認していません。
 
@@ -176,6 +177,15 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1 -Device cpu  # CP
 > [!WARNING]
 > `uv sync` を単独で実行すると、パッチ適用済みの sherpa-onnx が PyPI 版で上書きされます。その場合は
 > `scripts\setup_env.ps1` を再実行して復元してください（[docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md)）。
+
+> [!NOTE]
+> Windows でうまくいかないとき：
+>
+> - **スマート アプリ コントロール**がオンだと、署名の無い Python や拡張モジュールが止められ、`uv sync` が失敗します
+>   （`os error 4551`、`DLL load failed`）。Windows セキュリティでオフにしてください（`setup_env.ps1` も確認します）。
+> - ビルドに失敗したあとで MSVC や CMake を入れた場合は、失敗したときのビルド設定が uv のキャッシュに残っています。
+>   `uv cache clean <パッケージ名>`（例：`uv cache clean pyopenjtalk`）で消してから再実行してください。
+>   それでも失敗するときは、Developer PowerShell for VS 2022 から実行してください。
 
 ### 2. API キー
 

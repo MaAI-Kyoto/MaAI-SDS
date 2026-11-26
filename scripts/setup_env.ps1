@@ -75,6 +75,23 @@ function Write-Warn([string]$msg) { Write-Host "[warn] $msg" -ForegroundColor Ye
 function Write-Ok([string]$msg)   { Write-Host "[ok] $msg" -ForegroundColor Green }
 
 # ---------------------------------------------------------------- 前提チェック
+function Get-SmartAppControlState {
+    # On / Off / Eval。Defender の無い環境などで取れなければ $null。
+    try {
+        $st = (Get-MpComputerStatus -ErrorAction Stop).SmartAppControlState
+        if ($st) { return "$st" }
+    } catch {}
+    return $null
+}
+
+function Test-MsvcBuildTools {
+    # MSVC の C++ ツールセット（VCTools）が入っているか。vswhere は VS / Build Tools のインストーラーが置く。
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+    if (-not (Test-Path $vswhere)) { return $false }
+    $path = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+    return [bool]$path
+}
+
 function Test-Prereqs {
     Write-Step "前提コマンドの確認"
     $missing = @()
@@ -85,11 +102,48 @@ function Test-Prereqs {
         throw "必要なコマンドが見つからない: $($missing -join ', ')"
     }
     Write-Ok ("uv " + (& uv --version))
-    if (-not $SkipSherpa) {
-        # ソースビルドに落ちた場合だけ必要。スナップショットからの復元では要らない。
-        if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
-            Write-Warn "cmake が PATH に無い。sherpa-onnx をソースからビルドするには CMake + MSVC Build Tools の C++ ワークロードが必要。"
-        }
+
+    # スマート アプリ コントロールがオンだと、署名の無い exe / DLL / .pyd が起動・読み込みを拒まれる。
+    # uv が取ってくる python-build-standalone の python.exe（os error 4551）や、
+    # ビルドした拡張モジュールの DLL load failed で、uv sync が途中で止まる（実機で発生）。
+    $sac = Get-SmartAppControlState
+    if ($sac -eq "On") {
+        throw ("スマート アプリ コントロールがオンです。署名の無い Python や拡張モジュールが止められ、uv sync が失敗します。`n" +
+               "  Windows セキュリティ → アプリとブラウザーの制御 → スマート アプリ コントロール でオフにしてから再実行してください。")
+    } elseif ($sac -eq "Eval") {
+        Write-Warn "スマート アプリ コントロールが評価モードです。途中でオンに切り替わると、署名の無い Python や拡張モジュールが止められます。"
+    }
+
+    # Python 3.11。.python-version で 3.11 を指定している（配布している sherpa-onnx のビルド済みパッケージが cp311 向け）。
+    # 見つからなければ uv が python-build-standalone を取ってくる（署名が無い）。python.org の公式版を勧める。
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $py311 = (& uv python find 3.11 2>$null)
+    $ErrorActionPreference = $prevEap
+    if ($LASTEXITCODE -eq 0 -and $py311) {
+        Write-Ok "Python 3.11: $py311"
+    } else {
+        Write-Warn ("Python 3.11 が見つからないので、uv が python-build-standalone を取ってきます。" +
+                    "python.org の公式版を勧めます（winget install Python.Python.3.11）。")
+    }
+
+    # MSVC と CMake。pyopenjtalk などは Windows 向けのビルド済みパッケージが無く、uv sync の中でソースからビルドする。
+    # 環境を新しく作るときは必須。既に .venv があれば（ビルド済みのものが入っていれば）警告にとどめる。
+    $needBuild = @()
+    if (-not (Test-MsvcBuildTools)) { $needBuild += "Visual Studio 2022 Build Tools（C++。winget install Microsoft.VisualStudio.2022.BuildTools --override `"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive`"）" }
+    if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { $needBuild += "CMake（winget install Kitware.CMake）" }
+    if ($needBuild.Count -gt 0) {
+        $msg = "ソースからのビルドに必要なものが見つからない:`n  - " + ($needBuild -join "`n  - ") +
+               "`n  入れたあとは新しい PowerShell を開いて再実行してください。"
+        if (-not (Test-Path $venvPython)) { throw $msg }
+        Write-Warn $msg
+    } else {
+        Write-Ok "MSVC Build Tools と CMake"
+    }
+
+    # Node.js。テストの一部（Web UI の JavaScript）だけが使う。無ければそのテストは飛ばす。
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        Write-Warn "node が無いので、Web UI の JavaScript のテストは飛ばします（winget install OpenJS.NodeJS.LTS）。"
     }
     $nvidia = Get-Command nvidia-smi -ErrorAction SilentlyContinue
     if ($nvidia) {
@@ -183,7 +237,12 @@ function Invoke-UvSync {
         Write-Host "[env] デバイス構成: $Device (extra=$deviceExtra)"
         Set-Content -Path (Join-Path $projectRoot ".device_extra") -Value $deviceExtra -Encoding ascii -NoNewline
         & uv sync --all-extras --no-extra $dropExtra
-        if ($LASTEXITCODE -ne 0) { throw "uv sync が失敗した (exit $LASTEXITCODE)" }
+        if ($LASTEXITCODE -ne 0) {
+            throw ("uv sync が失敗した (exit $LASTEXITCODE)`n" +
+                   "  ビルドに失敗したあとで MSVC や CMake を入れた場合は、失敗したときのビルド設定が uv のキャッシュに残っています。`n" +
+                   "  uv cache clean <パッケージ名>（例: uv cache clean pyopenjtalk）で消してから再実行してください。`n" +
+                   "  それでも失敗するときは、Developer PowerShell for VS 2022 から実行してください。")
+        }
     } finally { Pop-Location }
     Write-Ok "uv sync 完了"
 }

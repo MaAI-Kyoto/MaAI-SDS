@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -406,6 +407,7 @@ class WebParityTests(unittest.TestCase):
         self.assertEqual(parity.canonical_audio_output_mode("TCP 送出"), "tcp")
 
 
+@unittest.skipUnless(shutil.which("node"), "Node.js が無い")
 class WebPlotAudioClockTests(unittest.TestCase):
     def test_viewport_uses_monotonic_audio_clock_after_wall_clock_step(self) -> None:
         root = Path(__file__).resolve().parent.parent

@@ -141,12 +141,13 @@ Host and Docker can be switched, started and stopped from 「対話サーバー�
 | Item | Requirement |
 |---|---|
 | OS | Windows (tested on Windows 11; the Qt app, setup scripts and MMDAgent-EX). The dialogue server also runs in Docker (Linux) |
-| Python | [3.11](https://www.python.org/downloads/) |
+| Python | [3.11](https://www.python.org/downloads/) (the official python.org build is recommended; `.python-version` pins 3.11 because the prebuilt sherpa-onnx package targets 3.11) |
+| Build tools | [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (Desktop development with C++) and [CMake](https://cmake.org/), to build pyopenjtalk and others from source |
 | Package manager | [uv](https://docs.astral.sh/uv/) |
 | GPU | An NVIDIA GPU (CUDA 12.8) is recommended. CPU-only setups are also supported |
 | Avatar | [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) (Windows build, tested with v2.1) and a CG avatar ([setup](#3-mmdagent-ex-and-the-avatar)) |
 | LLM | [LM Studio](https://lmstudio.ai/) with [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b) (`google/gemma-4-e4b`) by default. The OpenAI API and OpenAI-compatible servers also work |
-| Optional | [Docker Desktop](https://www.docker.com/products/docker-desktop/), [VOICEVOX](https://voicevox.hiroshiba.jp/), [AivisSpeech](https://aivis-project.com/) |
+| Optional | [Node.js](https://nodejs.org/) (used by some tests), [Docker Desktop](https://www.docker.com/products/docker-desktop/), [VOICEVOX](https://voicevox.hiroshiba.jp/), [AivisSpeech](https://aivis-project.com/) |
 
 macOS has not been tested.
 
@@ -184,6 +185,15 @@ are fetched. Other engines are installed by selecting them in 「エンジン管
 > [!WARNING]
 > Running `uv sync` on its own replaces the patched sherpa-onnx with the PyPI build. Run `scripts\setup_env.ps1`
 > again to restore it ([docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md), Japanese).
+
+> [!NOTE]
+> If the setup fails on Windows:
+>
+> - With **Smart App Control** on, unsigned Python builds and extension modules are blocked and `uv sync` fails
+>   (`os error 4551`, `DLL load failed`). Turn it off in Windows Security (`setup_env.ps1` also checks it).
+> - If you installed MSVC or CMake after a build had failed, the failed build settings remain in the uv cache.
+>   Remove them with `uv cache clean <package>` (for example `uv cache clean pyopenjtalk`) and run again.
+>   If it still fails, run from Developer PowerShell for VS 2022.
 
 ### 2. API keys
 
