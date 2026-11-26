@@ -134,7 +134,7 @@ MaAI はユーザーとシステムの音声から、フレームごとに次の
 |---|---|
 | OS | Windows（Windows 11 で確認。Qt アプリ・セットアップスクリプト・MMDAgent-EX）。対話サーバーは Docker（Linux）でも動作 |
 | Python | [3.11](https://www.python.org/downloads/)（python.org の公式版を推奨。sherpa-onnx のビルド済みパッケージが 3.11 向けのため、`.python-version` で 3.11 を指定） |
-| ビルドツール | [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)（C++ によるデスクトップ開発）と [CMake](https://cmake.org/)。pyopenjtalk などをソースからビルドするため |
+| ビルドツール（一部のエンジンのみ） | [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)（C++ によるデスクトップ開発）と [CMake](https://cmake.org/)。既定の構成では不要。Kokoro・Tsukasa を入れるとき（依存をソースからビルドする）と、sherpa-onnx をソースからビルドするときに必要 |
 | パッケージ管理 | [uv](https://docs.astral.sh/uv/) |
 | GPU | NVIDIA GPU（CUDA 12.8）を推奨。CPU のみの構成にも対応 |
 | アバター | [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX)（Windows 版。v2.1 で確認）と CG アバター（[セットアップ](#3-mmdagent-ex-とアバター)） |
@@ -161,7 +161,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1 -Device cpu  # CP
 
 スクリプトは次の順に実行します：`uv sync` → パッチ適用済み sherpa-onnx の導入 → エンジン資産の取得
 （`scripts/setup_assets.ps1`）→ 検証（sherpa-onnx の版・ワーカーの起動・GUI の構築・テスト）。
-最初に前提（スマート アプリ コントロール・MSVC・CMake・Python 3.11・Node.js）を確認し、MSVC の環境を読み込むので、
+最初に前提（スマート アプリ コントロール・Python 3.11・Node.js、必要なら MSVC と CMake）を確認し、MSVC があればその環境を読み込むので、
 Developer PowerShell から実行する必要はありません。
 
 | オプション | 説明 |
@@ -171,11 +171,12 @@ Developer PowerShell から実行する必要はありません。
 | `-SkipAssets` | エンジン資産を取得しない |
 | `-SkipSherpa` | パッチ適用済み sherpa-onnx を導入しない（PyPI 版のままになり、`nemotron-onnx` の精度が下がる） |
 | `-ForceSherpaBuild` | ビルド済みの sherpa-onnx を使わず、ソースからビルドする（Git・CMake・MSVC Build Tools の C++ が必要。[docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md)） |
-| `-InstallPrereqs` | 足りない前提（VS 2022 Build Tools の C++・CMake・Python 3.11・Node.js）を winget で導入する。Build Tools は数 GB で、管理者の確認が出る。既定では導入せず、足りないものと導入方法を表示する |
+| `-AllExtras` | すべてのエンジンの Python パッケージを導入する（Kokoro・Tsukasa を含むので、MSVC と CMake が必要） |
+| `-InstallPrereqs` | 足りない前提（Python 3.11・Node.js、必要なら VS 2022 Build Tools の C++ と CMake）を winget で導入する。Build Tools は数 GB で、管理者の確認が出る。既定では導入せず、足りないものと導入方法を表示する |
 | `-VerifyOnly` | 導入せず検証のみ行う |
 
-既定で取得するのは、既定の設定（ASR：ReazonSpeech〔sherpa-onnx〕、TTS：VOICEVOX Core）で対話できる最小限の資産です。
-その他のエンジンは、設定画面の「エンジン管理」で選択して「適用」すると導入されます。
+既定で導入するのは、既定の設定（ASR：ReazonSpeech〔sherpa-onnx〕、TTS：VOICEVOX Core）で対話できる最小限の Python パッケージと資産です
+（すでに導入済みのエンジンは残します）。その他のエンジンは、設定画面の「エンジン管理」で選択して「適用」すると導入されます。
 
 > [!WARNING]
 > `uv sync` を単独で実行すると、パッチ適用済みの sherpa-onnx が PyPI 版で上書きされます。その場合は

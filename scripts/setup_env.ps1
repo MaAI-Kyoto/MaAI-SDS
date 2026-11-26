@@ -6,8 +6,10 @@
     このリポジトリの環境は「uv sync だけでは完成しない」4 点があり、順番も決まっている。
     そこを毎回手で思い出すのが事故の元だったので 1 本にまとめた。
 
-      1. uv sync --all-extras     … 本体 venv（.venv）。PySide6 も各 ASR/TTS エンジンも
+      1. uv sync                  … 本体 venv（.venv）。PySide6 も各 ASR/TTS エンジンも
                                     optional extra なので、素の uv sync では入らない。
+                                    既定の構成（gui・web・asr-sherpa・tts-voicevox）と、既に入っている
+                                    エンジンの extra だけを入れる。全部入れるなら -AllExtras。
       2. カスタム sherpa-onnx      … PyPI 版では日本語 ASR の品質が出ない。
                                     **uv sync はこれを毎回 PyPI 版で上書きする**ので後に置く。
       3. .venv_nemotron            … -WithNemotron のときだけ。nemotron-asr は nemo-toolkit を
@@ -35,9 +37,15 @@
 .PARAMETER ForceSherpaBuild
     ローカルのスナップショットがあってもソースからビルドする（新しいマシンと同じ経路を試す）。
 
+.PARAMETER AllExtras
+    すべてのエンジンの依存（pyproject の optional extra 全部）を入れる。既定では、既定の構成で使う
+    extra と、既に入っている（またはエンジン管理で有効にした）エンジンの extra だけを入れ、
+    ほかは GUI の「エンジン管理」で後から入れる。tts-kokoro・tts-tsukasa は Windows では
+    ソースからのビルドがあり、MSVC Build Tools と CMake が要る。
+
 .PARAMETER InstallPrereqs
-    足りない前提を winget で入れる（VS 2022 Build Tools の C++・CMake・Python 3.11・Node.js のうち、無いものだけ）。
-    Build Tools は数 GB あり、管理者の確認が出る。既定では入れず、足りないものと入れ方を示すだけ。
+    足りない前提を winget で入れる（Python 3.11・Node.js、ビルドが要る構成なら VS 2022 Build Tools の C++ と CMake。
+    無いものだけ）。Build Tools は数 GB あり、管理者の確認が出る。既定では入れず、足りないものと入れ方を示すだけ。
 
 .PARAMETER VerifyOnly
     何もインストールせず、検証だけ実行する。
@@ -61,6 +69,7 @@ param(
     [switch]$WithNemotron,
     [switch]$ForceSherpaBuild,
     [switch]$SkipAssets,
+    [switch]$AllExtras,
     [switch]$InstallPrereqs,
     [switch]$VerifyOnly
 )
@@ -133,6 +142,36 @@ function Install-WingetPackage([string]$id, [string[]]$extra = @()) {
     if ($rc -ne 0) { Write-Warn "winget install $id が終了コード $rc を返しました（下で入ったかを確かめます）。" }
 }
 
+# 既定で入れる extra（既定の設定：ASR は ReazonSpeech〔sherpa-onnx〕、TTS は VOICEVOX Core）。
+# デバイスの extra（cu128 / cpu）は Invoke-UvSync で足す。
+$baseExtras = @("gui", "web", "asr-sherpa", "tts-voicevox")
+# Windows ではソースからのビルドがある extra（misaki[ja] → pyopenjtalk、monotonic-align）。
+$compilerExtras = @("tts-kokoro", "tts-tsukasa")
+
+function Get-SyncExtras {
+    # uv sync に渡す extra（デバイスの extra は含まない）。-AllExtras なら $null（= --all-extras）。
+    # uv sync は渡さなかった extra を消すので、既に入っているエンジンと、エンジン管理で有効にした
+    # エンジンの extra は残す（以前の --all-extras で作った環境を再実行しても、何も消さない）。
+    if ($AllExtras) { return $null }
+    $extras = @($baseExtras)
+    if (Test-Path $venvPython) {
+        $code = "from maai_sds import engine_manager as em; k={e.id: e for e in em.list_engines()}; " +
+                "x={e.extra for e in k.values() if e.installed and e.extra}; " +
+                "x|={k[i].extra for i in em.get_enabled_engines() if i in k and k[i].extra}; " +
+                "print(' '.join(sorted(x)))"
+        $out = Invoke-VenvPython $code
+        if ($LASTEXITCODE -eq 0) {
+            $last = (($out -split "`n") | Where-Object { $_.Trim() } | Select-Object -Last 1)
+            foreach ($e in ("$last".Trim() -split "\s+")) {
+                if ($e -match '^[a-z0-9-]+$') { $extras += $e }
+            }
+        } else {
+            Write-Warn "入っているエンジンを調べられなかった（既定の extra だけを入れる）: $out"
+        }
+    }
+    return @($extras | Select-Object -Unique)
+}
+
 # -InstallPrereqs のときに winget で入れるもの（足りないものだけ）。
 $wingetBuildTools = @("Microsoft.VisualStudio.2022.BuildTools",
     @("--override", "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"))
@@ -156,6 +195,40 @@ function Enter-MsvcEnvironment {
         else { Write-Warn "MSVC の環境を読み込んだが cl.exe が見つからない" }
     } catch {
         Write-Warn "MSVC の環境を読み込めなかった: $_（Developer PowerShell for VS 2022 から実行すると確実です）"
+    }
+}
+
+function Test-BuildTools {
+    # MSVC と CMake。Windows 向けのビルド済みパッケージが無く uv sync の中でソースからビルドするのは、
+    # tts-kokoro（misaki[ja] → pyopenjtalk）と tts-tsukasa（monotonic-align）だけ。既定の構成では要らない。
+    $needCompiler = [bool]($syncExtras | Where-Object { $compilerExtras -contains $_ })
+    if ($AllExtras -or $ForceSherpaBuild) { $needCompiler = $true }
+    if (-not $needCompiler) {
+        $lack = @()
+        if (-not (Test-MsvcBuildTools)) { $lack += "MSVC Build Tools" }
+        if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { $lack += "CMake" }
+        if ($lack.Count -gt 0) {
+            Write-Host ("[info] $($lack -join ' と ') が無い（既定の構成では不要。Kokoro・Tsukasa を入れるとき、" +
+                        "sherpa-onnx をソースからビルドするときに必要）")
+        } else {
+            Write-Ok "MSVC Build Tools と CMake"
+        }
+        return
+    }
+    if ($InstallPrereqs) {
+        if (-not (Test-MsvcBuildTools)) { Install-WingetPackage $wingetBuildTools[0] $wingetBuildTools[1] }
+        if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { Install-WingetPackage "Kitware.CMake" }
+    }
+    $needBuild = @()
+    if (-not (Test-MsvcBuildTools)) { $needBuild += "Visual Studio 2022 Build Tools（C++。winget install Microsoft.VisualStudio.2022.BuildTools --override `"--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended`"）" }
+    if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { $needBuild += "CMake（winget install Kitware.CMake）" }
+    if ($needBuild.Count -gt 0) {
+        $msg = "ソースからのビルドに必要なものが見つからない:`n  - " + ($needBuild -join "`n  - ") +
+               "`n  -InstallPrereqs を付けて再実行すると winget で入れます（手で入れた場合は、新しい PowerShell を開いて再実行）。"
+        if (-not (Test-Path $venvPython)) { throw $msg }
+        Write-Warn $msg
+    } else {
+        Write-Ok "MSVC Build Tools と CMake"
     }
 }
 
@@ -195,23 +268,7 @@ function Test-Prereqs {
                     "python.org の公式版を勧めます（-InstallPrereqs を付けるか、winget install Python.Python.3.11）。")
     }
 
-    # MSVC と CMake。pyopenjtalk などは Windows 向けのビルド済みパッケージが無く、uv sync の中でソースからビルドする。
-    # 環境を新しく作るときは必須。既に .venv があれば（ビルド済みのものが入っていれば）警告にとどめる。
-    if ($InstallPrereqs) {
-        if (-not (Test-MsvcBuildTools)) { Install-WingetPackage $wingetBuildTools[0] $wingetBuildTools[1] }
-        if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { Install-WingetPackage "Kitware.CMake" }
-    }
-    $needBuild = @()
-    if (-not (Test-MsvcBuildTools)) { $needBuild += "Visual Studio 2022 Build Tools（C++。winget install Microsoft.VisualStudio.2022.BuildTools --override `"--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended`"）" }
-    if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { $needBuild += "CMake（winget install Kitware.CMake）" }
-    if ($needBuild.Count -gt 0) {
-        $msg = "ソースからのビルドに必要なものが見つからない:`n  - " + ($needBuild -join "`n  - ") +
-               "`n  -InstallPrereqs を付けて再実行すると winget で入れます（手で入れた場合は、新しい PowerShell を開いて再実行）。"
-        if (-not (Test-Path $venvPython)) { throw $msg }
-        Write-Warn $msg
-    } else {
-        Write-Ok "MSVC Build Tools と CMake"
-    }
+    Test-BuildTools
 
     # Node.js。テストの一部（Web UI の JavaScript）だけが使う。無ければそのテストは飛ばす。
     if ((-not (Get-Command node -ErrorAction SilentlyContinue)) -and $InstallPrereqs) {
@@ -287,7 +344,7 @@ function Restore-SherpaSnapshot {
 
 # ------------------------------------------------------------------ 各ステップ
 function Invoke-UvSync {
-    Write-Step "1. uv sync --all-extras（本体 venv）"
+    Write-Step "1. uv sync（本体 venv）"
     # onnxruntime-gpu の wheel は 280MB 近くあり、uv の既定 30 秒では読み切れず
     #   Failed to download distribution due to network timeout
     # で落ちる（実機で発生）。uv は版によって見る変数名が違うので両方入れる。
@@ -299,19 +356,27 @@ function Invoke-UvSync {
         # maai は pyproject で **commit 固定**。branch 参照だと同じ pyproject でも
         # 環境が変わってしまい再現できない（実際に uv.lock と食い違った）。
         #
-        # --all-extras が要る。PySide6（gui）と各 ASR/TTS エンジンの依存は optional
+        # extra を渡す必要がある。PySide6（gui）と各 ASR/TTS エンジンの依存は optional
         # extra なので、素の `uv sync` では 1 つも入らず、GUI が起動せず、この
-        # スクリプト自身の検証（GUI 構築）も落ちる。extras に何があるかは
-        # pyproject.toml が唯一の情報源なので、ここに一覧を書き写さず uv に任せる。
-        # 使わないエンジンは、後から GUI の「エンジン管理」で外せる。
+        # スクリプト自身の検証（GUI 構築）も落ちる。
+        # 既定は Get-SyncExtras の分だけ。以前は --all-extras だったが、Kokoro と Tsukasa の
+        # 依存が Windows ではソースからのビルドになり、使わない人にも MSVC と CMake を要求していた。
         # cpu / cu128 は排他 extra（pyproject の [tool.uv] conflicts）なので、
-        # --all-extras だけだと "Extras `cpu` and `cu128` are incompatible" で落ちる。
+        # --all-extras のときは "Extras `cpu` and `cu128` are incompatible" で落ちないよう、
         # 使わない方を --no-extra で外す。
         $deviceExtra = if ($Device -eq "cpu") { "cpu" } else { "cu128" }
         $dropExtra   = if ($Device -eq "cpu") { "cu128" } else { "cpu" }
         Write-Host "[env] デバイス構成: $Device (extra=$deviceExtra)"
         Set-Content -Path (Join-Path $projectRoot ".device_extra") -Value $deviceExtra -Encoding ascii -NoNewline
-        & uv sync --all-extras --no-extra $dropExtra
+        if ($null -eq $syncExtras) {
+            Write-Host "[env] すべての extra を入れる（-AllExtras）"
+            & uv sync --all-extras --no-extra $dropExtra
+        } else {
+            $uvArgs = @("sync")
+            foreach ($e in @($syncExtras) + $deviceExtra) { $uvArgs += @("--extra", $e) }
+            Write-Host "[env] extra: $((@($syncExtras) + $deviceExtra) -join ', ')（ほかのエンジンは「エンジン管理」で入れる）"
+            & uv @uvArgs
+        }
         if ($LASTEXITCODE -ne 0) {
             throw ("uv sync が失敗した (exit $LASTEXITCODE)`n" +
                    "  ビルドに失敗したあとで MSVC や CMake を入れた場合は、失敗したときのビルド設定が uv のキャッシュに残っています。`n" +
@@ -445,6 +510,8 @@ if ($VerifyOnly) {
     return
 }
 
+# uv sync に渡す extra を先に決める（ビルドツールが要るかの判断にも使う）
+$syncExtras = Get-SyncExtras
 Test-Prereqs
 # Developer PowerShell でなくても、uv sync 中のソースビルドが MSVC を見つけられるようにする
 Enter-MsvcEnvironment

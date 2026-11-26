@@ -753,6 +753,51 @@ def _selected_device_sync_extra(
     return extra
 
 
+# Windows ではソースからのビルドがある extra（misaki[ja] → pyopenjtalk、monotonic-align）。
+# scripts/setup_env.ps1 の $compilerExtras と揃える。既定の構成には入らないので、
+# これらを「適用」したときだけ MSVC Build Tools と CMake が要る。
+COMPILER_EXTRAS = ("tts-kokoro", "tts-tsukasa")
+
+
+def _msvc_available() -> bool:
+    """MSVC の C++ ツールセットが入っているか（vswhere で見る。setup_env.ps1 と同じ判定）。"""
+    root = os.environ.get("ProgramFiles(x86)") or r"C:\Program Files (x86)"
+    vswhere = Path(root) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
+    if not vswhere.is_file():
+        return False
+    try:
+        out = subprocess.run(
+            [str(vswhere), "-latest", "-products", "*",
+             "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return bool(out.stdout.strip())
+
+
+def build_tools_hint(extras, *, platform: str | None = None) -> str | None:
+    """ソースからのビルドが要る extra を入れるのにツールが足りなければ、その案内を返す（足りていれば None）。"""
+    if (platform or os.name) != "nt":
+        return None
+    needs = [e for e in extras if e in COMPILER_EXTRAS]
+    if not needs:
+        return None
+    lack = []
+    if not _msvc_available():
+        lack.append("Visual Studio 2022 Build Tools（C++。winget install Microsoft.VisualStudio.2022.BuildTools "
+                    '--override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"）')
+    if shutil.which("cmake") is None:
+        lack.append("CMake（winget install Kitware.CMake）")
+    if not lack:
+        return None
+    return (
+        f"{', '.join(needs)} は Windows ではソースからのビルドがあり、次が要ります：{'、'.join(lack)}。"
+        "入れたあとはアプリを起動し直してから、もう一度「適用」してください"
+        "（入れる前に失敗していた場合は、先に uv cache clean pyopenjtalk monotonic-align）。"
+    )
+
+
 def set_enabled_engines(
     ids: list[str],
     *,
@@ -787,6 +832,9 @@ def set_enabled_engines(
     cmd = ["uv", "sync", "--frozen"]
     for extra in extras:
         cmd.extend(("--extra", extra))
+    tools_hint = build_tools_hint(extras)
+    if tools_hint:
+        _emit(on_output, f"[engine-manager] {tools_hint}")
     _save_sherpa_snapshot_if_custom()
     try:
         proc = subprocess.Popen(cmd, cwd=_paths.REPO_ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -798,7 +846,10 @@ def set_enabled_engines(
             _emit(on_output, line.rstrip("\r\n"))
     rc = proc.wait()
     if rc != 0:
-        return False, f"uv sync failed (exit code {rc})"
+        message = f"uv sync failed (exit code {rc})"
+        if tools_hint:
+            message += f" {tools_hint}"
+        return False, message
     # 判定は「エンジン id」ではなく「解決後の extra」で行う。sherpa-onnx を使うエンジンは
     # asr-sherpa だけではなく、qwen3-onnx / sensevoice / parakeet / cohere / funasr-nano
     # も同じ extra を共有する。id で見ていると、それらだけを選んだときに `uv sync` が

@@ -142,7 +142,7 @@ Host and Docker can be switched, started and stopped from 「対話サーバー�
 |---|---|
 | OS | Windows (tested on Windows 11; the Qt app, setup scripts and MMDAgent-EX). The dialogue server also runs in Docker (Linux) |
 | Python | [3.11](https://www.python.org/downloads/) (the official python.org build is recommended; `.python-version` pins 3.11 because the prebuilt sherpa-onnx package targets 3.11) |
-| Build tools | [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (Desktop development with C++) and [CMake](https://cmake.org/), to build pyopenjtalk and others from source |
+| Build tools (some engines only) | [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (Desktop development with C++) and [CMake](https://cmake.org/). Not needed for the default setup; needed to install Kokoro or Tsukasa (their dependencies are built from source) and to build sherpa-onnx from source |
 | Package manager | [uv](https://docs.astral.sh/uv/) |
 | GPU | An NVIDIA GPU (CUDA 12.8) is recommended. CPU-only setups are also supported |
 | Avatar | [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) (Windows build, tested with v2.1) and a CG avatar ([setup](#3-mmdagent-ex-and-the-avatar)) |
@@ -169,8 +169,8 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1 -Device cpu  # CP
 
 The script runs, in order: `uv sync` → install the patched sherpa-onnx → fetch the engine assets
 (`scripts/setup_assets.ps1`) → verify (sherpa-onnx version, worker start-up, GUI construction, tests).
-It first checks the prerequisites (Smart App Control, MSVC, CMake, Python 3.11, Node.js) and loads the MSVC environment,
-so it does not need to be run from Developer PowerShell.
+It first checks the prerequisites (Smart App Control, Python 3.11, Node.js, and MSVC and CMake when needed) and loads the MSVC
+environment if MSVC is installed, so it does not need to be run from Developer PowerShell.
 
 | Option | Description |
 |---|---|
@@ -179,11 +179,12 @@ so it does not need to be run from Developer PowerShell.
 | `-SkipAssets` | Do not fetch the engine assets |
 | `-SkipSherpa` | Do not install the patched sherpa-onnx (the PyPI build stays, and `nemotron-onnx` becomes less accurate) |
 | `-ForceSherpaBuild` | Build sherpa-onnx from source instead of using the prebuilt package (needs Git, CMake and the C++ workload of MSVC Build Tools; [docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md), Japanese) |
-| `-InstallPrereqs` | Install missing prerequisites (the C++ workload of VS 2022 Build Tools, CMake, Python 3.11, Node.js) with winget. Build Tools is several GB and asks for administrator approval. By default nothing is installed; the script shows what is missing and how to install it |
+| `-AllExtras` | Install the Python packages of every engine (this includes Kokoro and Tsukasa, so MSVC and CMake are needed) |
+| `-InstallPrereqs` | Install missing prerequisites (Python 3.11, Node.js, and the C++ workload of VS 2022 Build Tools and CMake when needed) with winget. Build Tools is several GB and asks for administrator approval. By default nothing is installed; the script shows what is missing and how to install it |
 | `-VerifyOnly` | Only verify, without installing anything |
 
-By default, only the assets needed to talk with the default settings (ASR: ReazonSpeech on sherpa-onnx, TTS: VOICEVOX Core)
-are fetched. Other engines are installed by selecting them in 「エンジン管理」 (Engine Manager) in the settings window and pressing 「適用」 (Apply).
+By default, only the Python packages and assets needed to talk with the default settings (ASR: ReazonSpeech on sherpa-onnx,
+TTS: VOICEVOX Core) are installed (engines that are already installed are kept). Other engines are installed by selecting them in 「エンジン管理」 (Engine Manager) in the settings window and pressing 「適用」 (Apply).
 
 > [!WARNING]
 > Running `uv sync` on its own replaces the patched sherpa-onnx with the PyPI build. Run `scripts\setup_env.ps1`
