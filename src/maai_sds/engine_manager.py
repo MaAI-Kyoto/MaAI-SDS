@@ -549,6 +549,14 @@ _UV_DOWNLOAD_TIMEOUT_SEC = "300"
 def _uv_env(extra: dict[str, str] | None = None) -> dict[str, str]:
     """uv を起動するための環境変数。巨大な wheel でタイムアウトしないようにする。"""
     env = os.environ.copy()
+    # PowerShell 7 から起動されたプロセスは、PowerShell 7 用の PSModulePath を持っている。それを
+    # そのまま Windows PowerShell 5.1（setup_assets.ps1 などの powershell）に渡すと、5.1 が 7 用の
+    # Microsoft.PowerShell.Utility を読みに行き、Get-FileHash などが「見つからない」で落ちる
+    # （実機で発生）。外して渡せば、5.1 は自分の既定の場所から組み立てる。
+    # Windows の os.environ は変数名を大文字で持つ（PSMODULEPATH）ので、大文字・小文字を区別せずに外す。
+    if os.name == "nt":
+        for key in [k for k in env if k.upper() == "PSMODULEPATH"]:
+            del env[key]
     for key in ("UV_HTTP_TIMEOUT", "UV_REQUEST_TIMEOUT"):
         env.setdefault(key, _UV_DOWNLOAD_TIMEOUT_SEC)
     if extra:

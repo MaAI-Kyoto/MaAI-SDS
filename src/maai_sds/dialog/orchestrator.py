@@ -37,6 +37,10 @@ class DialogOrchestratorState:
     llm_in_progress: bool = False
     final_seq: int = 0
     wait_nonstream_maai_turn: dict[str, object] | None = None
+    # 先読みの前に ASR へ確定を指示し、その結果を待っている（ターンを取るときと同じ）。
+    # 疑似ストリーミングでない ASR では、話している途中や確定待ちの発話が履歴に無いので、確定させてから
+    # 履歴に入れて先読みする。{"baseline_final_seq": int, "trigger_path": str}
+    prefetch_wait_final: dict[str, object] | None = None
     wait_smart_turn_final: bool = False
     waiting_asr_latency: bool = False
     pending_texts: list[str] = field(default_factory=list)
@@ -611,6 +615,23 @@ class DialogOrchestrator:
                 return str(m.get("content", "")).strip()
         return ""
 
+    def _has_unanswered_user_text(self) -> bool:
+        """履歴の最後（空の assistant 行を除く）が、中身のあるユーザーの発話か。
+
+        先読みは履歴のスナップショットで LLM を呼ぶので、今話している発話の文字起こしが履歴にまだ
+        無いと、前のターンの発話に答え直した返事になる（疑似ストリーミングの ASR をオフにすると、
+        確定するまで履歴に入らない）。前の返事のあとにユーザーの発話が入っているときだけ先読みする。
+        """
+        for m in reversed(self.state.messages):
+            if not isinstance(m, dict):
+                continue
+            role = str(m.get("role", ""))
+            content = str(m.get("content", "")).strip()
+            if role == "assistant" and not content:
+                continue
+            return role == "user" and bool(content)
+        return False
+
     def clear_prefetch(self) -> None:
         """runtime の割り込み等から先読みフラグだけ落とす。"""
         self.state.prefetch_active = False
@@ -635,13 +656,59 @@ class DialogOrchestrator:
             {"type": "cancel_prefetch"},
         ]
 
+    def _request_prefetch_after_finalize(self, *, trigger_path: str) -> list[dict[str, object]]:
+        """先読みの前に ASR へ確定を指示する。結果が届いたら _start_prefetch_with_pending で先読みする。"""
+        if self.state.opening_tts_pending or self.state.prefetch_active:
+            return []
+        if self.state.llm_in_progress or self.state.turn_blocked_until_user_speech:
+            return []
+        if self.state.prefetch_wait_final is not None or self.state.wait_nonstream_maai_turn is not None:
+            return []
+        path_text = str(trigger_path or "unknown").strip() or "unknown"
+        self.state.prefetch_wait_final = {
+            "baseline_final_seq": int(self.state.final_seq),
+            "trigger_path": path_text,
+        }
+        return [
+            {"type": "log", "message": f"[LLM][PREFETCH] force_finalize_wait path={path_text}"},
+            {"type": "request_force_finalize"},
+        ]
+
+    def _start_prefetch_with_pending(self, *, reason: str) -> list[dict[str, object]]:
+        """確定した発話（保留中のものも含む）を履歴に入れてから先読みする。"""
+        wait = self.state.prefetch_wait_final or {}
+        self.state.prefetch_wait_final = None
+        utterances = self._pop_user_utterances(include_partial=False)
+        user_text = " ".join(str(t).strip() for (_idx, t) in utterances if str(t).strip()).strip()
+        if user_text:
+            self.state.messages.append({"role": "user", "content": user_text})
+            self._trim_messages_keep_system()
+        path_text = str(wait.get("trigger_path", "unknown"))
+        events: list[dict[str, object]] = [
+            {
+                "type": "log",
+                "message": f"[LLM][PREFETCH] finalized reason={reason} user_text_len={len(user_text)}",
+            }
+        ]
+        started = self._start_prefetch_from_history(trigger_path=path_text)
+        if not started:
+            events.append({"type": "history_snapshot", "history": self.history_snapshot()})
+        events.extend(started)
+        return events
+
+    def _drop_prefetch_wait(self, *, reason: str) -> list[dict[str, object]]:
+        if self.state.prefetch_wait_final is None:
+            return []
+        self.state.prefetch_wait_final = None
+        return [{"type": "log", "message": f"[LLM][PREFETCH] force_finalize_wait dropped reason={reason}"}]
+
     def _start_prefetch_from_history(self, *, trigger_path: str) -> list[dict[str, object]]:
         """p_future 立ち上がりで LLM を先読みする。ターンは取らない（llm_in_progress を立てない）。"""
         if self.state.opening_tts_pending or self.state.prefetch_active:
             return []
         if self.state.llm_in_progress or self.state.turn_blocked_until_user_speech:
             return []
-        if not self._last_user_text():
+        if not self._has_unanswered_user_text():
             return []
         self._purge_empty_assistant_messages()
         self.state.prefetch_active = True
@@ -1244,11 +1311,12 @@ class DialogOrchestrator:
         self.state.turn_blocked_until_user_speech = True
         self.state.last_turn_ts = time.perf_counter()
         self.state.last_turn_wall_ts = time.time()
-        events: list[dict[str, object]] = [
+        events: list[dict[str, object]] = self._drop_prefetch_wait(reason="turn_taken")
+        events.extend([
             {"type": "log", "message": f"{log_prefix} branch={branch_tag}"},
             {"type": "turn", "probability": p_now, "ts": self.state.last_turn_wall_ts},
             {"type": "history_snapshot", "history": self.history_snapshot()},
-        ]
+        ])
         # アイドルターンは武装しない。さらに、過去に武装したまま実 ASR が来ていない
         # リークもここでクリアする（古い last_turn_ts での誤計測を防ぐ）。
         self.state.waiting_asr_latency = arm_asr_latency
@@ -1440,6 +1508,10 @@ class DialogOrchestrator:
             )
             if not take_turn:
                 return cancel_ev
+        if self.state.prefetch_wait_final is not None and p_future_crossed_down:
+            drop_ev = self._dispatch_then_return(self._drop_prefetch_wait(reason="p_future_cross_down"))
+            if not take_turn:
+                return drop_ev
 
         # p_now でターンを取る前に、p_future 立ち上がりで LLM+TTS を先読みする。
         # llm_in_progress / turn_blocked は立てない（後続の p_now クロスを捨てないため）。
@@ -1451,7 +1523,10 @@ class DialogOrchestrator:
             and (not self.state.turn_blocked_until_user_speech)
             and (not self.state.opening_tts_pending)
         ):
-            pref_events = self._start_prefetch_from_history(trigger_path="p_future_cross_up")
+            if self._turn_backend() == "maai" and not self._asr_effective_streaming_for_maai_turn():
+                pref_events = self._request_prefetch_after_finalize(trigger_path="p_future_cross_up")
+            else:
+                pref_events = self._start_prefetch_from_history(trigger_path="p_future_cross_up")
             if pref_events:
                 return self._dispatch_then_return(pref_events)
 
@@ -1584,6 +1659,10 @@ class DialogOrchestrator:
                 self.state.pending_utterance_indices.append(utterance_index)
             self.state.current_partial = ""
             self.state.current_partial_utterance_index = None
+            if self.state.prefetch_wait_final is not None and self.state.wait_nonstream_maai_turn is None:
+                baseline = int(self.state.prefetch_wait_final.get("baseline_final_seq", 0) or 0)
+                if self.state.final_seq > baseline:
+                    events.extend(self._start_prefetch_with_pending(reason="final_arrived"))
             if self.state.wait_nonstream_maai_turn is not None:
                 baseline = int(self.state.wait_nonstream_maai_turn.get("baseline_final_seq", 0) or 0)
                 if self.state.final_seq > baseline:
@@ -1639,6 +1718,10 @@ class DialogOrchestrator:
         ts: float,
     ) -> list[dict[str, object]]:
         waiting = self.state.wait_nonstream_maai_turn
+        if waiting is None and self.state.prefetch_wait_final is not None:
+            if (not bool(is_speaking)) and (not self.state.asr_inference_busy):
+                return self._dispatch_then_return(self._start_prefetch_with_pending(reason="not_speaking"))
+            return []
         if waiting is not None:
             waiting["awaiting_force_finalize_status"] = False
             waiting["force_finalize_is_speaking"] = bool(is_speaking)
@@ -1712,6 +1795,10 @@ class DialogOrchestrator:
     ) -> list[dict[str, object]]:
         waiting = self.state.wait_nonstream_maai_turn
         if waiting is None:
+            if self.state.prefetch_wait_final is not None and str(status).strip().lower() in {
+                "skipped_short", "empty_text", "error", "no_audio", "not_speaking",
+            }:
+                return self._dispatch_then_return(self._start_prefetch_with_pending(reason=f"outcome_{status}"))
             return []
         current_request_id = int(waiting.get("force_finalize_request_id", 0) or 0)
         if current_request_id and int(request_id) and current_request_id != int(request_id):

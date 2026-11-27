@@ -25,6 +25,7 @@ import urllib.parse
 import urllib.request
 from typing import Any, Callable
 from .. import engine_manager, paths as _paths, speechcpp
+from . import audiocpp_client
 from .playback_service import BINARY_STREAM_ENGINES
 from .venv_rpc import DedicatedVenvTTSClient
 from pathlib import Path
@@ -743,6 +744,28 @@ class AivisSpeechEngine:
         return wav_bytes_to_pcm16be_16k_mono(wav), voice
 
 
+def _audiocpp_backend_for(server_exe: Path) -> str:
+    """置いてある audio.cpp サーバーの種類から backend を決める（設定の supertonic_backend が空のとき）。
+
+    audio.cpp は Windows 用に CUDA・Vulkan・CPU 版を配っている。NVIDIA の GPU が無い PC（内蔵 GPU だけ）では
+    Vulkan 版が速い（Iris Xe で Supertonic 3 の 23 文字が 0.64 秒。CPU 版 4 スレッドは 2.5 秒）。
+    フォルダー名に vulkan / cpu があればそれ、隣の FLAVOR.txt が cpu / vulkan で始まればそれ、無ければ cuda。
+    """
+    parts = [p.lower() for p in server_exe.parts]
+    for name in ("vulkan", "cpu"):
+        if any(name in p for p in parts[-4:]):
+            return name
+    flavor = server_exe.parent / "FLAVOR.txt"
+    try:
+        head = flavor.read_text(encoding="utf-8-sig").strip().lower()
+    except OSError:
+        head = ""
+    for name in ("vulkan", "cpu", "cuda"):
+        if head.startswith(name):
+            return name
+    return "cuda"
+
+
 class SupertonicEngine:
     """audio.cpp 常駐 server 経由の Supertonic 3。CLI 再起動を避ける。"""
 
@@ -757,6 +780,19 @@ class SupertonicEngine:
             "audio.cpp/models/Supertonic-3-GGUF/supertonic-3-orig.gguf"
         )
         self.model_path = _paths.resolve_under_repo(raw_model)
+        self.backend = str(cfg.get("backend", "") or "").strip().lower() or _audiocpp_backend_for(self.server_exe)
+        # audio.cpp サーバーの CPU スレッド数。0 / 空なら backend で決める。Vulkan・CPU 版で 8 にすると、
+        # 4 コアの PC では MaAI などが CPU を使っている間にスレッドの待ち合わせで止まり、6 文字の合成が
+        # 0.6 秒 → 20 秒以上になった（Iris Xe・i5-1135G7 で実測）。Vulkan は計算が GPU なので 2 で足りる。
+        raw_threads = int(cfg.get("threads", 0) or 0)
+        if raw_threads > 0:
+            self.threads = raw_threads
+        elif self.backend == "cuda":
+            self.threads = 8
+        elif self.backend == "vulkan":
+            self.threads = 2
+        else:
+            self.threads = max(1, min(4, (os.cpu_count() or 4) // 2))
         self._server_process: subprocess.Popen | None = None
         self._lock = threading.Lock()
 
@@ -765,28 +801,33 @@ class SupertonicEngine:
         return f"http://{self.host}:{self.port}"
 
     def load(self) -> None:
-        try:
-            with urllib.request.urlopen(self._base_url + "/health", timeout=5) as response:
-                if response.status != 200:
-                    raise RuntimeError(f"HTTP {response.status}")
-            return
-        except Exception as ex:
-            if not (self.server_exe.is_file() and self.model_path.is_file()):
-                raise RuntimeError(
-                    "Supertonic server に接続できません。audiocpp_server.exe と GGUF モデルのパスを設定するか、"
-                    f"{self._base_url} に事前起動してください: {ex}"
-                ) from ex
         config = {
-            "host": self.host, "port": self.port, "backend": "cuda", "device": 0, "threads": 8,
+            "host": self.host, "port": self.port, "backend": self.backend, "device": 0, "threads": self.threads,
             "lazy_load": False,
             "models": [{"id": self.model_id, "family": "supertonic", "path": str(self.model_path), "task": "tts", "mode": "offline",
                 "default_request_options": {"voice_id": self.default_voice, "num_inference_steps": self.steps, "language": "ja", "speaking_rate": 1.0}}],
         }
         config_file = Path(tempfile.gettempdir()) / f"maai-supertonic-{self.port}.json"
-        config_file.write_text(json.dumps(config, ensure_ascii=False), encoding="utf-8")
-        self._server_process = subprocess.Popen(
-            [str(self.server_exe), "--config", str(config_file)], cwd=str(self.server_exe.parent.parent.parent.parent),
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        health_error: Exception | None = None
+        try:
+            with urllib.request.urlopen(self._base_url + "/health", timeout=5) as response:
+                if response.status != 200:
+                    raise RuntimeError(f"HTTP {response.status}")
+            # 前に立ち上げたサーバーが設定の違うまま残っていれば、止めて立ち上げ直す
+            if audiocpp_client.reuse_running_server(
+                base_url=self._base_url, config_file=config_file, config=config, name="Supertonic"
+            ):
+                return
+        except Exception as ex:
+            health_error = ex
+        if not (self.server_exe.is_file() and self.model_path.is_file()):
+            raise RuntimeError(
+                "Supertonic server に接続できません。audiocpp_server.exe と GGUF モデルのパスを設定するか、"
+                f"{self._base_url} に事前起動してください: {health_error}"
+            ) from health_error
+        self._server_process = audiocpp_client.launch_server(
+            server_exe=self.server_exe, config_file=config_file, config=config,
+            cwd=self.server_exe.parent.parent.parent.parent,
         )
         deadline = time.monotonic() + 120.0
         while time.monotonic() < deadline:
@@ -911,17 +952,6 @@ class Qwen3TTSCppEngine:
         return options
 
     def load(self) -> None:
-        try:
-            with urllib.request.urlopen(self._base_url + "/health", timeout=5) as response:
-                if response.status != 200:
-                    raise RuntimeError(f"HTTP {response.status}")
-            return
-        except Exception as ex:
-            if not (self.server_exe.is_file() and self.model_path.is_file()):
-                raise RuntimeError(
-                    "Qwen3-TTS C++ server に接続できません。audiocpp_server.exe と GGUF モデルのパスを設定するか、"
-                    f"{self._base_url} に事前起動してください: {ex}"
-                ) from ex
         default_request_options = self._request_options(
             voice=self.default_voice,
             instruct=self.default_instruct,
@@ -935,10 +965,26 @@ class Qwen3TTSCppEngine:
                 "default_request_options": default_request_options}],
         }
         config_file = Path(tempfile.gettempdir()) / f"maai-qwen3-tts-cpp-{self.port}.json"
-        config_file.write_text(json.dumps(config, ensure_ascii=False), encoding="utf-8")
-        self._server_process = subprocess.Popen(
-            [str(self.server_exe), "--config", str(config_file)], cwd=str(self.server_exe.parent.parent.parent.parent),
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        health_error: Exception | None = None
+        try:
+            with urllib.request.urlopen(self._base_url + "/health", timeout=5) as response:
+                if response.status != 200:
+                    raise RuntimeError(f"HTTP {response.status}")
+            # 前に立ち上げたサーバーが設定の違うまま残っていれば、止めて立ち上げ直す
+            if audiocpp_client.reuse_running_server(
+                base_url=self._base_url, config_file=config_file, config=config, name="Qwen3-TTS"
+            ):
+                return
+        except Exception as ex:
+            health_error = ex
+        if not (self.server_exe.is_file() and self.model_path.is_file()):
+            raise RuntimeError(
+                "Qwen3-TTS C++ server に接続できません。audiocpp_server.exe と GGUF モデルのパスを設定するか、"
+                f"{self._base_url} に事前起動してください: {health_error}"
+            ) from health_error
+        self._server_process = audiocpp_client.launch_server(
+            server_exe=self.server_exe, config_file=config_file, config=config,
+            cwd=self.server_exe.parent.parent.parent.parent,
         )
         deadline = time.monotonic() + 120.0
         while time.monotonic() < deadline:

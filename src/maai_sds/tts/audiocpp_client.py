@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import os
 import subprocess
 import tempfile
 import threading
@@ -23,6 +24,150 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .. import paths as _paths
+
+# --- 自分で立ち上げたサーバーの後始末 -------------------------------------------------------------
+# 以前は、アプリを閉じても audio.cpp のサーバーが残り、次に起動したときに（設定が変わっていても）
+# 残ったサーバーをそのまま使っていた。スレッド数を直しても効かない、という形で実機で踏んだ。
+# - Windows では Job Object に入れ、立ち上げたプロセス（TTS ワーカー）が終われば、強制終了でもサーバーも終わる。
+# - 立ち上げたときの設定と PID を記録し、設定が違うサーバーが残っていれば止めてから立ち上げ直す。
+#   記録の無いサーバー（Docker の compose や手で立てたもの）は今までどおりそのまま使う。
+
+_job_handle: Any = None
+
+
+def _bind_to_this_process(proc: subprocess.Popen) -> None:
+    """Windows: proc を、このプロセスが終わると一緒に終わる Job Object に入れる。失敗しても続ける。"""
+    global _job_handle
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+        kernel32.CreateJobObjectW.argtypes = (wintypes.LPVOID, wintypes.LPCWSTR)
+        kernel32.SetInformationJobObject.argtypes = (wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD)
+        kernel32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
+        if _job_handle is None:
+            class _IoCounters(ctypes.Structure):
+                _fields_ = [(n, ctypes.c_ulonglong) for n in (
+                    "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                    "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+            class _BasicLimit(ctypes.Structure):
+                _fields_ = [
+                    ("PerProcessUserTimeLimit", ctypes.c_longlong), ("PerJobUserTimeLimit", ctypes.c_longlong),
+                    ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                    ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                    ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD),
+                    ("SchedulingClass", wintypes.DWORD),
+                ]
+
+            class _ExtendedLimit(ctypes.Structure):
+                _fields_ = [
+                    ("BasicLimitInformation", _BasicLimit), ("IoInfo", _IoCounters),
+                    ("ProcessMemoryLimit", ctypes.c_size_t), ("JobMemoryLimit", ctypes.c_size_t),
+                    ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t),
+                ]
+
+            job = kernel32.CreateJobObjectW(None, None)
+            if not job:
+                return
+            info = _ExtendedLimit()
+            info.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            # 9 = JobObjectExtendedLimitInformation
+            if not kernel32.SetInformationJobObject(job, 9, ctypes.byref(info), ctypes.sizeof(info)):
+                return
+            _job_handle = job  # 閉じない（このプロセスが終わると閉じ、中のプロセスも終わる）
+        kernel32.AssignProcessToJobObject(_job_handle, wintypes.HANDLE(int(proc._handle)))  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _pid_file(config_file: Path) -> Path:
+    return config_file.with_suffix(".pid")
+
+
+def _is_audiocpp_process(pid: int) -> bool:
+    """pid が audio.cpp のサーバーか（PID の使い回しで別のプロセスを止めないため）。"""
+    if pid <= 0:
+        return False
+    try:
+        if os.name == "nt":
+            out = subprocess.run(
+                ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+                capture_output=True, text=True, timeout=10,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            ).stdout
+            return "audiocpp" in out.lower()
+        cmdline = Path(f"/proc/{pid}/cmdline")
+        return cmdline.is_file() and b"audiocpp" in cmdline.read_bytes().lower()
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _stop_pid(pid: int) -> None:
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True, timeout=15,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        else:
+            import signal
+
+            os.kill(pid, signal.SIGTERM)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def reuse_running_server(*, base_url: str, config_file: Path, config: dict[str, Any], name: str) -> bool:
+    """応答しているサーバーをそのまま使ってよいか。
+
+    自分が前に立ち上げたもの（設定と PID の記録がある）で設定が違えば止めて False を返す（立ち上げ直す）。
+    記録が無い・読めないもの（Docker の compose や手で立てたもの）はそのまま使う。
+    """
+    pid_path = _pid_file(config_file)
+    try:
+        stored = json.loads(config_file.read_text(encoding="utf-8"))
+        pid = int(pid_path.read_text(encoding="utf-8").strip())
+    except Exception:  # noqa: BLE001
+        return True
+    if stored == config:
+        return True
+    if not _is_audiocpp_process(pid):
+        return True
+    print(f"[{name}] 設定の違う audio.cpp のサーバー（PID {pid}）が残っているので止めて立ち上げ直します", flush=True)
+    _stop_pid(pid)
+    deadline = time.monotonic() + 15.0
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(base_url + "/health", timeout=1.0):
+                pass
+        except Exception:  # noqa: BLE001
+            break
+        time.sleep(0.25)
+    try:
+        pid_path.unlink()
+    except OSError:
+        pass
+    return False
+
+
+def launch_server(*, server_exe: Path, config_file: Path, config: dict[str, Any], cwd: Path) -> subprocess.Popen:
+    """設定を書いてサーバーを立ち上げ、このプロセスと一緒に終わるようにし、PID を記録する。"""
+    config_file.write_text(json.dumps(config, ensure_ascii=False), encoding="utf-8")
+    proc = subprocess.Popen(
+        [str(server_exe), "--config", str(config_file)],
+        cwd=str(cwd),
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    _bind_to_this_process(proc)
+    try:
+        _pid_file(config_file).write_text(str(proc.pid), encoding="utf-8")
+    except OSError:
+        pass
+    return proc
 
 
 class AudioCppServer:
@@ -63,7 +208,15 @@ class AudioCppServer:
 
     def ensure(self) -> bool:
         """サーバーを使える状態にする。自分で立ち上げたら True、既にあったら False。"""
-        if self.healthy(timeout=5.0):
+        config = {
+            "host": self.host, "port": self.port, "backend": self.backend, "device": 0,
+            "threads": self.threads, "lazy_load": False,
+            "models": [{"task": "tts", "mode": "streaming", **m} for m in self.models],
+        }
+        config_file = Path(tempfile.gettempdir()) / f"maai-{self.name}-{self.port}.json"
+        if self.healthy(timeout=5.0) and reuse_running_server(
+            base_url=self.base_url, config_file=config_file, config=config, name=self.name
+        ):
             return False
         missing = [str(m["path"]) for m in self.models if not Path(str(m["path"])).exists()]
         if not self.server_exe.is_file() or missing:
@@ -73,18 +226,8 @@ class AudioCppServer:
                 + (f" 実行ファイルがありません: {self.server_exe}。" if not self.server_exe.is_file() else "")
                 + (f" モデルがありません: {', '.join(missing)}。" if missing else "")
             )
-        config = {
-            "host": self.host, "port": self.port, "backend": self.backend, "device": 0,
-            "threads": self.threads, "lazy_load": False,
-            "models": [{"task": "tts", "mode": "streaming", **m} for m in self.models],
-        }
-        config_file = Path(tempfile.gettempdir()) / f"maai-{self.name}-{self.port}.json"
-        config_file.write_text(json.dumps(config, ensure_ascii=False), encoding="utf-8")
-        self._proc = subprocess.Popen(
-            [str(self.server_exe), "--config", str(config_file)],
-            cwd=str(self.server_exe.parent),
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        self._proc = launch_server(
+            server_exe=self.server_exe, config_file=config_file, config=config, cwd=self.server_exe.parent
         )
         deadline = time.monotonic() + self.start_timeout_sec
         while time.monotonic() < deadline:

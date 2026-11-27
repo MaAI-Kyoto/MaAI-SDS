@@ -507,6 +507,10 @@ def build_tts_worker_config(cfg: dict, engine: str) -> dict[str, object]:
             ),
             "voice": _tts_voice_for_engine(cfg, engine, "F1"),
             "steps": int(_clamp(cfg_int(cfg, "supertonic_steps", 8), 1, 8)),
+            # audio.cpp の backend（cuda / vulkan / cpu）。空なら置いてあるサーバーの種類から決める。
+            "backend": cfg_str(cfg, "supertonic_backend", ""),
+            # audio.cpp サーバーの CPU スレッド数。0 なら backend で決める（cuda 8・vulkan 2・cpu 最大 4）。
+            "threads": int(_clamp(cfg_int(cfg, "supertonic_threads", 0), 0, 64)),
         }
     if engine == "Irodori-v4":
         return {
