@@ -76,6 +76,26 @@ class GuiSaveKeepsUnknownKeysTest(unittest.TestCase):
         auto = vds.build_tts_worker_config(self._save_through_gui({}), "Supertonic-3")
         self.assertEqual((auto["backend"], auto["threads"]), ("", 0))
 
+    def test_tuning_values_now_on_screen_round_trip(self) -> None:
+        # 以前は読む側（settings.py）にしか無く、画面で保存すると消えていた調整用の値
+        values = {
+            "kokoro_realtime_speed": "1.3",
+            "asr_speechcpp_language": "en",
+            "audio_input_wav_local_playback_device": "Speakers",
+            "maai_onnx_allow_spinning": True,
+        }
+        saved = self._save_through_gui(values)
+        self.assertEqual({k: saved.get(k) for k in values}, values)
+        self.assertEqual(vds.build_tts_worker_config(saved, "Kokoro-RealtimeTTS")["speed"], "1.3")
+        self.assertEqual(vds.build_asr_config_dict(saved)["speechcpp_asr_language"], "en")
+        self.assertTrue(vds.build_maai_worker_config(saved)["onnx_allow_spinning"])
+        defaults = self._save_through_gui({})
+        self.assertEqual(
+            {k: defaults.get(k) for k in values},
+            {"kokoro_realtime_speed": "1.0", "asr_speechcpp_language": "",
+             "audio_input_wav_local_playback_device": "", "maai_onnx_allow_spinning": False},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

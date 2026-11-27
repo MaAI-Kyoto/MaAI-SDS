@@ -2860,6 +2860,20 @@
                   }
                 }
               ]
+            },
+            {
+              "label": "言語（Qwen3-ASRのみ）",
+              "widgets": [
+                {
+                  "attr": "asr_speechcpp_language_edit",
+                  "config_key": "asr_speechcpp_language",
+                  "scope": "app",
+                  "tooltip": "認識する言語です（ja・enなど）。多言語のQwen3-ASRだけで使い、日本語専用のモデルでは無視します。",
+                  "kind": "line",
+                  "value": "",
+                  "password": false
+                }
+              ]
             }
           ]
         }
@@ -3261,6 +3275,26 @@
                   "kind": "line",
                   "value": "",
                   "password": false
+                }
+              ]
+            },
+            {
+              "label": "話す速さ（1.0＝標準）",
+              "widgets": [
+                {
+                  "attr": "kokoro_realtime_speed_edit",
+                  "config_key": "kokoro_realtime_speed",
+                  "scope": "app",
+                  "tooltip": "Kokoroの話す速さです。1.0＝標準で、大きいほど速く話します。\n範囲：0.5〜2",
+                  "kind": "line",
+                  "value": "1.0",
+                  "password": false,
+                  "numeric": {
+                    "min": 0.5,
+                    "max": 2.0,
+                    "decimals": true,
+                    "note": null
+                  }
                 }
               ]
             }
@@ -5463,6 +5497,21 @@
                 }
               ],
               "detail": "詳細設定（スレッド数・推論チャンク）"
+            },
+            {
+              "label": "スレッドのスピン",
+              "widgets": [
+                {
+                  "attr": "maai_onnx_allow_spinning_check",
+                  "config_key": "maai_onnx_allow_spinning",
+                  "scope": "app",
+                  "tooltip": "ONNX Runtimeの既定の動き（スピン）です。オフ（既定）では推論の合間にCPUを空けます。CPUの少ないPCでオンにすると、MaAIがCPUを埋めてTTSなどが遅くなります。",
+                  "kind": "check",
+                  "value": false,
+                  "text": "推論の合間もスレッドを回し続ける"
+                }
+              ],
+              "detail": "詳細設定（スレッド数・推論チャンク）"
             }
           ]
         },
@@ -6784,6 +6833,20 @@
                   "kind": "check",
                   "value": false,
                   "text": "ローカル再生（スピーカー）"
+                }
+              ]
+            },
+            {
+              "label": "モニターの出力先",
+              "widgets": [
+                {
+                  "attr": "audio_input_wav_local_playback_device_edit",
+                  "config_key": "audio_input_wav_local_playback_device",
+                  "scope": "app",
+                  "tooltip": "モニター再生に使う出力デバイスの名前（一部でよい）です。見つからなければ既定の出力を使います。",
+                  "kind": "line",
+                  "value": "",
+                  "password": false
                 }
               ]
             },

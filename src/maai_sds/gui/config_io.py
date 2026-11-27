@@ -92,6 +92,7 @@ class AppConfigIOMixin:
                 self._tts_voice_by_engine[current_engine] = migrated_voice
             self._restore_engine_voice(current_engine)
             self._apply_app_config_field(cfg, "tts_model")
+            self._apply_app_config_field(cfg, "kokoro_realtime_speed")
             self._apply_app_config_field(cfg, "qwen3_tts_cpp_server_exe")
             self._apply_app_config_field(cfg, "qwen3_tts_cpp_model_path")
             self._apply_app_config_field(cfg, "qwen3_tts_cpp_host")
@@ -360,7 +361,7 @@ class AppConfigIOMixin:
                 "asr_funasr_nano_onnx_dir", "asr_funasr_nano_onnx_num_threads",
                 "asr_funasr_nano_onnx_language", "asr_funasr_nano_onnx_max_new_tokens",
                 "asr_cohere_onnx_dir", "asr_cohere_onnx_num_threads", "asr_cohere_onnx_language",
-                "asr_speechcpp_model", "asr_speechcpp_device", "asr_speechcpp_threads",
+                "asr_speechcpp_model", "asr_speechcpp_device", "asr_speechcpp_threads", "asr_speechcpp_language",
             ):
                 self._apply_app_config_field(cfg, _key)
             # 宣言テーブルに載らない combo / checkbox（既定は全て CPU / 有効）。
@@ -502,6 +503,7 @@ class AppConfigIOMixin:
                 )
             self._apply_app_config_field(cfg, "maai_mimi_onnx_cpu_intra_threads")
             self._apply_app_config_field(cfg, "maai_mimi_onnx_cpu_inter_threads")
+            self._apply_app_config_field(cfg, "maai_onnx_allow_spinning")
             self._apply_app_config_field(cfg, "maai_torch_cpu_intra_threads")
             self._apply_app_config_field(cfg, "maai_torch_cpu_interop_threads")
             self._apply_app_config_field(cfg, "maai_inference_chunk_frames")
@@ -568,6 +570,7 @@ class AppConfigIOMixin:
                 if i >= 0:
                     self.audio_input_mic_device_combo.setCurrentIndex(i)
             self._apply_app_config_field(cfg, "audio_input_wav_path")
+            self._apply_app_config_field(cfg, "audio_input_wav_local_playback_device")
             self._apply_app_config_field(cfg, "audio_input_wav_start_sec")
             self._apply_app_config_field(cfg, "audio_input_wav_end_sec")
             if hasattr(self, "audio_input_wav_local_playback_check"):

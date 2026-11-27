@@ -725,6 +725,8 @@ def _build_initial_widgets(controller):
     controller.tts_base_path_edit = QLineEdit("")
     controller.tts_voice_edit = QLineEdit("1")
     controller.tts_model_edit = QLineEdit("kokoro")
+    controller.kokoro_realtime_speed_edit = QLineEdit("1.0")
+    controller.kokoro_realtime_speed_edit.setToolTip("Kokoroの話す速さです。1.0＝標準で、大きいほど速く話します。")
     controller.tts_input_streaming_check = QCheckBox("有効")
     controller.tts_input_streaming_check.setChecked(True)
     controller.tts_segment_gap_silence_sec_edit = QLineEdit("0")
@@ -1095,6 +1097,11 @@ def _build_initial_widgets(controller):
     )
     controller.asr_speechcpp_threads_edit = QLineEdit("0")
     controller.asr_speechcpp_threads_edit.setToolTip("CPUのスレッド数です。0＝speech.cppに任せる（性能コアの数）。")
+    controller.asr_speechcpp_language_edit = QLineEdit("")
+    controller.asr_speechcpp_language_edit.setPlaceholderText("空欄＝ja")
+    controller.asr_speechcpp_language_edit.setToolTip(
+        "認識する言語です（ja・enなど）。多言語のQwen3-ASRだけで使い、日本語専用のモデルでは無視します。"
+    )
     # nemotron-onnx (sherpa-onnx OnlineRecognizer.from_transducer, multilingual)
     controller.asr_nemotron_onnx_tokens_edit = QLineEdit("")
     controller.asr_nemotron_onnx_encoder_edit = QLineEdit("")
@@ -1204,6 +1211,11 @@ def build_ui(controller) -> None:
     controller.audio_input_wav_local_playback_check = QCheckBox("ローカル再生（スピーカー）")
     controller.audio_input_wav_local_playback_check.setToolTip(
         "WAVをパイプラインへ送るのと同時に、PCの既定出力でモニター再生します。"
+    )
+    controller.audio_input_wav_local_playback_device_edit = QLineEdit("")
+    controller.audio_input_wav_local_playback_device_edit.setPlaceholderText("空欄＝既定の出力")
+    controller.audio_input_wav_local_playback_device_edit.setToolTip(
+        "モニター再生に使う出力デバイスの名前（一部でよい）です。見つからなければ既定の出力を使います。"
     )
     controller.audio_input_wav_other_ch_to_mmd_check = QCheckBox("逆chをMMDAgentへ送信")
     controller.audio_input_wav_other_ch_to_mmd_check.setToolTip(
@@ -1461,6 +1473,7 @@ def build_ui(controller) -> None:
         lambda _text: controller._sync_wav_module_panel()
     )
     controller.audio_input_wav_local_playback_check.stateChanged.connect(lambda _s: controller._save_app_config())
+    controller.audio_input_wav_local_playback_device_edit.editingFinished.connect(controller._save_app_config)
     controller.audio_input_wav_other_ch_to_mmd_check.stateChanged.connect(lambda _s: controller._save_app_config())
     controller.audio_input_wav_other_ch_to_maai_ch2_check.stateChanged.connect(lambda _s: controller._save_app_config())
     controller.audio_input_wav_aec_check.stateChanged.connect(lambda _s: controller._save_app_config())
@@ -1550,6 +1563,7 @@ def build_ui(controller) -> None:
     controller.tts_base_path_edit.editingFinished.connect(controller._save_app_config)
     controller.tts_voice_edit.editingFinished.connect(controller._save_app_config)
     controller.tts_model_edit.editingFinished.connect(controller._save_app_config)
+    controller.kokoro_realtime_speed_edit.editingFinished.connect(controller._save_app_config)
     controller.tts_input_streaming_check.stateChanged.connect(lambda _state: controller._save_app_config())
     controller.mmd_burst_snd_frames_edit.editingFinished.connect(controller._save_app_config)
     controller.mmd_blink_enable_check.stateChanged.connect(lambda _state: controller._save_app_config())
@@ -1728,6 +1742,7 @@ def build_ui(controller) -> None:
     for _speechcpp_combo in (controller.asr_speechcpp_model_combo, controller.asr_speechcpp_device_combo):
         _speechcpp_combo.currentIndexChanged.connect(lambda _index: controller._save_app_config())
     controller.asr_speechcpp_threads_edit.editingFinished.connect(controller._save_app_config)
+    controller.asr_speechcpp_language_edit.editingFinished.connect(controller._save_app_config)
     controller.asr_nemotron_onnx_tokens_edit.editingFinished.connect(controller._save_app_config)
     controller.asr_nemotron_onnx_encoder_edit.editingFinished.connect(controller._save_app_config)
     controller.asr_nemotron_onnx_decoder_edit.editingFinished.connect(controller._save_app_config)
@@ -2230,6 +2245,7 @@ def build_ui(controller) -> None:
     asr_speechcpp_form.addRow(QLabel("モデル"), controller.asr_speechcpp_model_combo)
     asr_speechcpp_form.addRow(QLabel("実行デバイス"), controller.asr_speechcpp_device_combo)
     asr_speechcpp_form.addRow(QLabel("スレッド数"), controller.asr_speechcpp_threads_edit)
+    asr_speechcpp_form.addRow(QLabel("言語（Qwen3-ASRのみ）"), controller.asr_speechcpp_language_edit)
     asr_speechcpp_page = QWidget()
     asr_speechcpp_page.setLayout(asr_speechcpp_form)
     controller.asr_speechcpp_settings_box = asr_speechcpp_page
@@ -2428,6 +2444,7 @@ def build_ui(controller) -> None:
 
     tts_model_form = QFormLayout()
     tts_model_form.addRow(controller.tts_model_label, controller.tts_model_edit)
+    tts_model_form.addRow("話す速さ（1.0＝標準）", controller.kokoro_realtime_speed_edit)
     tts_model_box = QGroupBox("モデル設定（対応エンジンのみ）")
     tts_model_box.setLayout(tts_model_form)
     tts_model_box.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
@@ -2774,6 +2791,7 @@ def build_ui(controller) -> None:
     audio_input_wav_form.addRow(QLabel("終了位置（秒、空欄＝最後まで）"), controller.audio_input_wav_end_sec_edit)
     audio_input_wav_form.addRow(QLabel("入力チャンネル"), controller.audio_input_wav_channel_combo)
     audio_input_wav_form.addRow(QLabel("モニター"), controller.audio_input_wav_local_playback_check)
+    audio_input_wav_form.addRow(QLabel("モニターの出力先"), controller.audio_input_wav_local_playback_device_edit)
     audio_input_wav_form.addRow(QLabel("反対側のチャンネル→MMD"), controller.audio_input_wav_other_ch_to_mmd_check)
     audio_input_wav_form.addRow(QLabel("反対側のチャンネル→MaAI ch2"), controller.audio_input_wav_other_ch_to_maai_ch2_check)
     audio_input_wav_buttons = QHBoxLayout()
@@ -3194,6 +3212,12 @@ def build_ui(controller) -> None:
         "ローカルファイルがない場合はエラーになり、Hugging Faceから取得する場合はN用モデルを自動選択します。"
     )
     maai_inference_chunk_frames_edit.editingFinished.connect(controller._save_app_config)
+    maai_onnx_allow_spinning_check = QCheckBox("推論の合間もスレッドを回し続ける")
+    maai_onnx_allow_spinning_check.setToolTip(
+        "ONNX Runtimeの既定の動き（スピン）です。オフ（既定）では推論の合間にCPUを空けます。"
+        "CPUの少ないPCでオンにすると、MaAIがCPUを埋めてTTSなどが遅くなります。"
+    )
+    maai_onnx_allow_spinning_check.stateChanged.connect(lambda _s: controller._save_app_config())
     _mimi_thread_tip = (
         "ORTのCPUスレッド数です。device=cpuのときだけ有効です。"
         "cudaではMaAIがintra/inter=0に固定します。"
@@ -3221,6 +3245,7 @@ def build_ui(controller) -> None:
     maai_onnx_detail_form.addRow(QLabel("Torch演算内スレッド数"), maai_torch_intra_threads_edit)
     maai_onnx_detail_form.addRow(QLabel("Torch演算間スレッド数"), maai_torch_interop_threads_edit)
     maai_onnx_detail_form.addRow(QLabel("推論チャンクのフレーム数"), maai_inference_chunk_frames_edit)
+    maai_onnx_detail_form.addRow(QLabel("スレッドのスピン"), maai_onnx_allow_spinning_check)
     maai_onnx_detail = CollapsibleSection("詳細設定（スレッド数・推論チャンク）")
     maai_onnx_detail.setContentLayout(maai_onnx_detail_form)
     controller.maai_onnx_detail_section = maai_onnx_detail
@@ -3731,6 +3756,7 @@ def build_ui(controller) -> None:
     controller.maai_torch_intra_threads_edit = maai_torch_intra_threads_edit
     controller.maai_torch_interop_threads_edit = maai_torch_interop_threads_edit
     controller.maai_inference_chunk_frames_edit = maai_inference_chunk_frames_edit
+    controller.maai_onnx_allow_spinning_check = maai_onnx_allow_spinning_check
     controller.maai_onnx_params_box = maai_onnx_params_box
     controller._sync_maai_local_mimi_onnx_controls()
     controller.maai_test_nod_count_t0_edit = maai_test_nod_count_t0_edit

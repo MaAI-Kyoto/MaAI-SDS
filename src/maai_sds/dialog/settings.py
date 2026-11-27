@@ -840,8 +840,8 @@ def build_audio_input_worker_config(
         # OutputStream が fatal になるので、ワーカー再生は切ってブラウザへ PCM を送る。
         out["wav_local_playback"] = playback and not force_browser_mic
         out["wav_browser_monitor"] = bool(force_browser_mic) and playback
-        # ローカル再生の出力デバイス（名前の部分一致、空なら既定）。GUI にまだ欄が無く、
-        # GUI の保存は知っているキーだけで書き直すので、一時的に変えたいときは環境変数で渡す。
+        # ローカル再生の出力デバイス（名前の部分一致、空なら既定）。画面の「モニターの出力先」。
+        # 設定が空なら環境変数 MAAI_SDS_WAV_PLAYBACK_DEVICE も見る。
         out["wav_local_playback_device"] = (
             cfg_str(cfg, "audio_input_wav_local_playback_device", "")
             or os.environ.get("MAAI_SDS_WAV_PLAYBACK_DEVICE", "")
