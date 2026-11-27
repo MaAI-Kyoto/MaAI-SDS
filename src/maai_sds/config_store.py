@@ -39,6 +39,10 @@ class ConfigStore:
             merged.update(_read_json_object(self.path))
         return merged
 
+    def load_file_only(self) -> dict:
+        """設定ファイルの中身だけを返す（見本は敷かない）。無い・読めないときは {}。"""
+        return _read_json_object(self.path) if self.path.exists() else {}
+
     def save(self, data: dict) -> None:
         self._write(data, raise_on_error=False)
 

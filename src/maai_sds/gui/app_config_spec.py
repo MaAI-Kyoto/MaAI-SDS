@@ -198,6 +198,8 @@ APP_CONFIG_FIELDS: tuple[tuple[str, str, str, bool, object, object, str, object]
     ('supertonic_model_path', 'supertonic_model_path_edit', 'text', False, None, 'audio.cpp/models/Supertonic-3-GGUF/supertonic-3-orig.gguf', 'setText', None),
     ('supertonic_port', 'supertonic_port_edit', 'text', False, None, '18080', 'setText', None),
     ('supertonic_steps', 'supertonic_steps_edit', 'text', False, None, '8', 'setText', None),
+    ('supertonic_backend', 'supertonic_backend_combo', 'combo', False, None, '', 'setCurrentIndex', None),
+    ('supertonic_threads', 'supertonic_threads_edit', 'text', False, None, '0', 'setText', None),
     ('supertonic_server_exe', 'supertonic_server_exe_edit', 'text', False, None, 'audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe', 'setText', None),
     ('tsukasa_alpha', 'tsukasa_alpha_edit', 'text', False, None, '0.3', 'setText', None),
     ('tsukasa_beta', 'tsukasa_beta_edit', 'text', False, None, '0.7', 'setText', None),

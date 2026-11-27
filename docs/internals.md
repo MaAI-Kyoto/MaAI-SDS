@@ -1158,6 +1158,7 @@ GUI 固有の事情は、引数や前処理として明示的に渡す。
     下に敷き、設定ファイルに無い項目を見本の値で埋める（既定値の置き場を見本 1 か所にするため）。設定ファイルが存在しない・
     破損している場合は見本だけ、見本も無ければ `{}`。GUI を通しても見本の値が変わらないことは
     `tests/test_example_config_is_the_default.py` で確かめる
+  - `load_file_only()`：設定ファイルの中身だけ（見本を敷かない）。GUI の保存（`gui/config_io.py` の `_save_app_config`）は、これにある項目のうち画面に部品の無いもの（手で書いた `speechcpp_exe` など）を残して書き出す。Web の保存も`{**stored, **incoming}` で同じく残す。`tests/test_gui_save_keeps_unknown_keys.py` で確かめる
   - `save(data)`：`indent=2` の UTF-8 JSON で上書き。同じディレクトリの一時ファイルに書いてから `os.replace` で置き換えるアトミックな書き込み
     （置き換えに失敗した場合は直接上書き）。書き込みの失敗は無視
   - `save_raising(data)`：`save` と同じ書き込みで、失敗時に例外を送出

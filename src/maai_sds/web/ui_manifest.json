@@ -3956,6 +3956,57 @@
                   }
                 }
               ]
+            },
+            {
+              "label": "実行デバイス",
+              "widgets": [
+                {
+                  "attr": "supertonic_backend_combo",
+                  "config_key": "supertonic_backend",
+                  "scope": "app",
+                  "tooltip": "audio.cpp サーバーの実行デバイスです。NVIDIA の GPU が無い PC では Vulkan か CPU を選びます。\nサーバーの実行ファイルも、その種類のものを指定してください。",
+                  "kind": "combo",
+                  "items": [
+                    {
+                      "value": "",
+                      "label": "自動（サーバーの種類から）"
+                    },
+                    {
+                      "value": "cuda",
+                      "label": "CUDA（NVIDIA の GPU）"
+                    },
+                    {
+                      "value": "vulkan",
+                      "label": "Vulkan（内蔵 GPU など）"
+                    },
+                    {
+                      "value": "cpu",
+                      "label": "CPU"
+                    }
+                  ],
+                  "value": ""
+                }
+              ]
+            },
+            {
+              "label": "CPUスレッド数（0＝自動）",
+              "widgets": [
+                {
+                  "attr": "supertonic_threads_edit",
+                  "config_key": "supertonic_threads",
+                  "scope": "app",
+                  "tooltip": "audio.cpp サーバーの CPU スレッド数です。0 なら実行デバイスで決めます（CUDA 8・Vulkan 2・CPU 最大 4）。\n4 コアの PC で多くすると、MaAI などと取り合って合成が止まることがあります。\n範囲：0〜64",
+                  "kind": "line",
+                  "value": "0",
+                  "password": false,
+                  "numeric": {
+                    "min": 0,
+                    "max": 64,
+                    "decimals": false,
+                    "note": null
+                  }
+                }
+              ]
             }
           ]
         },

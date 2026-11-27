@@ -116,6 +116,8 @@
   "irodori_speechcpp_device": "gpu",
   "irodori_speechcpp_steps": "4",
   "lfm2_audio_host": "127.0.0.1",
+  "supertonic_backend": "",
+  "supertonic_threads": "0",
   "lfm2_audio_model_id": "lfm2.5-audio-jp",
   "lfm2_audio_model_path": "audio.cpp/models/LFM2.5-Audio-1.5B-JP-GGUF",
   "lfm2_audio_port": "18082",

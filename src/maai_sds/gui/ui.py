@@ -792,6 +792,22 @@ def _build_initial_widgets(controller):
     controller.supertonic_server_exe_edit = QLineEdit(r"audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe")
     controller.supertonic_model_path_edit = QLineEdit(r"audio.cpp/models/Supertonic-3-GGUF/supertonic-3-orig.gguf")
     controller.supertonic_steps_edit = QLineEdit("8")
+    # audio.cpp の実行デバイス。空（自動）なら置いてあるサーバーの種類（フォルダー名・FLAVOR.txt）から決める。
+    controller.supertonic_backend_combo = QComboBox()
+    controller.supertonic_backend_combo.addItem("自動（サーバーの種類から）", "")
+    controller.supertonic_backend_combo.addItem("CUDA（NVIDIA の GPU）", "cuda")
+    controller.supertonic_backend_combo.addItem("Vulkan（内蔵 GPU など）", "vulkan")
+    controller.supertonic_backend_combo.addItem("CPU", "cpu")
+    controller.supertonic_backend_combo.setToolTip(
+        "audio.cpp サーバーの実行デバイスです。NVIDIA の GPU が無い PC では Vulkan か CPU を選びます。\n"
+        "サーバーの実行ファイルも、その種類のものを指定してください。"
+    )
+    controller.supertonic_backend_combo.currentIndexChanged.connect(lambda _index: controller._save_app_config())
+    controller.supertonic_threads_edit = QLineEdit("0")
+    controller.supertonic_threads_edit.setToolTip(
+        "audio.cpp サーバーの CPU スレッド数です。0 なら実行デバイスで決めます（CUDA 8・Vulkan 2・CPU 最大 4）。\n"
+        "4 コアの PC で多くすると、MaAI などと取り合って合成が止まることがあります。"
+    )
     controller.irodori_python_edit = QLineEdit(".venv_irodori/Scripts/python.exe")
     controller.irodori_checkpoint_edit = QLineEdit("Aratako/Irodori-TTS-v4.1-Small")
     controller.irodori_reference_audio_edit = QLineEdit("")
@@ -1575,6 +1591,7 @@ def build_ui(controller) -> None:
         controller.supertonic_server_exe_edit,
         controller.supertonic_model_path_edit,
         controller.supertonic_steps_edit,
+        controller.supertonic_threads_edit,
         controller.lfm2_audio_host_edit,
         controller.lfm2_audio_port_edit,
         controller.lfm2_audio_model_id_edit,
@@ -2537,6 +2554,8 @@ def build_ui(controller) -> None:
     supertonic_model_path_row.addWidget(controller.supertonic_model_path_browse_btn)
     supertonic_form.addRow("GGUFモデル", supertonic_model_path_row)
     supertonic_form.addRow("生成ステップ数（既定＝8）", controller.supertonic_steps_edit)
+    supertonic_form.addRow("実行デバイス", controller.supertonic_backend_combo)
+    supertonic_form.addRow("CPUスレッド数（0＝自動）", controller.supertonic_threads_edit)
     supertonic_box = QGroupBox("Supertonic 3設定（audio.cppサーバーは事前起動）")
     supertonic_box.setLayout(supertonic_form)
     controller.supertonic_settings_box = supertonic_box

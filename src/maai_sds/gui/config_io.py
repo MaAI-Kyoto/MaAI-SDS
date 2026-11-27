@@ -125,6 +125,8 @@ class AppConfigIOMixin:
             self._apply_app_config_field(cfg, "supertonic_server_exe")
             self._apply_app_config_field(cfg, "supertonic_model_path")
             self._apply_app_config_field(cfg, "supertonic_steps")
+            self._apply_app_config_field(cfg, "supertonic_backend")
+            self._apply_app_config_field(cfg, "supertonic_threads")
             self._apply_app_config_field(cfg, "irodori_python")
             self._apply_app_config_field(cfg, "irodori_checkpoint")
             self._apply_app_config_field(cfg, "irodori_reference_audio")
@@ -1017,7 +1019,11 @@ class AppConfigIOMixin:
         if self._is_loading_app_config:
             return
         payload = self._collect_app_config_payload()
-        self.config_store.save(payload)
+        # 画面に部品の無い項目（手で書いた speechcpp_exe など）は、ファイルにある値をそのまま残す。
+        # 以前は画面の項目だけを書き出していたので、手で書いた値が保存のたびに消えていた
+        # （Web の保存は前から {**stored, **incoming} で残している）。
+        kept = {k: v for k, v in self.config_store.load_file_only().items() if k not in payload}
+        self.config_store.save({**payload, **kept})
         self._refresh_module_status_summaries()
         self._push_dialog_orchestrator_settings()
         if sync_orchestrator:

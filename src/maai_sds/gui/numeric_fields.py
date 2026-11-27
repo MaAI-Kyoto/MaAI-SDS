@@ -118,6 +118,7 @@ NUMERIC_FIELDS: dict[str, tuple[float, float, bool, str]] = {
     "irodori_speechcpp_steps_edit": (1, 40, False, ""),
     "irodori_steps_edit": (1, 40, False, ""),
     "supertonic_steps_edit": (1, 8, False, ""),
+    "supertonic_threads_edit": (0, 64, False, ""),
     "tsukasa_steps_edit": (3, 15, False, ""),
     "qwen3_tts_cpp_repetition_penalty_edit": (1.0, 2.0, True, ""),
     "qwen3_tts_cpp_seed_edit": (0, 2147483647, False, "空欄＝ランダム"),
