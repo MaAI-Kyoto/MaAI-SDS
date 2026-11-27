@@ -818,6 +818,8 @@ LLM 設定画面のローカル HTTP（LM Studio の `/v1/models`・`/api/v1/mod
 ワーカー設定は `dialog/settings.py` の `build_tts_worker_config` が組み立てる。Docker では両方とも compose の `audiocpp` サービス
 （`docker/audiocpp-server.json`）を共有するので、`controller_config.docker.example.json` ではホストを `audiocpp`、ポートを 8080 にしている。
 
+audio.cpp のサーバーの実行デバイス（cuda / vulkan / cpu）は、置いてあるサーバーの種類から決める（`audiocpp_client.backend_for_server`。フォルダー名に vulkan / cpu があればそれ、無ければ隣の `FLAVOR.txt`、どちらも無ければ cuda）。スレッド数は実行デバイスから決める（`default_threads`。cuda 8・vulkan 2・cpu 最大 4。4 コアの PC で 8 にすると MaAI と取り合って合成が止まった）。Supertonic は `supertonic_backend` / `supertonic_threads`、LFM2.5-Audio と Irodori はワーカー設定の `audiocpp_backend` / `audiocpp_threads` で上書きできる。セットアップ（`setup_assets.ps1` の `AudioCppServer`）は、NVIDIA の GPU（`nvidia-smi`）があれば CUDA 版、無ければ Vulkan 版、Vulkan のドライバー（`vulkan-1.dll`）も無ければ CPU 版を、どれも `audio.cpp/build/windows-cuda-release/bin/` に置いて `FLAVOR.txt` に種類を書く。環境変数 `MAAI_SDS_AUDIOCPP_FLAVOR` で選べる。種類が変わったときはフォルダーを空にしてから置き直す。
+
 #### `Kokoro-RealtimeTTS` のストリーミング
 
 | メソッド | 動作 |

@@ -744,26 +744,9 @@ class AivisSpeechEngine:
         return wav_bytes_to_pcm16be_16k_mono(wav), voice
 
 
-def _audiocpp_backend_for(server_exe: Path) -> str:
-    """置いてある audio.cpp サーバーの種類から backend を決める（設定の supertonic_backend が空のとき）。
-
-    audio.cpp は Windows 用に CUDA・Vulkan・CPU 版を配っている。NVIDIA の GPU が無い PC（内蔵 GPU だけ）では
-    Vulkan 版が速い（Iris Xe で Supertonic 3 の 23 文字が 0.64 秒。CPU 版 4 スレッドは 2.5 秒）。
-    フォルダー名に vulkan / cpu があればそれ、隣の FLAVOR.txt が cpu / vulkan で始まればそれ、無ければ cuda。
-    """
-    parts = [p.lower() for p in server_exe.parts]
-    for name in ("vulkan", "cpu"):
-        if any(name in p for p in parts[-4:]):
-            return name
-    flavor = server_exe.parent / "FLAVOR.txt"
-    try:
-        head = flavor.read_text(encoding="utf-8-sig").strip().lower()
-    except OSError:
-        head = ""
-    for name in ("vulkan", "cpu", "cuda"):
-        if head.startswith(name):
-            return name
-    return "cuda"
+# 置いてある audio.cpp サーバーの種類から backend を決める（設定の supertonic_backend が空のとき）。
+# LFM2.5-Audio・Irodori（engines_audiocpp）と共通（audiocpp_client.backend_for_server）。
+_audiocpp_backend_for = audiocpp_client.backend_for_server
 
 
 class SupertonicEngine:
@@ -781,18 +764,9 @@ class SupertonicEngine:
         )
         self.model_path = _paths.resolve_under_repo(raw_model)
         self.backend = str(cfg.get("backend", "") or "").strip().lower() or _audiocpp_backend_for(self.server_exe)
-        # audio.cpp サーバーの CPU スレッド数。0 / 空なら backend で決める。Vulkan・CPU 版で 8 にすると、
-        # 4 コアの PC では MaAI などが CPU を使っている間にスレッドの待ち合わせで止まり、6 文字の合成が
-        # 0.6 秒 → 20 秒以上になった（Iris Xe・i5-1135G7 で実測）。Vulkan は計算が GPU なので 2 で足りる。
+        # audio.cpp サーバーの CPU スレッド数。0 / 空なら backend で決める（audiocpp_client.default_threads）。
         raw_threads = int(cfg.get("threads", 0) or 0)
-        if raw_threads > 0:
-            self.threads = raw_threads
-        elif self.backend == "cuda":
-            self.threads = 8
-        elif self.backend == "vulkan":
-            self.threads = 2
-        else:
-            self.threads = max(1, min(4, (os.cpu_count() or 4) // 2))
+        self.threads = raw_threads if raw_threads > 0 else audiocpp_client.default_threads(self.backend)
         self._server_process: subprocess.Popen | None = None
         self._lock = threading.Lock()
 

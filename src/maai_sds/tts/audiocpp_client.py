@@ -170,8 +170,48 @@ def launch_server(*, server_exe: Path, config_file: Path, config: dict[str, Any]
     return proc
 
 
+def backend_for_server(server_exe: Path) -> str:
+    """置いてある audio.cpp サーバーの種類から backend（cuda / vulkan / cpu）を決める。
+
+    audio.cpp は Windows 用に CUDA・Vulkan・CPU 版を配っている。NVIDIA の GPU が無い PC（内蔵 GPU だけ）では
+    Vulkan 版が速い（Iris Xe で Supertonic 3 の 23 文字が 0.64 秒。CPU 版 4 スレッドは 2.5 秒）。
+    フォルダー名に vulkan / cpu があればそれ、隣の FLAVOR.txt が cpu / vulkan / cuda で始まればそれ、無ければ cuda。
+    セットアップ（setup_assets.ps1）は、どの種類でも audio.cpp/build/windows-cuda-release/bin/ に置き、
+    FLAVOR.txt に種類を書く（既定のパスを 1 つにしておくため）。
+    """
+    parts = [p.lower() for p in server_exe.parts]
+    for name in ("vulkan", "cpu"):
+        if any(name in p for p in parts[-4:]):
+            return name
+    flavor = server_exe.parent / "FLAVOR.txt"
+    try:
+        head = flavor.read_text(encoding="utf-8-sig").strip().lower()
+    except OSError:
+        head = ""
+    for name in ("vulkan", "cpu", "cuda"):
+        if head.startswith(name):
+            return name
+    return "cuda"
+
+
+def default_threads(backend: str) -> int:
+    """audio.cpp サーバーの CPU スレッド数の既定。
+
+    Vulkan・CPU 版で 8 にすると、4 コアの PC では MaAI などが CPU を使っている間にスレッドの待ち合わせで止まり、
+    6 文字の合成が 0.6 秒 → 20 秒以上になった（Iris Xe・i5-1135G7 で実測）。Vulkan は計算が GPU なので 2 で足りる。
+    """
+    if backend == "cuda":
+        return 8
+    if backend == "vulkan":
+        return 2
+    return max(1, min(4, (os.cpu_count() or 4) // 2))
+
+
 class AudioCppServer:
-    """audio.cpp のサーバー 1 つ。`ensure()` で応答を確かめ、無ければ立ち上げる。"""
+    """audio.cpp のサーバー 1 つ。`ensure()` で応答を確かめ、無ければ立ち上げる。
+
+    backend が空なら置いてあるサーバーの種類から、threads が 0 なら backend から決める。
+    """
 
     def __init__(
         self,
@@ -180,8 +220,8 @@ class AudioCppServer:
         port: int,
         models: list[dict[str, Any]],
         server_exe: str = "",
-        backend: str = "cuda",
-        threads: int = 8,
+        backend: str = "",
+        threads: int = 0,
         name: str = "audiocpp",
         start_timeout_sec: float = 240.0,
     ) -> None:
@@ -189,8 +229,8 @@ class AudioCppServer:
         self.port = int(port)
         self.models = models
         self.server_exe = _paths.resolve_audiocpp_server(server_exe or _paths.default_audiocpp_server())
-        self.backend = backend
-        self.threads = int(threads)
+        self.backend = (backend or "").strip().lower() or backend_for_server(self.server_exe)
+        self.threads = int(threads or 0) if int(threads or 0) > 0 else default_threads(self.backend)
         self.name = name
         self.start_timeout_sec = float(start_timeout_sec)
         self._proc: subprocess.Popen | None = None

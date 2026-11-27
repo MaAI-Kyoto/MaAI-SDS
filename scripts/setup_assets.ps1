@@ -703,24 +703,57 @@ function Invoke-SherpaPrebuilt([switch]$Nested) {
 # 版が日ごとに変わる。版を上げるときはここと、setup_assets.sh の AUDIOCPP_VERSION をそろえる。
 $AudioCppVersion = "0.9.6"
 
+# audio.cpp サーバーの種類。NVIDIA の GPU があれば CUDA 版、無ければ Vulkan 版（内蔵 GPU で動く。Iris Xe で
+# Supertonic 3 の 23 文字が 0.64 秒、CPU 版 4 スレッドは 2.5 秒）、Vulkan のドライバーも無ければ CPU 版。
+# 環境変数 MAAI_SDS_AUDIOCPP_FLAVOR（cuda / vulkan / cpu）で選べる。GPU の判定は setup_env.ps1 と同じく nvidia-smi。
+function Get-AudioCppFlavor {
+    $forced = "$env:MAAI_SDS_AUDIOCPP_FLAVOR".Trim().ToLower()
+    if ($forced -in @("cuda", "vulkan", "cpu")) { return $forced }
+    if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) { return "cuda" }
+    if (Test-Path (Join-Path $env:SystemRoot "System32\vulkan-1.dll")) { return "vulkan" }
+    return "cpu"
+}
+
 function Invoke-AudioCppServer([switch]$Nested) {
-    if (-not $Nested) { Write-Step "audio.cpp サーバー $AudioCppVersion（Windows x64・CUDA 12.4）" }
+    $flavor = Get-AudioCppFlavor
+    if (-not $Nested) { Write-Step "audio.cpp サーバー $AudioCppVersion（Windows x64・$flavor）" }
 
     # SupertonicEngine は「EXE の 4 つ上の親」を基準に動くため、audio.cpp\build\windows-cuda-release\bin\ という
-    # 構造を再現する。
+    # 構造を再現する。Vulkan 版・CPU 版も同じ場所に置き（既定のパスを 1 つにしておくため）、種類は隣の
+    # FLAVOR.txt に書く。TTS 側（audiocpp_client.backend_for_server）はそれを読んで backend を決める。
     $exeTarget = Join-Path $projectRoot "audio.cpp\build\windows-cuda-release\bin\audiocpp_server.exe"
     $binDir = Split-Path -Parent $exeTarget
+    $flavorFile = Join-Path $binDir "FLAVOR.txt"
     $current = ""
     if (Test-Path $exeTarget) {
         $current = (& $exeTarget --version 2>$null | Out-String)
     }
-    if ($current -match [regex]::Escape("audio.cpp $AudioCppVersion")) {
-        Write-Ok "既にあるためスキップ: $exeTarget"
+    # FLAVOR.txt が無いのは、CUDA 版だけを入れていたころのセットアップで置いたもの
+    $currentFlavor = "cuda"
+    if (Test-Path $flavorFile) {
+        $currentFlavor = ((Get-Content $flavorFile -Raw).Trim() -split '\s+')[0].ToLower()
+    }
+    if (($current -match [regex]::Escape("audio.cpp $AudioCppVersion")) -and ($currentFlavor -eq $flavor)) {
+        Write-Ok "既にあるためスキップ: $exeTarget（$flavor）"
+        if (-not (Test-Path $flavorFile)) {
+            Set-Content -Path $flavorFile -Value "$flavor audio.cpp $AudioCppVersion" -Encoding ascii
+        }
     } else {
-        if (Test-Path $exeTarget) { Write-Warn "版が違うので入れ替えます（$($current.Trim() -replace '\s+', ' ')）" }
+        if ((Test-Path $exeTarget) -and ($currentFlavor -ne $flavor)) {
+            # 別の種類の DLL（ggml-cuda.dll や CUDA のランタイム）が残らないよう、フォルダーを空にしてから置く
+            Write-Warn "種類が違うので入れ替えます（$currentFlavor → $flavor）"
+            Get-ChildItem $binDir -Force | Remove-Item -Recurse -Force
+        } elseif (Test-Path $exeTarget) {
+            Write-Warn "版が違うので入れ替えます（$($current.Trim() -replace '\s+', ' ')）"
+        }
+        $asset = switch ($flavor) {
+            "cuda"   { "audio-v$AudioCppVersion-bin-windows-x64-cuda12.4.zip" }
+            "vulkan" { "audio-v$AudioCppVersion-bin-windows-x64-vulkan.zip" }
+            default  { "audio-v$AudioCppVersion-bin-windows-x64-cpu.zip" }
+        }
         $base = "https://github.com/0xShug0/audio.cpp/releases/download/v$AudioCppVersion"
         $zip = Join-Path $tmpRoot "audiocpp-bin.zip"
-        Invoke-Download "$base/audio-v$AudioCppVersion-bin-windows-x64-cuda12.4.zip" $zip
+        Invoke-Download "$base/$asset" $zip
         $ex = Join-Path $tmpRoot "audiocpp_extract"
         if (Test-Path $ex) { Remove-Item $ex -Recurse -Force }
         Expand-Zip $zip $ex
@@ -733,12 +766,13 @@ function Invoke-AudioCppServer([switch]$Nested) {
             Copy-Item $_.FullName (Join-Path $binDir $_.Name) -Force
         }
         Remove-Item $ex -Recurse -Force
-        Write-Ok "配置完了: $exeTarget"
+        Set-Content -Path $flavorFile -Value "$flavor audio.cpp $AudioCppVersion" -Encoding ascii
+        Write-Ok "配置完了: $exeTarget（$flavor）"
     }
 
     # CUDA のランタイム（cudart・cuBLAS。約 600 MB）。bin の ZIP には入っておらず、CUDA Toolkit の無い PC では
-    # これが無いと起動できない。
-    if (-not (Test-Path (Join-Path $binDir "cublas64_12.dll"))) {
+    # これが無いと起動できない。Vulkan 版・CPU 版には要らない。
+    if (($flavor -eq "cuda") -and (-not (Test-Path (Join-Path $binDir "cublas64_12.dll")))) {
         $base = "https://github.com/0xShug0/audio.cpp/releases/download/v$AudioCppVersion"
         $zip = Join-Path $tmpRoot "audiocpp-cudart.zip"
         Invoke-Download "$base/audio-v$AudioCppVersion-cudart-windows-x64-cuda12.4.zip" $zip

@@ -60,8 +60,10 @@ class _AudioCppStreamingEngine:
             models=[{"id": self.model_id, "family": self.family, "path": str(self.model_path)}],
             server_exe=str(cfg.get("server_exe", "") or ""),
             # "backend" は Irodori の動かし方（speechcpp / audiocpp / pytorch）に使っているので、audio.cpp の
-            # 実行デバイスは別の名前にする（cuda / cpu / vulkan）
-            backend=str(cfg.get("audiocpp_backend", "cuda") or "cuda"),
+            # 実行デバイスは別の名前にする（cuda / cpu / vulkan）。空なら置いてあるサーバーの種類から決め、
+            # スレッド数も 0 なら実行デバイスから決める（以前は cuda・8 固定で、4 コアの PC では合成が止まった）。
+            backend=str(cfg.get("audiocpp_backend", "") or ""),
+            threads=int(cfg.get("audiocpp_threads", 0) or 0),
             name=self.name,
         )
         self.client = AudioCppSpeechClient(self.server)

@@ -72,5 +72,48 @@ class SupertonicBackendAndThreadsTest(unittest.TestCase):
         self.assertEqual(SupertonicEngine({"backend": "vulkan", "threads": 3}).threads, 3)
 
 
+class OtherAudioCppEnginesTest(unittest.TestCase):
+    """LFM2.5-Audio・Irodori（audio.cpp 版）も、置いてあるサーバーの種類で backend とスレッド数を決める。
+
+    以前は cuda・8 スレッド固定で、NVIDIA の GPU が無い PC では動かず、4 コアの PC では合成が止まった。
+    """
+
+    def _exe(self, tmp: str, flavor: str | None) -> Path:
+        exe = Path(tmp) / "build" / "windows-cuda-release" / "bin" / "audiocpp_server.exe"
+        exe.parent.mkdir(parents=True)
+        exe.write_bytes(b"")
+        if flavor is not None:
+            (exe.parent / "FLAVOR.txt").write_text(f"{flavor} audio.cpp 0.9.6", encoding="utf-8")
+        return exe
+
+    def test_server_follows_the_flavor_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            server = ac.AudioCppServer(host="", port=1, models=[], server_exe=str(self._exe(tmp, "vulkan")))
+            self.assertEqual((server.backend, server.threads), ("vulkan", 2))
+
+    def test_old_setup_without_flavor_file_stays_cuda(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            server = ac.AudioCppServer(host="", port=1, models=[], server_exe=str(self._exe(tmp, None)))
+            self.assertEqual((server.backend, server.threads), ("cuda", 8))
+
+    def test_explicit_values_win(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            exe = str(self._exe(tmp, "vulkan"))
+            server = ac.AudioCppServer(host="", port=1, models=[], server_exe=exe, backend="CPU", threads=3)
+            self.assertEqual((server.backend, server.threads), ("cpu", 3))
+
+    def test_lfm2_and_irodori_pass_auto_to_the_server(self) -> None:
+        from maai_sds.tts.engines_audiocpp import IrodoriAudioCppEngine, Lfm2AudioEngine
+
+        with tempfile.TemporaryDirectory() as tmp:
+            exe = str(self._exe(tmp, "cpu"))
+            for engine_cls in (Lfm2AudioEngine, IrodoriAudioCppEngine):
+                engine = engine_cls({"server_exe": exe})
+                self.assertEqual(engine.server.backend, "cpu", engine_cls.__name__)
+                self.assertLessEqual(engine.server.threads, 4, engine_cls.__name__)
+                forced = engine_cls({"server_exe": exe, "audiocpp_backend": "cuda", "audiocpp_threads": 6})
+                self.assertEqual((forced.server.backend, forced.server.threads), ("cuda", 6))
+
+
 if __name__ == "__main__":
     unittest.main()
