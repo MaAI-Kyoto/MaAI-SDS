@@ -776,7 +776,8 @@ class SupertonicEngine:
 
     def load(self) -> None:
         config = {
-            "host": self.host, "port": self.port, "backend": self.backend, "device": 0, "threads": self.threads,
+            "host": self.host, "port": self.port, "backend": self.backend,
+            "device": audiocpp_client.pick_device(self.server_exe, self.backend), "threads": self.threads,
             "lazy_load": False,
             "models": [{"id": self.model_id, "family": "supertonic", "path": str(self.model_path), "task": "tts", "mode": "offline",
                 "default_request_options": {"voice_id": self.default_voice, "num_inference_steps": self.steps, "language": "ja", "speaking_rate": 1.0}}],
@@ -903,6 +904,14 @@ class Qwen3TTSCppEngine:
                 )
             )
         )
+        # 実行デバイスとスレッド数は LFM2.5-Audio・Irodori（engines_audiocpp）と同じ決め方
+        # （以前は cuda・8 固定で、NVIDIA の GPU が無い PC では動かなかった）
+        self.backend = (
+            str(cfg.get("audiocpp_backend", "") or "").strip().lower()
+            or audiocpp_client.backend_for_server(self.server_exe)
+        )
+        raw_threads = int(cfg.get("audiocpp_threads", 0) or 0)
+        self.threads = raw_threads if raw_threads > 0 else audiocpp_client.default_threads(self.backend)
         self._server_process: subprocess.Popen | None = None
         self._lock = threading.Lock()
 
@@ -932,7 +941,8 @@ class Qwen3TTSCppEngine:
             language=self.default_language,
         )
         config = {
-            "host": self.host, "port": self.port, "backend": "cuda", "device": 0, "threads": 8,
+            "host": self.host, "port": self.port, "backend": self.backend,
+            "device": audiocpp_client.pick_device(self.server_exe, self.backend), "threads": self.threads,
             "lazy_load": False,
             # streaming で登録すると、まとめて返す要求と少しずつ返す要求の両方を受け付ける
             "models": [{"id": self.model_id, "family": "qwen3_tts", "path": str(self.model_path), "task": "tts", "mode": "streaming",

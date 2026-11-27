@@ -114,6 +114,59 @@ class OtherAudioCppEnginesTest(unittest.TestCase):
                 forced = engine_cls({"server_exe": exe, "audiocpp_backend": "cuda", "audiocpp_threads": 6})
                 self.assertEqual((forced.server.backend, forced.server.threads), ("cuda", 6))
 
+    def test_qwen3_tts_cpp_uses_the_same_rules(self) -> None:
+        from maai_sds.tts.engines import Qwen3TTSCppEngine
+
+        with tempfile.TemporaryDirectory() as tmp:
+            engine = Qwen3TTSCppEngine({"server_exe": str(self._exe(tmp, "vulkan"))})
+            self.assertEqual((engine.backend, engine.threads), ("vulkan", 2))
+
+
+def _device(index: int, kind: str, total_gb: int, backend: str = "vulkan") -> dict:
+    return {"backend": backend, "index": index, "type": kind,
+            "memory": {"free_bytes": 0, "total_bytes": total_gb * 1024 ** 3}}
+
+
+class PickDeviceTest(unittest.TestCase):
+    """Vulkan 版で使う GPU を、サーバーの --list-devices --json から選ぶ。"""
+
+    def _pick(self, devices: list[dict] | None, backend: str = "vulkan", stdout: str | None = None) -> int:
+        ac._device_cache.clear()
+        text = stdout if stdout is not None else json.dumps({"schema_version": 1, "devices": devices or []})
+        with tempfile.TemporaryDirectory() as tmp:
+            exe = Path(tmp) / "audiocpp_server.exe"
+            exe.write_bytes(b"")
+            done = mock.Mock(stdout=text)
+            with mock.patch.object(ac.subprocess, "run", return_value=done) as run:
+                picked = ac.pick_device(exe, backend)
+                self.called = run.called
+            return picked
+
+    def test_discrete_gpu_wins_over_the_integrated_one(self) -> None:
+        # RTX 5070 Ti の PC の実際の並び（0 番が Intel の内蔵 GPU）
+        devices = [_device(0, "igpu", 18), _device(1, "gpu", 12), _device(0, "cpu", 32, backend="cpu")]
+        self.assertEqual(self._pick(devices), 1)
+
+    def test_bigger_memory_among_the_same_kind(self) -> None:
+        self.assertEqual(self._pick([_device(0, "gpu", 8), _device(1, "gpu", 16)]), 1)
+        self.assertEqual(self._pick([_device(0, "gpu", 16), _device(1, "gpu", 16)]), 0)
+
+    def test_only_integrated_gpu(self) -> None:
+        self.assertEqual(self._pick([_device(0, "igpu", 8)]), 0)
+
+    def test_log_lines_before_the_json_are_ignored(self) -> None:
+        body = json.dumps({"devices": [_device(0, "igpu", 8), _device(1, "gpu", 8)]})
+        self.assertEqual(self._pick(None, stdout="ggml_vulkan: Found 2 Vulkan devices:\n" + body), 1)
+
+    def test_falls_back_to_zero(self) -> None:
+        self.assertEqual(self._pick(None, stdout="unknown option --list-devices"), 0)  # 古い版
+        self.assertEqual(self._pick([]), 0)
+
+    def test_cuda_and_cpu_do_not_list(self) -> None:
+        for backend in ("cuda", "cpu"):
+            self.assertEqual(self._pick([_device(1, "gpu", 8, backend=backend)], backend=backend), 0)
+            self.assertFalse(self.called, backend)
+
 
 if __name__ == "__main__":
     unittest.main()

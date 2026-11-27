@@ -207,6 +207,46 @@ def default_threads(backend: str) -> int:
     return max(1, min(4, (os.cpu_count() or 4) // 2))
 
 
+_device_cache: dict[tuple[str, str], int] = {}
+
+
+def _rank_device(dev: dict[str, Any]) -> tuple[int, int, int]:
+    kind = str(dev.get("type", "")).lower()
+    memory = dev.get("memory") if isinstance(dev.get("memory"), dict) else {}
+    total = int(memory.get("total_bytes") or 0)
+    return ({"gpu": 2, "igpu": 1}.get(kind, 0), total, -int(dev.get("index", 0) or 0))
+
+
+def pick_device(server_exe: Path, backend: str) -> int:
+    """Vulkan 版で使う GPU の番号。単体の GPU を内蔵 GPU より優先し、同じ種類ならメモリーの大きいほう。
+
+    Vulkan は GPU を見つけた順に番号を振るので、内蔵 GPU と単体 GPU の両方がある PC では 0 番が内蔵 GPU に
+    なることがある。RTX 5070 Ti の PC で 0 番（Intel の内蔵 GPU）だと Supertonic 3 の 21 文字が 0.53 秒、
+    1 番（RTX）だと 0.08 秒だった（8 ステップ）。サーバーの `--list-devices --json` で一覧を取る（0.2 秒ほど）。
+    CUDA 版は NVIDIA の GPU しか並ばないので 0 番のまま、CPU 版も 0。一覧が取れない（古い版など）ときも 0。
+    """
+    if backend != "vulkan" or not server_exe.is_file():
+        return 0
+    key = (str(server_exe), backend)
+    if key in _device_cache:
+        return _device_cache[key]
+    device = 0
+    try:
+        out = subprocess.run(
+            [str(server_exe), "--backend", backend, "--list-devices", "--json"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        ).stdout
+        data = json.loads(out[out.index("{"):])
+        devices = [d for d in data.get("devices", []) if str(d.get("backend", "")).lower() == backend]
+        if devices:
+            device = int(max(devices, key=_rank_device).get("index", 0) or 0)
+    except Exception:  # noqa: BLE001
+        device = 0
+    _device_cache[key] = device
+    return device
+
+
 class AudioCppServer:
     """audio.cpp のサーバー 1 つ。`ensure()` で応答を確かめ、無ければ立ち上げる。
 
@@ -249,7 +289,8 @@ class AudioCppServer:
     def ensure(self) -> bool:
         """サーバーを使える状態にする。自分で立ち上げたら True、既にあったら False。"""
         config = {
-            "host": self.host, "port": self.port, "backend": self.backend, "device": 0,
+            "host": self.host, "port": self.port, "backend": self.backend,
+            "device": pick_device(self.server_exe, self.backend),
             "threads": self.threads, "lazy_load": False,
             "models": [{"task": "tts", "mode": "streaming", **m} for m in self.models],
         }
