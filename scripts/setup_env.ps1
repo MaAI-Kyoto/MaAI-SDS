@@ -47,6 +47,10 @@
     足りない前提を winget で入れる（Python 3.11・Node.js、ビルドが要る構成なら VS 2022 Build Tools の C++ と CMake。
     無いものだけ）。Build Tools は数 GB あり、管理者の確認が出る。既定では入れず、足りないものと入れ方を示すだけ。
 
+.PARAMETER SkipTests
+    最後の検証で tests/ の unittest を実行しない（sherpa の版・ワーカーの import・GUI 構築は確かめる）。
+    -VerifyOnly と組み合わせてもよい。
+
 .PARAMETER VerifyOnly
     何もインストールせず、検証だけ実行する。
 
@@ -71,6 +75,7 @@ param(
     [switch]$SkipAssets,
     [switch]$AllExtras,
     [switch]$InstallPrereqs,
+    [switch]$SkipTests,
     [switch]$VerifyOnly
 )
 
@@ -483,7 +488,9 @@ function Invoke-Verify {
 
     # (e) テスト。-B で古い .pyc を使わない（同じ大きさの編集を同じ秒に行うと古いバイトコードが残るため）
     $testsDir = Join-Path $projectRoot "tests"
-    if (Test-Path $testsDir) {
+    if ($SkipTests) {
+        Write-Warn "テストは実行しない（-SkipTests）"
+    } elseif (Test-Path $testsDir) {
         Write-Host "[test] tests/ の unittest を実行する"
         Push-Location $projectRoot
         try { & $venvPython -B -m unittest discover -s tests -p "test_*.py" }

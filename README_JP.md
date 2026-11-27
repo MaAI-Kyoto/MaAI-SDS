@@ -173,6 +173,7 @@ Developer PowerShell から実行する必要はありません。
 | `-ForceSherpaBuild` | ビルド済みの sherpa-onnx を使わず、ソースからビルドする（Git・CMake・MSVC Build Tools の C++ が必要。[docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md)） |
 | `-AllExtras` | すべてのエンジンの Python パッケージを導入する（Kokoro・Tsukasa を含むので、MSVC と CMake が必要） |
 | `-InstallPrereqs` | 足りない前提（Python 3.11・Node.js、必要なら VS 2022 Build Tools の C++ と CMake）を winget で導入する。Build Tools は数 GB で、管理者の確認が出る。既定では導入せず、足りないものと導入方法を表示する |
+| `-SkipTests` | 最後の検証で `tests/` のテストを実行しない（sherpa-onnx の版・ワーカーの起動・GUI の構築は確かめる） |
 | `-VerifyOnly` | 導入せず検証のみ行う |
 
 既定で導入するのは、既定の設定（ASR：ReazonSpeech〔sherpa-onnx〕、TTS：VOICEVOX Core）で対話できる最小限の Python パッケージと資産です

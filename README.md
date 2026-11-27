@@ -181,6 +181,7 @@ environment if MSVC is installed, so it does not need to be run from Developer P
 | `-ForceSherpaBuild` | Build sherpa-onnx from source instead of using the prebuilt package (needs Git, CMake and the C++ workload of MSVC Build Tools; [docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md), Japanese) |
 | `-AllExtras` | Install the Python packages of every engine (this includes Kokoro and Tsukasa, so MSVC and CMake are needed) |
 | `-InstallPrereqs` | Install missing prerequisites (Python 3.11, Node.js, and the C++ workload of VS 2022 Build Tools and CMake when needed) with winget. Build Tools is several GB and asks for administrator approval. By default nothing is installed; the script shows what is missing and how to install it |
+| `-SkipTests` | Do not run the tests in `tests/` during the final verification (the sherpa-onnx version, worker start-up and GUI construction are still checked) |
 | `-VerifyOnly` | Only verify, without installing anything |
 
 By default, only the Python packages and assets needed to talk with the default settings (ASR: ReazonSpeech on sherpa-onnx,
