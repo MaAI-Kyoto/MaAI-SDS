@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import sys as _sys
 import json
 import math
@@ -23,9 +24,10 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+import wave
 from typing import Any, Callable
 from .. import engine_manager, paths as _paths, speechcpp
-from . import audiocpp_client
+from . import audiocpp_client, voicevox_chunked
 from .playback_service import BINARY_STREAM_ENGINES
 from .venv_rpc import DedicatedVenvTTSClient
 from pathlib import Path
@@ -107,6 +109,16 @@ def _resolve_voicevox_cpu_threads(raw: Any) -> int:
     return max(1, min(n, cores))
 
 
+def _voicevox_chunked_mode(raw: Any) -> str:
+    """分割合成の設定を auto / on / off にそろえる（true / false も受け付ける）。"""
+    text = str("auto" if raw is None else raw).strip().lower()
+    if text in ("on", "true", "1", "yes"):
+        return "on"
+    if text in ("off", "false", "0", "no"):
+        return "off"
+    return "auto"
+
+
 class VoicevoxCoreEngine:
     def __init__(self, cfg: dict[str, Any]) -> None:
         self.default_voice = str(cfg.get("voice", "8")).strip() or "8"
@@ -124,6 +136,16 @@ class VoicevoxCoreEngine:
         self.acceleration_mode = "GPU" if raw_mode.upper().startswith("GPU") else raw_mode.upper()
         self.timeout_sec = float(cfg.get("timeout_sec", 120.0) or 120.0)
         self.cpu_num_threads = _resolve_voicevox_cpu_threads(cfg.get("cpu_num_threads"))
+        # 文節単位の分割合成（tts/voicevox_chunked.py）。最初の声までの時間が文の長さに比例しなくなる。
+        # auto（既定）は CPU で合成しているときだけ分ける。GPU は合成 1 回の固定分が大半で、分けると
+        # かえって遅い（Windows・RTX 5070 Ti の CUDA で 38 文字の最初の声が 143 → 180 ms。CPU は 1606 → 1244 ms）。
+        self.chunked_mode = _voicevox_chunked_mode(cfg.get("chunked", "auto"))
+        try:
+            self.chunk_context_moras = max(0, min(16, int(cfg.get("chunk_context_moras", 3))))
+        except (TypeError, ValueError):
+            self.chunk_context_moras = 3
+        # 合成の速さの見積もり（実測で更新し続ける）。再生が途切れない分け方を選ぶのに使う。
+        self._chunk_cost = voicevox_chunked.CostModel()
         self._loop: asyncio.AbstractEventLoop | None = None
         self._synthesizer = None
         self._lock = threading.Lock()
@@ -248,6 +270,79 @@ class VoicevoxCoreEngine:
         if not audio_l16be:
             raise RuntimeError("VOICEVOX-Core returned empty audio")
         return audio_l16be, str(speaker_id)
+
+    def _use_chunked(self) -> bool:
+        if self.chunked_mode == "auto":
+            try:
+                return not bool(self._synthesizer.is_gpu_mode)
+            except Exception:  # noqa: BLE001
+                return self.acceleration_mode == "CPU"
+        return self.chunked_mode == "on"
+
+    def synthesize_stream(self, req: dict[str, Any], on_chunk: Callable[[bytes], None]) -> tuple[int, str]:
+        """文節単位に分けて合成し、できた順に 16 kHz・L16BE で on_chunk へ渡す。
+
+        chunked=False のとき・分けられないときは、1 文をまとめて合成して 1 回で渡す
+        （ストリーミング経路でも従来と同じ音になる）。
+        """
+        if self._synthesizer is None:
+            raise RuntimeError("VOICEVOX-Core model is not loaded")
+        if not self._use_chunked():
+            audio_l16be, voice = self.synthesize(req)
+            on_chunk(audio_l16be)
+            return len(audio_l16be), voice
+        text = str(req.get("text", "")).strip()
+        if not text:
+            raise ValueError("'text' must not be empty")
+        speaker_id = self._parse_speaker_id(req.get("voice", self.default_voice))
+        speed_scale = float(req.get("speed_scale", 1.0))
+        if not math.isfinite(speed_scale) or not 0.5 <= speed_scale <= 2.0:
+            raise ValueError("VOICEVOX-Core の話速は 0.5〜2.0 で指定してください。")
+        loop = self._ensure_loop()
+        synth_timeout = max(10.0, self.timeout_sec)
+
+        def _run(coro: Any) -> Any:
+            return asyncio.run_coroutine_threadsafe(coro, loop).result(timeout=synth_timeout)
+
+        def _synth(query: Any) -> np.ndarray:
+            wav = bytes(_run(self._synthesizer.synthesis(query, speaker_id, enable_interrogative_upspeak=False)))
+            with wave.open(io.BytesIO(wav), "rb") as wf:
+                if wf.getframerate() != voicevox_chunked.SAMPLE_RATE or wf.getnchannels() != 1:
+                    raise voicevox_chunked.ChunkedSynthesisError(
+                        f"unexpected VOICEVOX output {wf.getframerate()} Hz x {wf.getnchannels()} ch"
+                    )
+                return np.frombuffer(wf.readframes(wf.getnframes()), dtype="<i2")
+
+        resampler = StreamingPcm16Resampler(voicevox_chunked.SAMPLE_RATE, 16000)
+        sent = [0]
+
+        def _on_audio(pcm24k: np.ndarray) -> None:
+            chunk = swap_pcm16_endian(resampler.process(pcm24k.astype("<i2").tobytes()))
+            if chunk:
+                on_chunk(chunk)
+                sent[0] += len(chunk)
+
+        with self._lock:
+            query = _run(self._synthesizer.create_audio_query(text, speaker_id))
+            query.speed_scale = speed_scale
+            # 既定の pre_phoneme_length（0.1 秒）は発声までの無音になるので 0 にする（synthesize と同じ）。
+            query.pre_phoneme_length = 0.0
+            try:
+                prepared = voicevox_chunked.prepare_query(query)
+                voicevox_chunked.synthesize_chunked(
+                    prepared, _synth, _on_audio, context_moras=self.chunk_context_moras, cost=self._chunk_cost
+                )
+            except voicevox_chunked.ChunkedSynthesisError as ex:
+                if sent[0]:
+                    raise
+                print(f"[VOICEVOX-Core] 分割合成をやめて 1 文まとめて合成します: {ex}", file=sys.stderr, flush=True)
+                wav = bytes(_run(self._synthesizer.synthesis(query, speaker_id)))
+                audio_l16be = wav_bytes_to_pcm16be_16k_mono(wav)
+                on_chunk(audio_l16be)
+                return len(audio_l16be), str(speaker_id)
+        if not sent[0]:
+            raise RuntimeError("VOICEVOX-Core returned empty audio")
+        return sent[0], str(speaker_id)
 
 class CartesiaRealtimeEngine:
     def __init__(self, cfg: dict[str, Any]) -> None:

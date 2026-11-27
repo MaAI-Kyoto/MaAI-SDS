@@ -713,6 +713,15 @@ def _build_initial_widgets(controller):
         ["AUTO", "CPU", "GPU (CUDA)", "GPU (DirectML)"])
     controller.voicevox_core_device_combo.setCurrentText("GPU")
     controller.voicevox_core_cpu_threads_edit = QLineEdit("16")
+    controller.voicevox_core_chunked_combo = QComboBox()
+    controller.voicevox_core_chunked_combo.addItem("自動（CPUで合成するときだけ）", "auto")
+    controller.voicevox_core_chunked_combo.addItem("オン", "on")
+    controller.voicevox_core_chunked_combo.addItem("オフ", "off")
+    controller.voicevox_core_chunked_combo.setToolTip(
+        "文を文節ごとに分けて合成し、できた順に再生します。抑揚は文全体で決めたものを使います。"
+        "CPUでは長い文の最初の声が早くなります。GPUでは分けるとかえって遅くなるので、自動では分けません。"
+    )
+    controller.voicevox_core_chunked_combo.currentIndexChanged.connect(lambda _index: controller._save_app_config())
     controller.voicevox_core_speed_scale_edit = QLineEdit("1.0")
     controller.voicevox_core_speed_scale_edit.setValidator(
         QDoubleValidator(0.5, 2.0, 2, controller.voicevox_core_speed_scale_edit)
@@ -2531,6 +2540,7 @@ def build_ui(controller) -> None:
     voicevox_core_settings_form.addRow(controller.voicevox_core_vvm_label, voicevox_core_vvm_row)
     voicevox_core_settings_form.addRow(controller.voicevox_core_device_label, controller.voicevox_core_device_combo)
     voicevox_core_settings_form.addRow(QLabel("CPUスレッド数"), controller.voicevox_core_cpu_threads_edit)
+    voicevox_core_settings_form.addRow(QLabel("文節ごとの分割合成"), controller.voicevox_core_chunked_combo)
     voicevox_core_settings_form.addRow(
         QLabel("話速（1.00が標準）"), controller.voicevox_core_speed_scale_edit
     )

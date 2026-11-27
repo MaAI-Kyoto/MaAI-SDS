@@ -3412,6 +3412,33 @@
               ]
             },
             {
+              "label": "文節ごとの分割合成",
+              "widgets": [
+                {
+                  "attr": "voicevox_core_chunked_combo",
+                  "config_key": "voicevox_core_chunked",
+                  "scope": "app",
+                  "tooltip": "文を文節ごとに分けて合成し、できた順に再生します。抑揚は文全体で決めたものを使います。CPUでは長い文の最初の声が早くなります。GPUでは分けるとかえって遅くなるので、自動では分けません。",
+                  "kind": "combo",
+                  "items": [
+                    {
+                      "value": "auto",
+                      "label": "自動（CPUで合成するときだけ）"
+                    },
+                    {
+                      "value": "on",
+                      "label": "オン"
+                    },
+                    {
+                      "value": "off",
+                      "label": "オフ"
+                    }
+                  ],
+                  "value": "auto"
+                }
+              ]
+            },
+            {
               "label": "話速（1.00が標準）",
               "widgets": [
                 {

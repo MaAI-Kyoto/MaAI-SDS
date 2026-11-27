@@ -44,6 +44,8 @@ BRIDGE_BACKED_ENGINES = frozenset(
 # Irodori-v4 は speech.cpp 版・audio.cpp 版が少しずつ返し、PyTorch 版は 1 文をまとめて 1 回で渡す。
 BINARY_STREAM_ENGINES = frozenset(
     {
+        # VOICEVOX-Core は文節単位に分けて合成する（tts/voicevox_chunked.py）。分割を切ったときは 1 文を 1 回で渡す。
+        "VOICEVOX-Core",
         "Cartesia-Realtime",
         "Kokoro-RealtimeTTS",
         "Qwen3-TTS-CPP",

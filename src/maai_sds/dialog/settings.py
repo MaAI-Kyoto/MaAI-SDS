@@ -483,6 +483,10 @@ def build_tts_worker_config(cfg: dict, engine: str) -> dict[str, object]:
             "vvm_path": cfg_str(cfg, "voicevox_core_vvm_path", r"voicevox_runtime/models/vvms/0.vvm"),
             "acceleration_mode": cfg_str(cfg, "voicevox_core_device", _DEFAULT_VOICEVOX_CORE_DEVICE) or _DEFAULT_VOICEVOX_CORE_DEVICE,
             "cpu_num_threads": int(_clamp(cfg_int(cfg, "voicevox_core_cpu_num_threads", 16), 1, 32)),
+            # 文節単位の分割合成（tts/voicevox_chunked.py）。auto（CPU で合成するときだけ）/ on / off。
+            # のりしろは前後の文節から取るモーラ数。
+            "chunked": cfg_str(cfg, "voicevox_core_chunked", "auto") or "auto",
+            "chunk_context_moras": int(_clamp(cfg_int(cfg, "voicevox_core_chunk_context_moras", 3), 0, 16)),
         }
     # VOICEVOX / TEMPLATE は worker を使わない（bridge 経由）。
     # 契約は Controller に合わせて **例外**にする（黙って {} を返すと

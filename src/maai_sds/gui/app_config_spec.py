@@ -154,6 +154,7 @@ APP_CONFIG_FIELDS: tuple[tuple[str, str, str, bool, object, object, str, object]
     ('maai_torch_cpu_intra_threads', 'maai_torch_intra_threads_edit', 'text', True, '1', '1', 'setText', None),
     ('maai_torch_cpu_interop_threads', 'maai_torch_interop_threads_edit', 'text', True, '1', '1', 'setText', None),
     ('voicevox_core_cpu_num_threads', 'voicevox_core_cpu_threads_edit', 'text', True, '16', '16', 'setText', None),
+    ('voicevox_core_chunked', 'voicevox_core_chunked_combo', 'combo', False, None, 'auto', 'setCurrentIndex', None),
     ('voicevox_core_speed_scale', 'voicevox_core_speed_scale_edit', 'text', True, '1.0', '1.0', 'setText', None),
     ('maai_multi_frame_rate', 'maai_multi_frame_rate_edit', 'text', True, '10', '10', 'setText', None),
     ('maai_plot_asr_scroll_interval_ms', 'maai_plot_asr_scroll_ms_edit', 'text', True, '200', '200', 'setText', None),

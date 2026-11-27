@@ -111,6 +111,7 @@ class AppConfigIOMixin:
             self._apply_app_config_field(cfg, "voicevox_core_openjtalk_dict")
             self._apply_app_config_field(cfg, "voicevox_core_vvm_path")
             self._apply_app_config_field(cfg, "voicevox_core_cpu_num_threads")
+            self._apply_app_config_field(cfg, "voicevox_core_chunked")
             self._apply_app_config_field(cfg, "voicevox_core_speed_scale")
             self.voicevox_core_device_combo.setCurrentText(str(cfg.get("voicevox_core_device", "GPU")))
             self._apply_app_config_field(cfg, "cartesia_tts_model_id")

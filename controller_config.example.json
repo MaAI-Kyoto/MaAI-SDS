@@ -260,6 +260,7 @@
   "voice_dialog_opening_utterance": "こんにちは！それではお話を始めましょう！",
   "voice_dialog_scheduled_exit_sec": 0.0,
   "voice_dialog_scheduled_exit_utterance": "すいません、時間になりました。お話楽しかったです、ありがとうございました！",
+  "voicevox_core_chunked": "auto",
   "voicevox_core_device": "AUTO",
   "voicevox_core_onnxruntime_file": "voicevox_runtime/onnxruntime/lib/voicevox_onnxruntime_v.dll",
   "voicevox_core_openjtalk_dict": "voicevox_runtime/dict/open_jtalk_dic_utf_8-1.11",
