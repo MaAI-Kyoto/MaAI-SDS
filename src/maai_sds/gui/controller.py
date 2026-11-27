@@ -202,6 +202,11 @@ class MMDAgentController(
         # Preserve the class default while allowing all existing mixin code to
         # keep referring to the instance attribute.
         self.APP_CONFIG_PATH = app_config_path
+        # 既定の設定ファイルが無ければ、例（controller_config.example.json）から始める。main() でも
+        # 同じことをしているが、main() を通らずに GUI を作る経路（setup_env.ps1 の検証など）では写されず、
+        # 画面の部品の初期値がそのまま保存され、そのあと初めて起動しても例が使われなかった。
+        if configured_path is None and _paths.ensure_config_file(app_config_path):
+            print("[maai-sds] controller_config.json が無いので controller_config.example.json から作りました", flush=True)
         self._is_loading_app_config = True
         self.field_widgets: dict[str, QWidget] = {}
         self.default_values = {

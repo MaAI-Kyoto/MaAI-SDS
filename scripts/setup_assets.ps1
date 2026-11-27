@@ -402,8 +402,14 @@ function Invoke-VoicevoxRuntime {
         # 従う（GUI の VOICEVOX-Core 設定で選ぶ）。実測（RTX 5070 Ti Laptop, 10 回の
         # 定常値）: CUDA 52ms / DirectML 249ms / CPU 620ms。
         # CUDA は最速だが cudnn64_9.dll を外部依存として要する。DirectML は DLL 1 本で
-        # 完結し GPU ベンダー非依存。設定が読めない場合は CUDA（従来の挙動）。
-        $ortVariant = "cuda-"
+        # 完結し GPU ベンダー非依存。
+        # 新しい環境では、この時点でまだ controller_config.json が無い（初回起動で例から作る）。その場合と、
+        # 設定が AUTO / CUDA の場合は、setup_env.ps1 が記録した .device_extra に従う：cpu なら CPU 版、
+        # それ以外（cu128・記録なし）は CUDA 版。以前は設定が無いと常に CUDA 版を取り、CPU 構成でも
+        # CUDA のプロバイダ（約 330MB）を置いていた。
+        $deviceMarker = Join-Path $projectRoot ".device_extra"
+        $deviceExtra = if (Test-Path $deviceMarker) { ((Get-Content $deviceMarker -Raw) + "").Trim() } else { "" }
+        $ortVariant = if ($deviceExtra -eq "cpu") { "" } else { "cuda-" }
         $cfgPath = Join-Path $projectRoot "controller_config.json"
         if (Test-Path $cfgPath) {
             try {
@@ -411,7 +417,7 @@ function Invoke-VoicevoxRuntime {
                 if ($dev -match 'DirectML') { $ortVariant = "dml-" }
                 elseif ($dev -eq 'CPU')     { $ortVariant = "" }
             } catch {
-                Write-Warn "controller_config.json を読めなかったので CUDA 版を取ります"
+                Write-Warn "controller_config.json を読めなかったので .device_extra（$deviceExtra）に従います"
             }
         }
         $ortLabel = switch ($ortVariant) { "cuda-" { "CUDA" } "dml-" { "DirectML" } default { "CPU" } }

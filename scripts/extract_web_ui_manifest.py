@@ -586,8 +586,9 @@ def build_manifest() -> dict:
     _dp.detect_default_mdf_path = lambda *_a, **_k: ""
     try:
         with tempfile.TemporaryDirectory() as tmp:
-            gc.MMDAgentController.APP_CONFIG_PATH = Path(tmp) / "no-such-config.json"
-            controller = gc.MMDAgentController()
+            # config_path を明示する。既定の場所（APP_CONFIG_PATH）では、ファイルが無いと例を写すので
+            # （controller の ensure_config_file）、ウィジェットの既定値ではなく例の値を拾ってしまう。
+            controller = gc.MMDAgentController(config_path=Path(tmp) / "no-such-config.json")
     finally:
         _em.device_extra = _orig_device_extra
         _dp.detect_default_exec_path, _dp.detect_default_mdf_path = _orig_detect
