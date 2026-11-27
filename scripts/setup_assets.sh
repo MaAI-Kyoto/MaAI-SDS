@@ -388,8 +388,14 @@ invoke_cohere_asr_model() {
 }
 
 invoke_unidic_dict() {
+    # unidic は tts-kokoro の extra でだけ入る。既定の実行（引数 if-installed）では、入っていなければ飛ばす
+    # （Kokoro はエンジン管理の「適用」で入れ、そのとき --only UnidicDict で辞書を取る）。Windows 版と同じ。
     step "unidic 辞書"
     [ -x "${VENV_PYTHON}" ] || { warn ".venv が無いためスキップ（先に uv sync すること）"; return 0; }
+    if [ "${1:-}" = "if-installed" ] && ! "${VENV_PYTHON}" -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('unidic') else 1)" 2>/dev/null; then
+        echo "[skip] unidic が入っていない（Kokoro を入れていない）ので取らない"
+        return 0
+    fi
     if "${VENV_PYTHON}" -c "import unidic,os,sys; sys.exit(0 if os.path.exists(os.path.join(unidic.DICDIR,'dicrc')) else 1)" 2>/dev/null; then
         ok "既にあるためスキップ: unidic 辞書"
         return 0
@@ -666,6 +672,7 @@ run_step() {
         FunAsrNanoModel)   invoke_funasr_nano_model ;;
         CohereAsrModel)    invoke_cohere_asr_model ;;
         UnidicDict)        invoke_unidic_dict ;;
+        UnidicDictIfInstalled) invoke_unidic_dict if-installed ;;
         TsukasaVendor)     invoke_tsukasa_vendor ;;
         VoicevoxRuntime)   invoke_voicevox_runtime ;;
         AivisSpeech)       invoke_aivis_speech ;;
@@ -692,6 +699,6 @@ fi
 # 既定は、既定の設定（sherpa-onnx の ReazonSpeech と VOICEVOX-Core）で対話できるところまで。
 # ほかのエンジン（SenseVoice などの ONNX モデル・Tsukasa・audio.cpp の GGUF など）は、
 # GUI の「エンジン管理」で選ぶと --only で取る。Windows 版（setup_assets.ps1）と同じ。
-default_steps=(SherpaModels SmartTurn UnidicDict VoicevoxRuntime VerifyAssets)
+default_steps=(SherpaModels SmartTurn UnidicDictIfInstalled VoicevoxRuntime VerifyAssets)
 for s in "${default_steps[@]}"; do run_step "$s"; done
 ok "既定ステップが完了しました（個別取得は --only を使ってください）"

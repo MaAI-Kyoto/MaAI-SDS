@@ -9,7 +9,8 @@
 
     既定で取るもの（既定の設定の sherpa-onnx と VOICEVOX-Core で対話できるところまで）:
       ASR   : sherpa-onnx 日本語 zipformer（ReazonSpeech）/ smart-turn ONNX /
-              unidic 辞書（misaki[ja] が要求。unidic 再インストールで消える）/
+              unidic 辞書（Kokoro の misaki[ja] が要求。unidic 再インストールで消える。
+              unidic パッケージが入っているとき＝Kokoro を入れたときだけ）/
               faster-whisper モデル（-PreFetchWhisper のときだけ）
       TTS   : VOICEVOX Core ランタイム（ORT DLL・OpenJTalk 辞書・VVM）
     ほかのエンジンの資産（Qwen3-ASR ONNX / Nemotron ONNX / SenseVoice などの ONNX モデル、
@@ -337,15 +338,24 @@ function Invoke-WhisperPrefetch {
     Write-Ok "HF キャッシュへダウンロード済み"
 }
 
-function Invoke-UnidicDict {
+function Invoke-UnidicDict([switch]$IfInstalled) {
     # unidic パッケージは辞書を含まない。`python -m unidic download` が別途要る。
     # 辞書は site-packages 内へ展開されるため、unidic が再インストールされると消える
     # （uv sync の再実行後など）。
+    # unidic は tts-kokoro の extra でだけ入る。既定の実行（-IfInstalled）では、入っていなければ飛ばす
+    # （Kokoro はエンジン管理の「適用」で入れ、そのとき -Only UnidicDict で辞書を取る）。
     Write-Step "unidic 辞書"
     $dicrc = Join-Path $projectRoot ".venv\Lib\site-packages\unidic\dicdir\dicrc"
     if (-not (Test-Path $venvPython)) {
         Write-Warn ".venv が無いためスキップ（先に uv sync すること）"
         return
+    }
+    if ($IfInstalled) {
+        & $venvPython -B -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('unidic') else 1)"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[skip] unidic が入っていない（Kokoro を入れていない）ので取らない"
+            return
+        }
     }
     if (Test-Path $dicrc) { Write-Ok "既にあるためスキップ: $dicrc"; return }
     & $venvPython -B -m unidic download
@@ -878,7 +888,7 @@ if ($Only -ne "") {
 if (-not $SkipSherpaModels)   { Invoke-SherpaModels }      else { Write-Warn "-SkipSherpaModels" }
 if (-not $SkipSmartTurn)      { Invoke-SmartTurn }         else { Write-Warn "-SkipSmartTurn" }
 Invoke-WhisperPrefetch
-Invoke-UnidicDict
+Invoke-UnidicDict -IfInstalled
 if (-not $SkipVoicevoxRuntime){ Invoke-VoicevoxRuntime }   else { Write-Warn "-SkipVoicevoxRuntime" }
 # Tsukasa-HF（TsukasaVendor）・AivisSpeech・audio.cpp（AudioCpp）などは、エンジン管理から -Only で取る。
 
