@@ -165,7 +165,7 @@ def main() -> None:
     from .gui import app_icon
 
     if not launch_args.config and _paths.ensure_config_file():
-        print("[maai-sds] controller_config.json が無いので controller_config.example.json から作りました", flush=True)
+        print("[MaAI-SDS] controller_config.json が無いので controller_config.example.json から作りました", flush=True)
     app_icon.set_windows_app_id()  # タスクバーで Python と別に並べる（窓を作る前）
     app = QApplication(qt_argv)
     app.setWindowIcon(app_icon.app_icon())

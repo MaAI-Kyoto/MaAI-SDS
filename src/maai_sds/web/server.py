@@ -895,7 +895,7 @@ def _require_config_file(path: Path) -> None:
     """
     if path.is_dir():
         raise SystemExit(
-            f"[maai-sds] {path} がディレクトリになっています。\n"
+            f"[MaAI-SDS] {path} がディレクトリになっています。\n"
             "  Docker の場合: ホスト側で controller_config.docker.example.json を\n"
             "  controller_config.docker.json にコピーしてから起動してください\n"
             "  （同名のディレクトリが作られていたら先に消す）。"
@@ -2075,7 +2075,7 @@ def main() -> None:
     # 最初の起動では設定が無い（Git 管理外）。例から始める（Qt の main と同じ）。uvicorn が
     # このモジュールを読み込み直して app を作るので、それより先に用意する。
     if not os.environ.get("MAAI_SDS_CONTROLLER_CONFIG", "").strip() and paths.ensure_config_file():
-        print("[maai-sds] controller_config.json が無いので controller_config.example.json から作りました", flush=True)
+        print("[MaAI-SDS] controller_config.json が無いので controller_config.example.json から作りました", flush=True)
     # 既定は 127.0.0.1。この UI には認証が無く、対話の開始停止から設定書き換えまで
     # できてしまうので、外向きに開くのは明示的な指定があるときだけにする。
     # コンテナでは 0.0.0.0 でないとポート公開しても届かないため、compose が環境変数で渡す。

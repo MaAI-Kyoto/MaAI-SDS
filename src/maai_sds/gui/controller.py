@@ -206,7 +206,7 @@ class MMDAgentController(
         # 同じことをしているが、main() を通らずに GUI を作る経路（setup_env.ps1 の検証など）では写されず、
         # 画面の部品の初期値がそのまま保存され、そのあと初めて起動しても例が使われなかった。
         if configured_path is None and _paths.ensure_config_file(app_config_path):
-            print("[maai-sds] controller_config.json が無いので controller_config.example.json から作りました", flush=True)
+            print("[MaAI-SDS] controller_config.json が無いので controller_config.example.json から作りました", flush=True)
         self._is_loading_app_config = True
         self.field_widgets: dict[str, QWidget] = {}
         self.default_values = {
@@ -1783,7 +1783,7 @@ class MMDAgentController(
         msg = str(message)
         # 起動/停止/アンロードを含むメッセージだけターミナルに出す（ノイズ削減）。
         if any(kw in msg for kw in self._TERMINAL_LIFECYCLE_KEYWORDS):
-            print(f"[MMDAgentController] {msg}", flush=True)
+            print(f"[MaAI-SDS] {msg}", flush=True)
         try:
             # アプリ内コンソール窓には従来通り全ログを出す。
             self.process_output_signal.emit(f"[Controller][INFO] {msg}")
