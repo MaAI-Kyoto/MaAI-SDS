@@ -440,7 +440,7 @@ class AppConfigIOMixin:
                     to_bool(str(cfg.get("asr_qwen_vllm_enforce_eager")))
                 )
             else:
-                self.asr_qwen_enforce_eager_check.setChecked(os.name == "nt")
+                self.asr_qwen_enforce_eager_check.setChecked(False)
             self._apply_app_config_field(cfg, "asr_chirp_project_id")
             self._apply_app_config_field(cfg, "asr_chirp_location")
             self._apply_app_config_field(cfg, "asr_chirp_recognizer")

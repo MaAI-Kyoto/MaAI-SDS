@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication
 
@@ -36,7 +38,14 @@ STATE_COLORS: dict[str, str] = {
     "error": TOKENS["err"],
 }
 
-FONT_FAMILIES = ["Yu Gothic UI", "Segoe UI", "Meiryo UI", "sans-serif"]
+# 先頭のフォントが無いと、Qt は代わりを探すために全フォントの別名を作り直し、起動のたびに
+# 「Populating font family aliases took ... ms」の警告を出す。macOS には Yu Gothic UI が無いので
+# ヒラギノを先頭にする。
+FONT_FAMILIES = (
+    ["Hiragino Sans", "Hiragino Kaku Gothic ProN", "sans-serif"]
+    if sys.platform == "darwin"
+    else ["Yu Gothic UI", "Segoe UI", "Meiryo UI", "sans-serif"]
+)
 FONT_POINT_SIZE = 10  # Web の 13px 相当（96dpi）
 
 

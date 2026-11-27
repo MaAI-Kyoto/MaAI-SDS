@@ -121,6 +121,17 @@ def _build_args() -> argparse.Namespace:
         help="`status: running` を待つ秒数 (default: 20)",
     )
     parser.add_argument(
+        "--wav-play-delay",
+        type=float,
+        default=0.0,
+        help="WAV 入力のとき、対話が running になってから再生を始めるまでの秒数（開始の挨拶を待つときなど）",
+    )
+    parser.add_argument(
+        "--no-wav-play",
+        action="store_true",
+        help="WAV 入力でも再生を始めない（GUI の再生ボタンに当たる wav_play を送らない）",
+    )
+    parser.add_argument(
         "--input-text",
         type=str,
         default="こんにちは",
@@ -257,7 +268,16 @@ class HeadlessClient:
         elif et == "error":
             msg = str(payload_obj.get("message", ""))
             print(f"[orch:error] {msg}", file=sys.stderr, flush=True)
+        elif et == "asr_result":
+            # 確定した認識結果だけを表示する（途中経過は量が多い）
+            if bool(payload_obj.get("is_final")):
+                text = str(payload_obj.get("text", "") or "").strip()
+                if text:
+                    print(f"[asr] {text}", flush=True)
         elif et == "llm_done":
+            reply = str(payload_obj.get("text", "") or "").strip()
+            if reply:
+                print(f"[llm] {reply}", flush=True)
             rid = str(payload_obj.get("request_id", "")).strip()
             if not self._llm_request_id or rid == self._llm_request_id:
                 self._llm_text = str(payload_obj.get("text", "") or "")
@@ -317,6 +337,8 @@ def _command_voice_dialog(
     ready_timeout: float,
     no_start: bool,
     assume_mmd_running: bool,
+    wav_play: bool = True,
+    wav_play_delay: float = 0.0,
 ) -> int:
     if no_start:
         print("[headless] connect-only mode (no start_voice_dialog).", flush=True)
@@ -370,6 +392,12 @@ def _command_voice_dialog(
         return 2
     print("[headless] dialog state = running. Ctrl+C で停止。", flush=True)
     try:
+        # WAV 入力は一時停止の状態で始まり、GUI では再生ボタンが wav_play を送って初めて流れる。
+        # ヘッドレスには再生ボタンが無いので、ここで送る（送らないと ASR に無音しか届かない）。
+        if wav_play and str(cfg.get("audio_input_mode", "") or "").strip().lower() == "wav":
+            if wav_play_delay <= 0 or not headless.wait_stopped(timeout=wav_play_delay):
+                print("[headless] WAV 入力の再生を始めます（wav_play）", flush=True)
+                headless.send({"type": "audio_input_send_command", "command": "wav_play"})
         while True:
             if headless.wait_stopped(timeout=0.5):
                 break
@@ -548,6 +576,8 @@ def main() -> int:
                 ready_timeout=float(args.ready_timeout or 20.0),
                 no_start=bool(args.no_start),
                 assume_mmd_running=bool(args.assume_mmd_running),
+                wav_play=not bool(args.no_wav_play),
+                wav_play_delay=float(args.wav_play_delay or 0.0),
             )
         elif cmd == "stop":
             rc = _command_stop(headless)

@@ -1262,7 +1262,9 @@ def build_ui(controller) -> None:
     controller.asr_qwen_stop_container_check = QCheckBox("有効")
     controller.asr_qwen_stop_container_check.setChecked(False)
     controller.asr_qwen_enforce_eager_check = QCheckBox("有効")
-    controller.asr_qwen_enforce_eager_check.setChecked(os.name == "nt")
+    # 見本（controller_config.example.json）とワーカー（asr/qwen_docker.py）の既定と同じ False。以前は Windows だけ
+    # True で、Web の画面定義（ui_manifest.json）が作った OS によって変わっていた。
+    controller.asr_qwen_enforce_eager_check.setChecked(False)
     controller.asr_qwen_enforce_eager_check.setToolTip(
         "vLLMのtorch.compile／CUDA graphを無効化します。WSL2でcudaErrorIllegalAddressが出る場合に有効にします。"
     )

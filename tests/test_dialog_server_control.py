@@ -128,8 +128,12 @@ class DialogServerModeTests(unittest.TestCase):
 
         proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(0.5)"])
         self.assertTrue(m._pid_alive(proc.pid))
+        # POSIX では、終わった子プロセスは親が回収（wait）するまでゾンビとして残り、os.kill(pid, 0) が
+        # 通ってしまう。実際に待つ相手（前の GUI）は自分の子ではないので、テストでも別のスレッドで回収しておく。
+        reaper = threading.Thread(target=proc.wait, daemon=True)
+        reaper.start()
         self.assertTrue(m.wait_for_pid_exit(proc.pid, timeout_sec=10))
-        proc.wait()
+        reaper.join(timeout=10)
 
 
 class QtDialogServerStateTests(unittest.TestCase):

@@ -310,6 +310,15 @@ class UiStateSnapshotTests(unittest.TestCase):
         self.assertEqual(self._panel_asr_state(self._snapshot(asr_compare=True)), "running")
 
 
+# MMDAgent-EX を置いたホストの場所。Windows 以外では C:\\ のパスが相対パス扱いになるので OS で分ける。
+_MMD_HOST = r"C:\MMDAgent-EX" if os.name == "nt" else "/opt/MMDAgent-EX"
+_MMD_SEP = "\\" if os.name == "nt" else "/"
+
+
+def _mmd_host(*parts: str) -> str:
+    return _MMD_SEP.join((_MMD_HOST, *parts))
+
+
 class DefaultMmdPathTests(unittest.TestCase):
     """Docker backend では、自動検出した MDF もコンテナのパスで欄に入れる。"""
 
@@ -327,20 +336,22 @@ class DefaultMmdPathTests(unittest.TestCase):
         fake.exec_edit, fake.mdf_edit = self._Edit(), self._Edit()
         fake._remote_backend_enabled = remote
         fake._docker_path_mapper = mapper
-        with mock.patch("maai_sds.mmd.default_paths.detect_default_exec_path", return_value=r"C:\MMDAgent-EX\Release\MMDAgent-EX.exe"), \
-                mock.patch("maai_sds.mmd.default_paths.detect_default_mdf_path", return_value=r"C:\MMDAgent-EX\example\maai_sds\maai_sds.mdf"):
+        with mock.patch("maai_sds.mmd.default_paths.detect_default_exec_path",
+                        return_value=_mmd_host("Release", "MMDAgent-EX.exe")), \
+                mock.patch("maai_sds.mmd.default_paths.detect_default_mdf_path",
+                           return_value=_mmd_host("example", "maai_sds", "maai_sds.mdf")):
             MMDAgentController._set_default_paths(fake)
         return fake.exec_edit.text_value, fake.mdf_edit.text_value
 
     def test_native_keeps_host_paths(self) -> None:
         exe, mdf = self._run(remote=False, mapper=None)
-        self.assertEqual(mdf, r"C:\MMDAgent-EX\example\maai_sds\maai_sds.mdf")
+        self.assertEqual(mdf, _mmd_host("example", "maai_sds", "maai_sds.mdf"))
         self.assertTrue(exe.endswith("MMDAgent-EX.exe"))
 
     def test_remote_maps_mdf_into_container_or_leaves_it_empty(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             mapper = DockerPathMapper.from_compose_project(
-                Path(tmp), env={"MMDAGENT_ASSETS_HOST": r"C:\MMDAgent-EX\example"}, env_file=Path(tmp) / "none.env",
+                Path(tmp), env={"MMDAGENT_ASSETS_HOST": _mmd_host("example")}, env_file=Path(tmp) / "none.env",
             )
             exe, mdf = self._run(remote=True, mapper=mapper)
             self.assertEqual(mdf, "/app/mmdagent_assets/maai_sds/maai_sds.mdf")

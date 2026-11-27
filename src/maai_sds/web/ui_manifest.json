@@ -1828,7 +1828,7 @@
                   "scope": "app",
                   "tooltip": "vLLMのtorch.compile／CUDA graphを無効化します。WSL2でcudaErrorIllegalAddressが出る場合に有効にします。",
                   "kind": "check",
-                  "value": true,
+                  "value": false,
                   "text": "有効"
                 }
               ]
