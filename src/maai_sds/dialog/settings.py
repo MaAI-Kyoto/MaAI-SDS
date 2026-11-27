@@ -1143,6 +1143,9 @@ def build_maai_worker_config(cfg: dict) -> dict[str, object]:
         "mimi_onnx_cpu_inter_threads": int(
             _clamp(cfg_int(cfg, "maai_mimi_onnx_cpu_inter_threads", 1), 1, 64)
         ),
+        # ONNX Runtime のスレッドが推論の合間も回り続ける（スピン）か。既定は止める。CPU の少ない PC で
+        # MaAI が CPU を埋め、TTS などが遅くなるため（maai/worker.py の _install_ort_spin_control）。
+        "onnx_allow_spinning": cfg_bool(cfg, "maai_onnx_allow_spinning", False),
         # f592640 より前は torch の既定（24）だった。3 モデル同時なので上げると
         # 効く場合がある。既定は現状維持の 1。
         "torch_cpu_interop_threads": int(

@@ -40,6 +40,40 @@ def _pair_if_exists(onnx_path: Path, meta_path: Path | None = None) -> tuple[str
     return None
 
 
+def _install_ort_spin_control(allow_spinning: bool) -> None:
+    """MaAI が作る ONNX Runtime のセッションで、スレッドのスピン（待つ間も回り続ける）を止める。
+
+    maai は Mimi の CPU セッションにスレッド数しか設定しないので、ORT の既定どおり各スレッドが
+    推論の合間も CPU を回し続ける。4 コアの PC（i5-1135G7）で演算内 4 スレッドにすると、対話中に
+    MaAI だけで 4 コア分（10 秒で 42 CPU 秒）を使い、TTS の合成が単独の 3〜5 倍遅くなった。
+    maai は ``onnxruntime.SessionOptions()`` で設定を作るので、モデルを作る前にそれを差し替えて
+    ``session.intra_op.allow_spinning`` / ``inter_op`` を 0 にする（maai 自体は書き換えない）。
+    """
+    if allow_spinning:
+        return
+    try:
+        import onnxruntime as ort  # noqa: PLC0415
+    except Exception:  # noqa: BLE001
+        return
+    base = ort.SessionOptions
+    if getattr(base, "_maai_sds_no_spin", False):
+        return
+
+    class _NoSpinSessionOptions(base):  # type: ignore[misc, valid-type]
+        _maai_sds_no_spin = True
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            for key in ("session.intra_op.allow_spinning", "session.inter_op.allow_spinning"):
+                try:
+                    self.add_session_config_entry(key, "0")
+                except Exception:  # noqa: BLE001
+                    pass
+
+    ort.SessionOptions = _NoSpinSessionOptions
+    print("[MaAIWorker][ONNX] allow_spinning=0（推論の合間にスレッドを回さない）", file=sys.stderr, flush=True)
+
+
 def _resolve_inference_chunk_frames(config: dict[str, Any]) -> int:
     """``inference_chunk_frames``: Mimi encoder が 1 回の ONNX 呼び出しで処理する
 
@@ -437,6 +471,7 @@ def main() -> int:
         file=sys.stderr,
         flush=True,
     )
+    _install_ort_spin_control(bool(config.get("onnx_allow_spinning", False)))
 
     # Import maai lazily so startup can fail with clear worker error.
     from maai import Maai  # type: ignore[import-not-found]
