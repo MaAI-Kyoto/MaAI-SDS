@@ -62,6 +62,18 @@ class CpuBuildTest(unittest.TestCase):
                 mock.patch("maai_sds.engine_manager.device_extra", return_value="cu128"):
             self.assertFalse(device.is_cpu_build())
 
+    def test_worker_settings_use_the_same_cpu_build_check(self) -> None:
+        # GUI を通さないヘッドレス・Web でも、macOS では見本の cuda をワーカーへ渡さない
+        from maai_sds.dialog import settings as vds
+
+        with mock.patch.object(device.sys, "platform", "darwin"), \
+                mock.patch("maai_sds.engine_manager.device_extra", return_value=""):
+            self.assertTrue(vds._is_cpu_build())
+            self.assertEqual(vds._device("cuda", label="test"), "cpu")
+            self.assertEqual(vds._compute_type("int8_float16", label="test"), "int8")
+        with mock.patch.object(device, "is_cpu_build", return_value=False):
+            self.assertEqual(vds._device("cuda", label="test"), "cuda")
+
 
 if __name__ == "__main__":
     unittest.main()

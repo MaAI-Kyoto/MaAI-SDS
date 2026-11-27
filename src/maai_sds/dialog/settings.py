@@ -24,12 +24,16 @@ _DEFAULT_VOICEVOX_CORE_DEVICE = "CPU" if os.name != "nt" else "GPU"
 
 
 def _is_cpu_build() -> bool:
-    """この環境が CPU 構成か（環境構築時に選んだ .device_extra を見る）。"""
+    """この環境が CPU 構成か。GUI と同じ判定（device.is_cpu_build）を使う。
+
+    以前は .device_extra だけを見ていたので、macOS（いつも CPU 構成）でも GPU 構成とみなされ、
+    GUI を通さないヘッドレス・Web では見本の cuda / gpu-fp32 がそのままワーカーへ渡っていた。
+    """
     try:
-        from .. import engine_manager
+        from .. import device
     except Exception:  # noqa: BLE001
         return False
-    return engine_manager.device_extra() == "cpu"
+    return device.is_cpu_build()
 
 
 def _compute_type(value: str, *, label: str) -> str:
