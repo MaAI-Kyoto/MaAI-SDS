@@ -288,7 +288,7 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
 ```
 
 設定画面で ASR・LLM・TTS・MaAI・MMDAgent-EX を設定し、対話を開始します。初回起動時には
-`controller_config.example.json` から `controller_config.json`（Git 管理外）を作成します。
+`controller_config.example.json` から `controller_config.json`（Git 管理外）を作成します。設定にない項目は、見本の値を使います。
 
 > [!IMPORTANT]
 > `uv run python main.py` は使わないでください。extra なしで環境を同期するため、PySide6 が削除され、

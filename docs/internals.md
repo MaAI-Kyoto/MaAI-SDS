@@ -1014,7 +1014,7 @@ Qt アプリの起動（`main.py`）、画面の構築（`gui/ui.py`）、UI 状
 
 リポジトリ直下の `main.py` は互換用の薄いラッパーであり、実体は `src/maai_sds/main.py` である。
 
-1. `--config` の指定がなく `controller_config.json` も存在しない場合は `controller_config.example.json` から作成する。続いて `QApplication` を生成する。
+1. `--config` の指定がなく `controller_config.json` も存在しない場合は `controller_config.example.json` から作成する（`MMDAgentController` も、既定の場所に設定が無ければ同じことをする。`main()` を通らない経路のため）。続いて `QApplication` を生成する。
 2. 対話サーバー（ローカル / Docker）の選択を `dialog_server_mode` で解決したうえで、`MMDAgentController` を生成して `show()` する。
 3. SIGINT のハンドラはフラグを立て、終了処理を `QTimer.singleShot(0, ...)` で予約するだけにとどめる。あわせて 200 ms 間隔の
    `QTimer` でイベントループを定期的に起こし、`close` / `quit` はメインスレッドで実行する。スレッド安全性のため、
@@ -1154,7 +1154,10 @@ GUI 固有の事情は、引数や前処理として明示的に渡す。
 ### `config_store.py`
 
 - `ConfigStore(path: Path)`
-  - `load()`：JSON ファイルを `dict` として読み込み。ファイルが存在しない・破損している場合は `{}`
+  - `load()`：JSON ファイルを `dict` として読み込む。同じフォルダーに見本（`<名前>.example.json`。`example_path_for`）があれば
+    下に敷き、設定ファイルに無い項目を見本の値で埋める（既定値の置き場を見本 1 か所にするため）。設定ファイルが存在しない・
+    破損している場合は見本だけ、見本も無ければ `{}`。GUI を通しても見本の値が変わらないことは
+    `tests/test_example_config_is_the_default.py` で確かめる
   - `save(data)`：`indent=2` の UTF-8 JSON で上書き。同じディレクトリの一時ファイルに書いてから `os.replace` で置き換えるアトミックな書き込み
     （置き換えに失敗した場合は直接上書き）。書き込みの失敗は無視
   - `save_raising(data)`：`save` と同じ書き込みで、失敗時に例外を送出

@@ -302,7 +302,8 @@ collection and the `maai_sds` folder (steps 2 and 3).
 ```
 
 Configure ASR, LLM, TTS, MaAI and MMDAgent-EX in the settings window and start the dialogue. On first launch,
-`controller_config.json` (not tracked by Git) is created from `controller_config.example.json`.
+`controller_config.json` (not tracked by Git) is created from `controller_config.example.json`. Settings missing from it take the
+values in the example.
 
 > [!IMPORTANT]
 > Do not use `uv run python main.py`. It syncs the environment without extras, which removes PySide6 and replaces PyTorch
