@@ -43,11 +43,40 @@ from ..audio.convert import (
     wav_bytes_to_pcm16be_16k_mono,
 )
 
-_DEFAULT_VOICEVOX_ORT_FILE = (
-    "voicevox_runtime/onnxruntime/lib/libvoicevox_onnxruntime.so"
-    if _sys.platform != "win32"
-    else "voicevox_runtime/onnxruntime/lib/voicevox_onnxruntime.dll"
-)
+if _sys.platform == "win32":
+    _DEFAULT_VOICEVOX_ORT_FILE = "voicevox_runtime/onnxruntime/lib/voicevox_onnxruntime.dll"
+elif _sys.platform == "darwin":
+    _DEFAULT_VOICEVOX_ORT_FILE = "voicevox_runtime/onnxruntime/lib/libvoicevox_onnxruntime.dylib"
+else:
+    _DEFAULT_VOICEVOX_ORT_FILE = "voicevox_runtime/onnxruntime/lib/libvoicevox_onnxruntime.so"
+_VOICEVOX_ORT_SUFFIXES = (".dll", ".so", ".dylib")
+
+
+def _voicevox_ort_file_for_this_os(raw: Any) -> str:
+    """設定の ONNX Runtime のファイルが別の OS 用（.dll / .so / .dylib）なら、この OS の既定に置き換える。
+
+    見本の設定（controller_config.example.json）は Windows の .dll を指していて、設定は見本を下に敷いて
+    読むので、macOS・Linux ではそのままだと Windows 用のファイルを読みに行く。
+    """
+    text = str(raw or "").strip()
+    suffix = Path(text).suffix.lower()
+    if suffix in _VOICEVOX_ORT_SUFFIXES and suffix != Path(_DEFAULT_VOICEVOX_ORT_FILE).suffix:
+        return _DEFAULT_VOICEVOX_ORT_FILE
+    return text or _DEFAULT_VOICEVOX_ORT_FILE
+
+
+def _macos_performance_cores() -> int | None:
+    """macOS の性能コア（P コア）の数。取れなければ None。"""
+    if _sys.platform != "darwin":
+        return None
+    try:
+        out = subprocess.run(
+            ["sysctl", "-n", "hw.perflevel0.physicalcpu"], capture_output=True, text=True, timeout=5,
+        ).stdout.strip()
+        n = int(out)
+    except Exception:  # noqa: BLE001
+        return None
+    return n if n > 0 else None
 
 
 # VOICEVOX-Core に渡す CPU スレッド数の上限。
@@ -98,8 +127,15 @@ def _pin_voicevox_cpu_away_from_maai() -> None:
 
 
 def _resolve_voicevox_cpu_threads(raw: Any) -> int:
-    """`cpu_num_threads` を決める。未指定なら上限とコア数の小さい方。"""
+    """`cpu_num_threads` を決める。未指定なら上限とコア数の小さい方。
+
+    macOS では性能コアの数を上限にする。高効率コアにも回すと遅い（M4 Max〔性能 12・高効率 4〕で
+    10〜12 が最速、16 は「うん。」が 88 → 155 ms）。
+    """
     cores = max(int(multiprocessing.cpu_count() or 2), 2)
+    performance = _macos_performance_cores()
+    if performance:
+        cores = min(cores, performance)
     if raw is None or str(raw).strip() == "":
         return max(1, min(_VOICEVOX_CPU_THREADS_CAP, cores))
     try:
@@ -122,9 +158,9 @@ def _voicevox_chunked_mode(raw: Any) -> str:
 class VoicevoxCoreEngine:
     def __init__(self, cfg: dict[str, Any]) -> None:
         self.default_voice = str(cfg.get("voice", "8")).strip() or "8"
-        self.onnxruntime_file = str(
+        self.onnxruntime_file = _voicevox_ort_file_for_this_os(
             cfg.get("onnxruntime_file", _DEFAULT_VOICEVOX_ORT_FILE)
-        ).strip() or _DEFAULT_VOICEVOX_ORT_FILE
+        )
         self.openjtalk_dict = str(cfg.get("openjtalk_dict", "voicevox_runtime/dict/open_jtalk_dic_utf_8-1.11")).strip() or "voicevox_runtime/dict/open_jtalk_dic_utf_8-1.11"
         self.vvm_path = str(cfg.get("vvm_path", "voicevox_runtime/models/vvms/0.vvm")).strip() or "voicevox_runtime/models/vvms/0.vvm"
         # 設定は "AUTO" / "CPU" / "GPU (CUDA)" / "GPU (DirectML)"。voicevox_core が

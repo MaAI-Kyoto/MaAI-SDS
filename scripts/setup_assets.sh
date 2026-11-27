@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# エンジンごとのモデル資産を取得する（setup_assets.ps1 の Linux 版）。
+# エンジンごとのモデル資産を取得する（setup_assets.ps1 の Linux・macOS 版）。
 #
-# **対象は Linux（主に Docker）のみ**。engine_manager は Windows 以外で一律この
-# スクリプトを呼ぶが、ここが取りに行くのは Linux 向けバイナリ
-# （libvoicevox_onnxruntime.so / audio-*-bin-linux-x64-cuda*.zip）なので、
-# macOS で走らせても動かないものが置かれる。macOS を対象にするなら
-# uname で分岐して darwin 向けアセットを足すこと。
+# **主な対象は Linux（主に Docker）**。engine_manager は Windows 以外で一律この
+# スクリプトを呼ぶ。macOS（Apple Silicon）は既定のステップ（SherpaModels・SmartTurn・
+# UnidicDictIfInstalled・VoicevoxRuntime・VerifyAssets）に対応する。VoicevoxRuntime は
+# uname で分岐して macOS 用の ONNX Runtime を取る。ほかのエンジンの資産には Linux 向けの
+# バイナリ（audio-*-bin-linux-x64-cuda*.zip など）があり、macOS では動かないものがある。
 #
 # Windows 版と同じステップ名を受け付ける。engine_manager が OS を見てどちらを呼ぶか
 # 決めるので、ステップ名は両者で一致させること。
@@ -16,7 +16,9 @@ set -euo pipefail
 
 case "$(uname -s)" in
     Linux) ;;
-    *) printf '[warn] このスクリプトは Linux 向けです（検出: %s）。取得するバイナリはこの OS では動きません。\n' "$(uname -s)" >&2 ;;
+    Darwin)
+        printf '[info] macOS: 既定のステップ（ASR・smart-turn・VOICEVOX ランタイム）に対応しています。ほかのエンジンの資産には Linux 向けのものがあります。\n' >&2 ;;
+    *) printf '[warn] このスクリプトは Linux・macOS 向けです（検出: %s）。取得するバイナリはこの OS では動きません。\n' "$(uname -s)" >&2 ;;
 esac
 
 APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -418,11 +420,9 @@ PY
     ok "ダウンロード完了: Tsukasa-HF/"
 }
 
-invoke_voicevox_runtime() {
-    step "VOICEVOX ランタイム（ORT / OpenJTalk 辞書 / VVM）"
-    local rt="$VOICEVOX_RUNTIME"
-    mkdir -p "$rt"
-
+# VOICEVOX 版 ONNX Runtime（Linux x64）。CUDA 版があればそれを取る。
+install_voicevox_ort_linux() {
+    local rt="$1"
     local so_target="${rt}/onnxruntime/lib/libvoicevox_onnxruntime.so"
     local so_alt="${rt}/onnxruntime/lib/libvoicevox_onnxruntime.so.1"
     # 「あればスキップ」だけでは古い版が残り続ける。1.17.3 の CUDA ビルドは
@@ -469,6 +469,56 @@ invoke_voicevox_runtime() {
         cp -a "$(dirname "$src")/." "$(dirname "$so_target")/"
         rm -rf "$ex"
         ok "配置完了: $(dirname "$so_target")"
+    fi
+}
+
+# VOICEVOX 版 ONNX Runtime（macOS・Apple Silicon）。VOICEVOX Core の macOS 版は CPU だけで動く。
+# 版は 1.17.3 に固定する。Linux で 1.23 系を選ぶのは Blackwell 世代の GPU のためで、CPU だけの macOS には
+# 関係なく、M4 Max では 1.17.3 の方が 1.23.2 より長い文で約 25 % 速かった。
+VOICEVOX_ORT_MACOS_VERSION="1.17.3"
+install_voicevox_ort_macos() {
+    local rt="$1"
+    local ver="$VOICEVOX_ORT_MACOS_VERSION"
+    local lib="${rt}/onnxruntime/lib"
+    local target="${lib}/libvoicevox_onnxruntime.dylib"
+    if [ "$(uname -m)" != "arm64" ]; then
+        die "VOICEVOX の macOS 版 ONNX Runtime は Apple Silicon（arm64）用だけです（検出: $(uname -m)）"
+    fi
+    if [ -e "${lib}/libvoicevox_onnxruntime.${ver}.dylib" ]; then
+        # 実体を指すリンク。フォルダーを写すとリンクが落ちることがあるので、無ければ作り直す
+        [ -e "$target" ] || ln -sf "libvoicevox_onnxruntime.${ver}.dylib" "$target"
+        ok "既にあるためスキップ: ${lib}/ (${ver})"
+        return 0
+    fi
+    local url="https://github.com/VOICEVOX/onnxruntime-builder/releases/download/voicevox_onnxruntime-${ver}/voicevox_onnxruntime-osx-arm64-${ver}.tgz"
+    mkdir -p "${TMP_ROOT}"
+    local tgz="${TMP_ROOT}/voicevox_onnxruntime.tgz"
+    download "$url" "$tgz"
+    local ex="${TMP_ROOT}/ort_extract"
+    rm -rf "$ex"
+    mkdir -p "$ex"
+    tar -xzf "$tgz" -C "$ex"
+    rm -f "$tgz"
+    local src
+    src="$(find "$ex" -name "libvoicevox_onnxruntime.${ver}.dylib" -type f | head -n 1 || true)"
+    [ -n "$src" ] || die "tgz 内に libvoicevox_onnxruntime.${ver}.dylib が見つかりません"
+    rm -f "${lib}"/libvoicevox_onnxruntime*
+    mkdir -p "$lib"
+    cp -a "$(dirname "$src")/." "${lib}/"
+    [ -e "$target" ] || ln -sf "libvoicevox_onnxruntime.${ver}.dylib" "$target"
+    rm -rf "$ex"
+    ok "配置完了: ${lib}/ (${ver})"
+}
+
+invoke_voicevox_runtime() {
+    step "VOICEVOX ランタイム（ORT / OpenJTalk 辞書 / VVM）"
+    local rt="$VOICEVOX_RUNTIME"
+    mkdir -p "$rt"
+
+    if [ "$(uname -s)" = "Darwin" ]; then
+        install_voicevox_ort_macos "$rt"
+    else
+        install_voicevox_ort_linux "$rt"
     fi
 
     local dict_target="${rt}/dict/open_jtalk_dic_utf_8-1.11"
@@ -619,7 +669,7 @@ invoke_irodori_audiocpp_gguf() {
 }
 
 invoke_verify_assets() {
-    step "検証（Linux / Docker 配置確認）"
+    step "検証（Linux / Docker / macOS の配置確認）"
     local -a missing=()
     # 既定のステップで取るものだけを確かめる（ほかのエンジンは、エンジン管理が入っているかを判定する）。
     local -a checks=(
@@ -642,6 +692,10 @@ invoke_verify_assets() {
 
     local voicevox_so="${VOICEVOX_RUNTIME}/onnxruntime/lib/libvoicevox_onnxruntime.so"
     local voicevox_so_alt="${voicevox_so}.1"
+    if [ "$(uname -s)" = "Darwin" ]; then
+        voicevox_so="${VOICEVOX_RUNTIME}/onnxruntime/lib/libvoicevox_onnxruntime.dylib"
+        voicevox_so_alt="$voicevox_so"
+    fi
     if [ -e "$voicevox_so" ] || [ -e "$voicevox_so_alt" ]; then
         ok "VOICEVOX ORT: ${VOICEVOX_RUNTIME}/onnxruntime/lib/"
     else

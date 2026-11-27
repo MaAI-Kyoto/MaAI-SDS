@@ -149,7 +149,8 @@ Host and Docker can be switched, started and stopped from 「対話サーバー�
 | LLM | [LM Studio](https://lmstudio.ai/) with [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b) (`google/gemma-4-e4b`) by default. The OpenAI API and OpenAI-compatible servers also work |
 | Optional | [Node.js](https://nodejs.org/) (used by some tests), [Docker Desktop](https://www.docker.com/products/docker-desktop/), [VOICEVOX](https://voicevox.hiroshiba.jp/), [AivisSpeech](https://aivis-project.com/) |
 
-macOS has not been tested.
+On macOS with Apple Silicon, ASR, MaAI, the LLM and TTS (VOICEVOX Core, CPU only) have been confirmed to work
+([macOS (Apple Silicon)](#macos-apple-silicon)). Dialogue through the microphone and the avatar have not been tested.
 
 ---
 
@@ -199,6 +200,26 @@ TTS: VOICEVOX Core) are installed (engines that are already installed are kept).
 > - If you installed MSVC or CMake after a build had failed, the failed build settings remain in the uv cache.
 >   Remove them with `uv cache clean <package>` (for example `uv cache clean pyopenjtalk`) and run again.
 >   If it still fails, try running from Developer PowerShell for VS 2022.
+
+### macOS (Apple Silicon)
+
+`setup_env.ps1` is for Windows. On macOS, install as follows (requires Python 3.11 and [uv](https://docs.astral.sh/uv/)).
+
+```bash
+git clone https://github.com/MaAI-Kyoto/MaAI-SDS.git
+cd MaAI-SDS
+uv sync --extra cpu --extra gui --extra web --extra asr-sherpa --extra tts-voicevox
+bash scripts/setup_assets.sh      # ASR models, smart-turn and the VOICEVOX runtime for macOS
+.venv/bin/python main.py
+```
+
+- The macOS build of VOICEVOX Core runs on the CPU only. On the CPU it renders each sentence phrase by phrase so the
+  first sound comes sooner (`voicevox_core_chunked` in the VOICEVOX-Core settings). The default thread count is the number of
+  performance cores.
+- On battery (low power mode) synthesis is 3–5 times slower.
+- sherpa-onnx is the unpatched PyPI build (`nemotron-onnx` is less accurate; the default ReazonSpeech is not affected).
+- MMDAgent-EX is Windows only. Without it, speech goes to the speakers.
+- Intel Macs are not supported (the macOS builds of onnxruntime and VOICEVOX Core are for Apple Silicon only).
 
 ### 2. API keys
 
@@ -300,6 +321,8 @@ collection and the `maai_sds` folder (steps 2 and 3).
 ```powershell
 .venv\Scripts\python main.py
 ```
+
+On macOS and Linux, use `.venv/bin/python main.py`, and the same for the commands below.
 
 Configure ASR, LLM, TTS, MaAI and MMDAgent-EX in the settings window and start the dialogue. On first launch,
 `controller_config.json` (not tracked by Git) is created from `controller_config.example.json`. Settings missing from it take the

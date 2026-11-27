@@ -16,6 +16,7 @@ torch 側は `torch.cuda.is_available()` が信用できるのでそれを使う
 from __future__ import annotations
 
 import functools
+import sys
 from typing import Callable
 
 
@@ -142,7 +143,12 @@ def is_cpu_build() -> bool:
     実行時に CUDA の有無を探るのではなく、`.device_extra` を見る。探る方式は
     ONNX Runtime の CUDA セッションを作ると後続の torch.cuda.is_available() が
     False を返すようになるため、どのエンジンが先に聞いたかで答えが変わる。
+
+    macOS は CUDA も DirectML も無いので、いつも CPU 構成とみなす（setup_env.ps1 を通らないので
+    `.device_extra` も無い。以前は GPU の選択肢が選べ、`GPU (DirectML)` が保存されることがあった）。
     """
+    if sys.platform == "darwin":
+        return True
     try:
         from . import engine_manager
 

@@ -141,7 +141,8 @@ MaAI はユーザーとシステムの音声から、フレームごとに次の
 | LLM | 既定は [LM Studio](https://lmstudio.ai/) と [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b)（`google/gemma-4-e4b`）。OpenAI API・OpenAI 互換サーバーも利用可 |
 | その他（任意） | [Node.js](https://nodejs.org/)（一部のテストで使用）、[Docker Desktop](https://www.docker.com/products/docker-desktop/)、[VOICEVOX](https://voicevox.hiroshiba.jp/)、[AivisSpeech](https://aivis-project.com/) |
 
-macOS での動作は確認していません。
+macOS は Apple Silicon で、ASR・MaAI・LLM・TTS（VOICEVOX Core、CPU のみ）が動くことを確かめています
+（[macOS（Apple Silicon）](#macosapple-silicon)）。マイクでの対話とアバターは確かめていません。
 
 ---
 
@@ -191,6 +192,25 @@ Developer PowerShell から実行する必要はありません。
 > - ビルドに失敗したあとで MSVC や CMake を入れた場合は、失敗したときのビルド設定が uv のキャッシュに残っています。
 >   `uv cache clean <パッケージ名>`（例：`uv cache clean pyopenjtalk`）で消してから再実行してください。
 >   それでも失敗するときは、Developer PowerShell for VS 2022 から実行してみてください。
+
+### macOS（Apple Silicon）
+
+`setup_env.ps1` は Windows 用です。macOS では次の手順で入れます（Python 3.11 と [uv](https://docs.astral.sh/uv/) が必要）。
+
+```bash
+git clone https://github.com/MaAI-Kyoto/MaAI-SDS.git
+cd MaAI-SDS
+uv sync --extra cpu --extra gui --extra web --extra asr-sherpa --extra tts-voicevox
+bash scripts/setup_assets.sh      # ASR のモデル・smart-turn・VOICEVOX のランタイム（macOS 用）
+.venv/bin/python main.py
+```
+
+- VOICEVOX Core の macOS 版は CPU だけで動きます。CPU では、文節ごとに分けて合成して最初の声を早くします
+  （設定画面の「文節ごとの分割合成」）。スレッド数の既定は性能コアの数です。
+- 電源につないでいないとき（省電力モード）は、合成が 3〜5 倍遅くなります。
+- sherpa-onnx はパッチを当てていない PyPI 版になります（`nemotron-onnx` の精度が下がる。既定の ReazonSpeech は影響なし）。
+- MMDAgent-EX は Windows 版だけです。MMDAgent-EX が無いときは、音声をスピーカーから出します。
+- Intel の Mac には対応していません（onnxruntime と VOICEVOX Core の macOS 版が Apple Silicon 用だけ）。
 
 ### 2. API キー
 
@@ -286,6 +306,8 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
 ```powershell
 .venv\Scripts\python main.py
 ```
+
+macOS・Linux では `.venv/bin/python main.py`。以下のコマンドも同じように読み替えてください。
 
 設定画面で ASR・LLM・TTS・MaAI・MMDAgent-EX を設定し、対話を開始します。初回起動時には
 `controller_config.example.json` から `controller_config.json`（Git 管理外）を作成します。設定にない項目は、見本の値を使います。

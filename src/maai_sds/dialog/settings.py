@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -78,11 +79,13 @@ def _loopback_host(cfg: dict, key: str, default: str) -> str:
     return normalize_docker_loopback_host(cfg_str(cfg, key, default) or default)
 
 
-_DEFAULT_VOICEVOX_ORT = (
-    "voicevox_runtime/onnxruntime/lib/voicevox_onnxruntime.dll"
-    if os.name == "nt"
-    else "voicevox_runtime/onnxruntime/lib/libvoicevox_onnxruntime.so"
-)
+# エンジン（tts/engines.py の _voicevox_ort_file_for_this_os）が、別の OS 用のファイルをこの OS の既定に直す。
+if os.name == "nt":
+    _DEFAULT_VOICEVOX_ORT = "voicevox_runtime/onnxruntime/lib/voicevox_onnxruntime.dll"
+elif sys.platform == "darwin":
+    _DEFAULT_VOICEVOX_ORT = "voicevox_runtime/onnxruntime/lib/libvoicevox_onnxruntime.dylib"
+else:
+    _DEFAULT_VOICEVOX_ORT = "voicevox_runtime/onnxruntime/lib/libvoicevox_onnxruntime.so"
 
 
 # ----- 基本ヘルパ ----------------------------------------------------------------

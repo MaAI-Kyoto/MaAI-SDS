@@ -15,6 +15,10 @@ dependencies = [
     # CUDA 実行プロバイダが要る `[cuda,cudnn]` extra を GPU 構成でだけ付ける。
     # 素の `onnxruntime` に入れ替えないのは、両者が site-packages/onnxruntime/ を
     # 奪い合って dist-info を壊した過去があるため（下の override の注記参照）。
+    # macOS（Apple Silicon）には onnxruntime-gpu が無く、maai も macOS では onnxruntime-gpu を要求しないので、
+    # 素の onnxruntime を入れる（maai の encoder・smart-turn などが import する）。Windows / Linux では
+    # 入れない（下の override と同じ理由）。
+    "onnxruntime==1.25.1 ; sys_platform == 'darwin'",
     "silero-vad",
     "sounddevice>=0.5.5",
     # torch / torchaudio は base に置かない。GPU 無しのマシンでは cu128 ビルドが
@@ -102,6 +106,7 @@ asr-chirp3 = ["google-cloud-speech"]
 tts-voicevox = [
     "voicevox-core @ https://github.com/VOICEVOX/voicevox_core/releases/download/0.17.0/voicevox_core-0.17.0-cp310-abi3-manylinux_2_34_x86_64.whl ; sys_platform == 'linux'",
     "voicevox-core @ https://github.com/VOICEVOX/voicevox_core/releases/download/0.17.0/voicevox_core-0.17.0-cp310-abi3-win_amd64.whl ; sys_platform == 'win32'",
+    "voicevox-core @ https://github.com/VOICEVOX/voicevox_core/releases/download/0.17.0/voicevox_core-0.17.0-cp310-abi3-macosx_11_0_arm64.whl ; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 tts-kokoro = [
     "realtimetts[kokoro]==0.5.7",
@@ -152,7 +157,8 @@ maai-sds-web = "maai_sds.web.server:main"
 # maai (git) は独自の GuiPlot デバッグ機能のために PyQt5 一式（pyqt5/pyqt5-qt5/pyqt5-sip）を
 # 必須依存として要求する（本アプリのコードからは一切 import しない、無害な未使用依存）。
 # pyqt5-qt5 は無指定だと最新版（5.15.19 等）に解決され、Windows 向け wheel が無いため
-# Windows でも入る 5.15.2 に固定する。本アプリの GUI は PySide6 を使う。
+# Windows でも入る 5.15.2 に固定する。5.15.2 には Apple Silicon 用の wheel が無い（5.15.11 以降にはあるが、
+# そちらには Windows 用が無い）ので、macOS だけ 5.15.17 にする。本アプリの GUI は PySide6 を使う。
 [tool.uv]
 # torch を base 依存から外すと、maai / silero-vad / kokoro など **無指定で torch を引く
 # 依存**（12 パッケージある）が上位版を勝手に選ぶ。実測で torch 2.13.0 + nvidia-*-cu13 が
@@ -170,7 +176,8 @@ conflicts = [
     ],
 ]
 override-dependencies = [
-    "pyqt5-qt5==5.15.2",
+    "pyqt5-qt5==5.15.2 ; sys_platform != 'darwin'",
+    "pyqt5-qt5==5.15.17 ; sys_platform == 'darwin'",
     # asr-faster-whisper / tts-kokoro depend on plain `onnxruntime`, which installs into the
     # SAME site-packages/onnxruntime/ dir as the base dep `onnxruntime-gpu[cuda,cudnn]` above
     # (identical import name, overlapping files — the two are mutually exclusive upstream).
@@ -180,7 +187,8 @@ override-dependencies = [
     # disappeared). This always-false marker makes uv treat `onnxruntime` as never required,
     # so it's never installed at all — `import onnxruntime` still resolves fine at runtime via
     # onnxruntime-gpu's files (same importable module, pip/uv distribution bookkeeping aside).
-    "onnxruntime ; python_version < '0'",
+    # macOS has no onnxruntime-gpu, so there the plain build is required instead (base deps).
+    "onnxruntime==1.25.1 ; sys_platform == 'darwin'",
 ]
 
 [tool.uv.sources]
