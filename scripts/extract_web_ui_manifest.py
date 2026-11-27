@@ -576,12 +576,17 @@ def build_manifest() -> dict:
     # ある MDF のパスと、その MDF から読んだ値（WebSocket のポート、ログのファイル名など）が生成物に入り、
     # merge_app_ui_defaults 経由で全ユーザーの Web の既定値になっていた。`--check` も他の PC では落ちる。
     # Web 版は読み込み時に同じ探索をする（web/parity.py の fill_default_mmdagent_paths）。
+    from maai_sds import device as _device
     from maai_sds import engine_manager as _em
     from maai_sds.mmd import default_paths as _dp
 
     _orig_device_extra = _em.device_extra
+    _orig_is_cpu_build = _device.is_cpu_build
     _orig_detect = (_dp.detect_default_exec_path, _dp.detect_default_mdf_path)
     _em.device_extra = lambda: "cu128"
+    # macOS は .device_extra に関係なく CPU 構成とみなすので、判定そのものも GPU 構成にする。
+    # しないと、macOS で抽出したときだけ cuda などが cpu に寄せられた値がマニフェストに入る。
+    _device.is_cpu_build = lambda: False
     _dp.detect_default_exec_path = lambda *_a, **_k: ""
     _dp.detect_default_mdf_path = lambda *_a, **_k: ""
     try:
@@ -591,6 +596,7 @@ def build_manifest() -> dict:
             controller = gc.MMDAgentController(config_path=Path(tmp) / "no-such-config.json")
     finally:
         _em.device_extra = _orig_device_extra
+        _device.is_cpu_build = _orig_is_cpu_build
         _dp.detect_default_exec_path, _dp.detect_default_mdf_path = _orig_detect
     attrs = _attr_index(controller)
     keys = _config_key_index(controller)

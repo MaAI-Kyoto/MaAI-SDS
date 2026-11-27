@@ -51,7 +51,7 @@ class GuiKeepsEveryExampleValueTest(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def test_saving_without_a_config_writes_the_example_values(self) -> None:
-        from maai_sds import engine_manager
+        from maai_sds import device, engine_manager
         from maai_sds.gui import controller as controller_module
         from maai_sds.gui.controller import MMDAgentController
         from maai_sds.ipc.process_service import DialogOrchestratorProcessService
@@ -68,10 +68,12 @@ class GuiKeepsEveryExampleValueTest(unittest.TestCase):
             target = Path(tmp) / "controller_config.json"
             shutil.copyfile(example_src, example_path_for(target))
             # GPU 構成として作る（CPU のマシンでは GPU の選択肢が CPU 側へ寄せられる）。
+            # macOS は .device_extra に関係なく CPU 構成とみなすので、判定そのものも差し替える。
             # MMDAgent-EX の自動探索も止める（見本は空欄で、PC によって埋まる値が変わる）。
             with mock.patch.object(DialogOrchestratorProcessService, "start", lambda *_a, **_k: None), \
                     mock.patch.object(controller_module, "sd", _NoDeviceSoundDevice()), \
                     mock.patch.object(engine_manager, "device_extra", lambda: "cu128"), \
+                    mock.patch.object(device, "is_cpu_build", lambda: False), \
                     mock.patch.object(default_paths, "detect_default_exec_path", lambda *_a, **_k: ""), \
                     mock.patch.object(default_paths, "detect_default_mdf_path", lambda *_a, **_k: ""):
                 window = MMDAgentController(config_path=target)
