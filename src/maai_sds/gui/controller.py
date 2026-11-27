@@ -433,7 +433,18 @@ class MMDAgentController(
         # 設定を読み込んだ **後** に無効化する。先に当てると、GPU 機で書かれた設定を
         # 読んだ時点で無効項目が選択された状態に戻ってしまう。
         self._init_device_extra_controls()
-        apply_device_choice_limits(self)
+        # CPU 構成（macOS は常に）では、GPU の値（cuda など）を CPU に切り替える。切り替えのたびに
+        # 保存が走ると、まだ起動していない対話サーバーへ音声出力モジュールの起動を頼んで返事を待ち、
+        # GUI の初期化がそこで止まる（テストの偽サーバーでは 300 秒）。切り替えの間は保存を止め、
+        # 値が変わったときだけ最後に 1 回、対話サーバーとの同期なしで保存する（同期は起動後に行われる）。
+        before_limits = self._collect_app_config_payload()
+        self._is_loading_app_config = True
+        try:
+            apply_device_choice_limits(self)
+        finally:
+            self._is_loading_app_config = False
+        if self._collect_app_config_payload() != before_limits:
+            self._save_app_config(sync_orchestrator=False)
         self._set_asr_controls_state()
         self._update_maai_plot_wall_clock_timer()
         self._refresh_module_status_panel()
