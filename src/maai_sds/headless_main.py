@@ -275,12 +275,14 @@ class HeadlessClient:
                 if text:
                     print(f"[asr] {text}", flush=True)
         elif et == "llm_done":
-            reply = str(payload_obj.get("text", "") or "").strip()
+            # 対話の llm_done は返答を assistant_text で送る（dialog/runtime.py）。text は旧い形。
+            reply_raw = str(payload_obj.get("assistant_text") or payload_obj.get("text") or "")
+            reply = reply_raw.strip()
             if reply:
                 print(f"[llm] {reply}", flush=True)
             rid = str(payload_obj.get("request_id", "")).strip()
             if not self._llm_request_id or rid == self._llm_request_id:
-                self._llm_text = str(payload_obj.get("text", "") or "")
+                self._llm_text = reply_raw
                 self._llm_done.set()
         elif et == "llm_error":
             self._llm_error = str(payload_obj.get("message", "") or "")
