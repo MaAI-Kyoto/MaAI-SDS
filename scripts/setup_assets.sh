@@ -600,7 +600,48 @@ invoke_audio_cpp_vendor() {
     ok "clone 完了: audio.cpp/"
 }
 
+# macOS 用の audio.cpp サーバー（公式の Metal 版）。版は setup_assets.ps1 の $AudioCppVersion とそろえる。
+AUDIOCPP_VERSION="0.9.6"
+AUDIOCPP_SHA256_MACOS_ARM64="11848bf10d1142f18ec852051ff8dcd90c12b65b95e6f902b487bae565e3dfe0"
+
+# 置き場は paths.resolve_audiocpp_server が macOS で探す場所。フォルダー名の metal で
+# audiocpp_client.backend_for_server が backend を metal にする（Mac 版を cuda で起動すると exit 1 で落ちる）。
+invoke_audio_cpp_server_macos() {
+    step "audio.cpp サーバー ${AUDIOCPP_VERSION}（macOS arm64・Metal）"
+    local bin_dir="${PROJECT_ROOT}/audio.cpp/build/macos-metal-release/bin"
+    local exe="${bin_dir}/audiocpp_server"
+    if [ -x "$exe" ] && "$exe" --version 2>/dev/null | grep -q "audio.cpp ${AUDIOCPP_VERSION}"; then
+        ok "既にあるためスキップ: ${exe}"
+        return 0
+    fi
+    if [ "$(uname -m)" != "arm64" ]; then
+        die "このスクリプトが入れる audio.cpp の macOS 版は Apple Silicon（arm64）用だけです（検出: $(uname -m)）"
+    fi
+    local name="audio-v${AUDIOCPP_VERSION}-bin-macos-arm64-metal.tar.gz"
+    mkdir -p "${TMP_ROOT}"
+    local tgz="${TMP_ROOT}/${name}"
+    download "https://github.com/0xShug0/audio.cpp/releases/download/v${AUDIOCPP_VERSION}/${name}" "$tgz"
+    local got
+    got="$(sha256_of "$tgz")"
+    if [ "$got" != "${AUDIOCPP_SHA256_MACOS_ARM64}" ]; then
+        rm -f "$tgz"
+        die "audio.cpp の tar.gz の SHA-256 が違います: ${got}（期待値 ${AUDIOCPP_SHA256_MACOS_ARM64}）"
+    fi
+    rm -rf "$bin_dir"
+    mkdir -p "$bin_dir"
+    # tar.gz の直下に audiocpp_server・model_specs などが入っている
+    tar -xzf "$tgz" -C "$bin_dir"
+    rm -f "$tgz"
+    [ -x "$exe" ] || die "展開後も audiocpp_server が見つかりません: ${exe}"
+    "$exe" --version >/dev/null || die "audio.cpp のサーバーを起動できません: ${exe}"
+    ok "配置完了（metal）: ${exe}"
+}
+
 invoke_audio_cpp_server() {
+    if [ "$(uname -s)" = "Darwin" ]; then
+        invoke_audio_cpp_server_macos
+        return 0
+    fi
     step "audio.cpp サーバー（Linux バイナリまたは公式 Docker イメージ）"
     local linux_bin="${PROJECT_ROOT}/audio.cpp/build/linux-cuda-release/bin/audiocpp_server"
     if [ -x "$linux_bin" ]; then

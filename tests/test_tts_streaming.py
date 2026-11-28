@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import numpy as np
 
 from maai_sds.audio.convert import StreamingPcm16Resampler, resample_pcm16le
-from maai_sds.tts.audiocpp_client import AudioCppServer, AudioCppSpeechClient
+from maai_sds.tts.audiocpp_client import AudioCppServer, AudioCppSpeechClient, backend_for_server
 from maai_sds.tts.engines_audiocpp import IrodoriAudioCppEngine, Lfm2AudioEngine
 
 RATE = 24000
@@ -111,7 +111,9 @@ class AudioCppClientTest(unittest.TestCase):
 class AudioCppEngineTest(unittest.TestCase):
     def test_irodori_backend_key_does_not_leak_into_audiocpp_device(self) -> None:
         eng = IrodoriAudioCppEngine({"backend": "audiocpp", "audiocpp_model_path": "."})
-        self.assertEqual(eng.server.backend, "cuda")
+        # 置いてあるサーバーから決めた値（Windows・Linux は cuda、macOS は metal）になり、"audiocpp" にはならない
+        self.assertEqual(eng.server.backend, backend_for_server(eng.server.server_exe))
+        self.assertNotEqual(eng.server.backend, "audiocpp")
 
     def test_lfm2_stream_and_offline_give_16k_big_endian(self) -> None:
         with _Server() as srv:

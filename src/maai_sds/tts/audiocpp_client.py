@@ -16,6 +16,7 @@ import http.client
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -171,16 +172,20 @@ def launch_server(*, server_exe: Path, config_file: Path, config: dict[str, Any]
 
 
 def backend_for_server(server_exe: Path) -> str:
-    """置いてある audio.cpp サーバーの種類から backend（cuda / vulkan / cpu）を決める。
+    """置いてある audio.cpp サーバーの種類から backend（cuda / vulkan / cpu / metal）を決める。
 
     audio.cpp は Windows 用に CUDA・Vulkan・CPU 版を配っている。NVIDIA の GPU が無い PC（内蔵 GPU だけ）では
     Vulkan 版が速い（Iris Xe で Supertonic 3 の 23 文字が 0.64 秒。CPU 版 4 スレッドは 2.5 秒）。
-    フォルダー名に vulkan / cpu があればそれ、隣の FLAVOR.txt が cpu / vulkan / cuda で始まればそれ、無ければ cuda。
+    macOS 用は Metal 版（backend は cpu と metal）。
+    フォルダー名に vulkan / cpu / metal があればそれ、隣の FLAVOR.txt がそのどれかか cuda で始まればそれ、
+    無ければ macOS は metal、ほかは cuda。macOS に CUDA は無く、Mac 版のサーバーを `--backend cuda` で起動すると
+    exit 1 で落ちる（以前は macOS でも cuda になっていた）。
     セットアップ（setup_assets.ps1）は、どの種類でも audio.cpp/build/windows-cuda-release/bin/ に置き、
-    FLAVOR.txt に種類を書く（既定のパスを 1 つにしておくため）。
+    FLAVOR.txt に種類を書く（既定のパスを 1 つにしておくため）。setup_assets.sh は macOS では
+    audio.cpp/build/macos-metal-release/bin/ に置く。
     """
     parts = [p.lower() for p in server_exe.parts]
-    for name in ("vulkan", "cpu"):
+    for name in ("vulkan", "cpu", "metal"):
         if any(name in p for p in parts[-4:]):
             return name
     flavor = server_exe.parent / "FLAVOR.txt"
@@ -188,10 +193,10 @@ def backend_for_server(server_exe: Path) -> str:
         head = flavor.read_text(encoding="utf-8-sig").strip().lower()
     except OSError:
         head = ""
-    for name in ("vulkan", "cpu", "cuda"):
+    for name in ("vulkan", "cpu", "metal", "cuda"):
         if head.startswith(name):
             return name
-    return "cuda"
+    return "metal" if sys.platform == "darwin" else "cuda"
 
 
 def default_threads(backend: str) -> int:

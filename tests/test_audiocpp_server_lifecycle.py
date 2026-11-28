@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -56,7 +57,9 @@ class SupertonicBackendAndThreadsTest(unittest.TestCase):
     def test_backend_from_the_server_folder(self) -> None:
         self.assertEqual(_audiocpp_backend_for(Path("audio.cpp/build/windows-vulkan-release/bin/audiocpp_server.exe")), "vulkan")
         self.assertEqual(_audiocpp_backend_for(Path("x/build/windows-cpu/bin/audiocpp_server.exe")), "cpu")
-        self.assertEqual(_audiocpp_backend_for(Path("C:/nowhere/build/windows-cuda-release/bin/audiocpp_server.exe")), "cuda")
+        # 手がかりが無ければ cuda なのは Windows・Linux。macOS では metal になる（test_macos_engines）
+        with mock.patch.object(sys, "platform", "win32"):
+            self.assertEqual(_audiocpp_backend_for(Path("C:/nowhere/build/windows-cuda-release/bin/audiocpp_server.exe")), "cuda")
 
     def test_backend_from_flavor_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -93,7 +96,9 @@ class OtherAudioCppEnginesTest(unittest.TestCase):
 
     def test_old_setup_without_flavor_file_stays_cuda(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            server = ac.AudioCppServer(host="", port=1, models=[], server_exe=str(self._exe(tmp, None)))
+            # Windows の配置。macOS で走らせても Windows として確かめる（macOS の既定は metal）
+            with mock.patch.object(sys, "platform", "win32"):
+                server = ac.AudioCppServer(host="", port=1, models=[], server_exe=str(self._exe(tmp, None)))
             self.assertEqual((server.backend, server.threads), ("cuda", 8))
 
     def test_explicit_values_win(self) -> None:

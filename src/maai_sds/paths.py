@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from pathlib import Path
 
 # `.py` が並んでいるディレクトリ（パッケージ化するとパッケージ内を指す）
@@ -206,10 +207,15 @@ def resolve_venv_python(raw: str, venv_dir: str) -> Path:
 
 _AUDIOCPP_WIN = "audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe"
 _AUDIOCPP_LINUX = "audio.cpp/build/linux-cuda-release/bin/audiocpp_server"
+# macOS（Apple Silicon）は公式の Metal 版（audio-<版>-bin-macos-arm64-metal.tar.gz）を setup_assets.sh がここに置く。
+# フォルダー名の metal で audiocpp_client.backend_for_server が backend を metal にする。
+_AUDIOCPP_MACOS = "audio.cpp/build/macos-metal-release/bin/audiocpp_server"
 
 
 def default_audiocpp_server() -> str:
     """存在する audio.cpp サーバーバイナリの相対パス。"""
+    if sys.platform == "darwin":
+        return _AUDIOCPP_MACOS
     linux = resolve_under_repo(_AUDIOCPP_LINUX)
     if linux.is_file():
         return _AUDIOCPP_LINUX
@@ -217,13 +223,20 @@ def default_audiocpp_server() -> str:
 
 
 def resolve_audiocpp_server(raw: str) -> Path:
-    """設定の EXE パスを解決し、無ければ Linux ビルドを探す。"""
+    """設定の EXE パスを解決し、無ければこの OS の置き場（Linux・macOS）を探す。
+
+    設定の既定値は Windows の .exe なので、Linux・macOS ではたいてい置き場のほうが使われる。
+    macOS では Linux・Windows のバイナリは動かないので候補にしない（見つからないときのエラーにも macOS の場所が出る）。
+    """
     text = (raw or "").strip()
     candidates: list[str] = []
     if text:
         candidates.append(text.replace("\\", "/"))
-    candidates.append(_AUDIOCPP_LINUX)
-    candidates.append(_AUDIOCPP_WIN)
+    if sys.platform == "darwin":
+        candidates.append(_AUDIOCPP_MACOS)
+    else:
+        candidates.append(_AUDIOCPP_LINUX)
+        candidates.append(_AUDIOCPP_WIN)
     seen: set[str] = set()
     last = resolve_under_repo(candidates[0])
     for item in candidates:

@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import sysconfig
 from pathlib import Path
 from typing import Callable
@@ -43,7 +44,8 @@ class EngineInfo:
 
 
 # 共有の実行系の取得量（GB）。audio.cpp は bin と CUDA ランタイムの zip（v0.9.6）。
-SHARED_RUNTIME_GB: dict[str, float] = {"audiocpp": 1.1}
+# macOS は Metal 版の tar.gz だけ（v0.9.6 で 40 MB）。
+SHARED_RUNTIME_GB: dict[str, float] = {"audiocpp": 0.04 if sys.platform == "darwin" else 1.1}
 
 _ENGINE_DEFINITIONS = (
     EngineInfo("asr-faster-whisper", "Faster-Whisper", "asr-faster-whisper", "faster_whisper"),
@@ -276,6 +278,9 @@ def _posixify_probe_path(raw: str) -> str | None:
     if text.endswith("VOICEVOX.exe"):
         return None
     if text.endswith("audiocpp_server.exe"):
+        # setup_assets.sh が置く場所（paths.resolve_audiocpp_server が探す場所と同じ）
+        if sys.platform == "darwin":
+            return "audio.cpp/build/macos-metal-release/bin/audiocpp_server"
         return "audio.cpp/build/linux-cuda-release/bin/audiocpp_server"
     if text.endswith("speechcpp/speech.exe"):
         return text[: -len(".exe")]
@@ -295,8 +300,9 @@ def _probe_paths_satisfied(item: EngineInfo) -> bool:
         original = raw.replace("\\", "/")
         if original.endswith("audiocpp_server.exe") or adapted.endswith("audiocpp_server"):
             optional_bins.append(adapted)
-            optional_bins.append("audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe")
-            optional_bins.append("audio.cpp/build/linux-cuda-release/bin/audiocpp_server")
+            if sys.platform != "darwin":  # macOS では Windows・Linux のサーバーは動かない
+                optional_bins.append("audio.cpp/build/windows-cuda-release/bin/audiocpp_server.exe")
+                optional_bins.append("audio.cpp/build/linux-cuda-release/bin/audiocpp_server")
             continue
         required.append(adapted)
     if not required and not optional_bins:
