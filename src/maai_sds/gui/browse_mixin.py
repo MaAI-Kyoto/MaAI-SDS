@@ -86,6 +86,13 @@ class FileBrowseMixin:
             self.load_mdf_settings()
             self._save_app_config()
 
+    def _browse_avatar_browser_web_dir(self) -> None:
+        current = self.avatar_browser_web_dir_edit.text().strip()
+        folder = QFileDialog.getExistingDirectory(self, "MMDAgent-EX Web のフォルダーを選択", current or "")
+        if folder:
+            self.avatar_browser_web_dir_edit.setText(folder)
+            self._save_app_config()
+
     def _browse_maai_local_model(self, edit_attr: str, title: str) -> None:
         edit = getattr(self, edit_attr, None)
         if edit is None:

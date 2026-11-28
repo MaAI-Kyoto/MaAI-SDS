@@ -294,12 +294,10 @@ What `maai_sds.mdf` does:
 can show the avatar in place of MMDAgent-EX. MMDAgent-EX itself (step 1 above) is not needed; prepare only the example
 collection and the `maai_sds` folder (steps 2 and 3).
 
-1. Set up MMDAgent-EX Web and open its page. It needs Chrome or Edge and an HTTP server for the page (Python below).
+1. Put MMDAgent-EX Web in `C:\mmdagent-ex-web` (`~/mmdagent-ex-web` on macOS).
 
    ```powershell
    git clone https://github.com/kazu44ttaka/mmdagent-ex-web.git C:\mmdagent-ex-web
-   cd C:\mmdagent-ex-web
-   python -m http.server 8000   # keep it running and open http://localhost:8000 in the browser
    ```
 
    On macOS, do the following (this also prepares the example collection and the `maai_sds` folder; with this layout the MDF is filled in automatically in the settings window).
@@ -308,15 +306,20 @@ collection and the `maai_sds` folder (steps 2 and 3).
    git clone --recursive https://github.com/mmdagent-ex/example ~/MMDAgent-EX/example
    cp -R assets/mmdagent/maai_sds ~/MMDAgent-EX/example/   # run in the MaAI-SDS folder
    git clone https://github.com/kazu44ttaka/mmdagent-ex-web.git ~/mmdagent-ex-web
-   cd ~/mmdagent-ex-web
-   python3 -m http.server 8000   # keep it running and open http://localhost:8000 in Chrome or Edge
    ```
 
 2. Set 「アバターの表示先」 (avatar display) in 「MMDAgent-EX起動設定」 to 「ブラウザ（MMDAgent-EX Web）」. MaAI-SDS then does not
    start MMDAgent-EX and listens on `ws://localhost:9001/chat` (the port can be changed there; browsers cannot open TCP,
-   so the TCP settings of the MDF are not used).
-3. In MMDAgent-EX Web, choose the example collection folder (for example `C:\MMDAgent-EX\example`, or `~/MMDAgent-EX/example` on macOS), start
-   `maai_sds/maai_sds_web.mdf` and connect.
+   so the TCP settings of the MDF are not used). If MMDAgent-EX Web is somewhere else, set it in 「MMDAgent-EX Web」 under
+   「ファイル設定」 (file settings).
+3. Press 「MMDAgent-EX起動」 (start MMDAgent-EX) in the main window. MaAI-SDS serves the MMDAgent-EX Web page and the example
+   collection at `http://localhost:8010/` (reachable from this PC only; the port is 「ページ」 in the same window) and opens it in
+   the default browser. The page starts `maai_sds_web.mdf` next to the MDF and connects to the dialogue server by itself.
+   Browsers keep audio off until the page is clicked, so press 「クリックすると声が出ます」 (click to turn on sound) at the bottom.
+   「停止」 (stop) stops serving the page (close the tab yourself).
+
+   To open it by hand instead, run `python -m http.server 8000` in the MMDAgent-EX Web folder, open <http://localhost:8000>,
+   choose the example collection folder (for example `C:\MMDAgent-EX\example`), start `maai_sds/maai_sds_web.mdf` and connect.
 
 > [!NOTE]
 > This repository does not include MMDAgent-EX, the avatars or the motions (get them from their distributors with the steps above).

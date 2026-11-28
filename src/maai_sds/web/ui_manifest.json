@@ -7177,6 +7177,20 @@
               "label": "",
               "widgets": [
                 {
+                  "attr": "avatar_browser_http_port_edit",
+                  "config_key": "avatar_browser_http_port",
+                  "scope": "app",
+                  "tooltip": "「MMDAgent-EX起動」で MMDAgent-EX Web のページとサンプル集を配るポート（http://localhost:<ポート>/）。この PC からだけつなげます。Web UI（8000）とは別のポートにしてください。",
+                  "kind": "line",
+                  "value": "8010",
+                  "password": false
+                }
+              ]
+            },
+            {
+              "label": "",
+              "widgets": [
+                {
                   "attr": "exec_edit",
                   "config_key": "exec_path",
                   "scope": "app",
@@ -7226,6 +7240,34 @@
                   "kind": "button",
                   "text": "参照…",
                   "browse_target": "mdf_edit"
+                }
+              ]
+            },
+            {
+              "label": "",
+              "widgets": [
+                {
+                  "attr": "avatar_browser_web_dir_edit",
+                  "config_key": "avatar_browser_web_dir",
+                  "scope": "app",
+                  "tooltip": "MMDAgent-EX Web（https://github.com/kazu44ttaka/mmdagent-ex-web）を clone したフォルダー。ブラウザ表示のとき「MMDAgent-EX起動」でここのページを配り、MDF のシーンを指定してブラウザで開きます。",
+                  "kind": "line",
+                  "value": "",
+                  "password": false
+                }
+              ]
+            },
+            {
+              "label": "",
+              "widgets": [
+                {
+                  "attr": "avatar_browser_web_dir_browse_btn",
+                  "config_key": null,
+                  "scope": "app",
+                  "tooltip": null,
+                  "kind": "button",
+                  "text": "参照…",
+                  "browse_target": "avatar_browser_web_dir_edit"
                 }
               ]
             }

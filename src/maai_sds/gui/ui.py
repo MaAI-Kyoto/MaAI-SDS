@@ -1,4 +1,5 @@
 import os
+import sys
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QDoubleValidator
@@ -1849,13 +1850,38 @@ def build_ui(controller) -> None:
     controller.avatar_browser_ws_port_edit.setToolTip("ブラウザ版がつなぐ WebSocket のポート（ws://localhost:<ポート>/chat）。")
     controller.avatar_browser_ws_port_edit.setEnabled(False)
     controller.avatar_browser_ws_port_edit.editingFinished.connect(controller._save_app_config)
+    controller.avatar_browser_http_port_edit = QLineEdit("8010")
+    controller.avatar_browser_http_port_edit.setToolTip(
+        "「MMDAgent-EX起動」で MMDAgent-EX Web のページとサンプル集を配るポート（http://localhost:<ポート>/）。"
+        "この PC からだけつなげます。Web UI（8000）とは別のポートにしてください。"
+    )
+    controller.avatar_browser_http_port_edit.setEnabled(False)
+    controller.avatar_browser_http_port_edit.editingFinished.connect(controller._save_app_config)
     controller.avatar_display_combo.currentIndexChanged.connect(controller._on_avatar_display_changed)
     avatar_display_row = QHBoxLayout()
     avatar_display_row.addWidget(controller.avatar_display_combo, 1)
     avatar_display_row.addWidget(QLabel("ポート"))
     avatar_display_row.addWidget(controller.avatar_browser_ws_port_edit)
+    avatar_display_row.addWidget(QLabel("ページ"))
+    avatar_display_row.addWidget(controller.avatar_browser_http_port_edit)
     avatar_display_widget = QWidget()
     avatar_display_widget.setLayout(avatar_display_row)
+
+    # MMDAgent-EX Web のフォルダー（「MMDAgent-EX起動」がここのページを配ってブラウザで開く）
+    controller.avatar_browser_web_dir_edit = QLineEdit("")
+    controller.avatar_browser_web_dir_edit.setPlaceholderText(
+        r"空欄なら C:\mmdagent-ex-web" if sys.platform == "win32" else "空欄なら ~/mmdagent-ex-web"
+    )
+    controller.avatar_browser_web_dir_edit.setToolTip(
+        "MMDAgent-EX Web（https://github.com/kazu44ttaka/mmdagent-ex-web）を clone したフォルダー。"
+        "ブラウザ表示のとき「MMDAgent-EX起動」でここのページを配り、MDF のシーンを指定してブラウザで開きます。"
+    )
+    controller.avatar_browser_web_dir_edit.setEnabled(False)
+    controller.avatar_browser_web_dir_edit.editingFinished.connect(controller._save_app_config)
+    avatar_web_dir_browse_btn = QPushButton("参照…")
+    avatar_web_dir_browse_btn.clicked.connect(controller._browse_avatar_browser_web_dir)
+    controller.avatar_browser_web_dir_browse_btn = avatar_web_dir_browse_btn
+    avatar_web_dir_browse_btn.setEnabled(False)
 
     settings_file_form = QGridLayout()
     settings_file_form.addWidget(QLabel("アバターの表示先"), 0, 0)
@@ -1866,6 +1892,9 @@ def build_ui(controller) -> None:
     settings_file_form.addWidget(QLabel("MDFファイル"), 2, 0)
     settings_file_form.addWidget(controller.mdf_edit, 2, 1)
     settings_file_form.addWidget(mdf_browse_btn, 2, 2)
+    settings_file_form.addWidget(QLabel("MMDAgent-EX Web"), 3, 0)
+    settings_file_form.addWidget(controller.avatar_browser_web_dir_edit, 3, 1)
+    settings_file_form.addWidget(avatar_web_dir_browse_btn, 3, 2)
     settings_file_box = QGroupBox("ファイル設定")
     settings_file_box.setLayout(settings_file_form)
 

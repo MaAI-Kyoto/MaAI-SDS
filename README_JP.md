@@ -282,12 +282,10 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
 **ブラウザに表示する場合**：MMDAgent-EX 本体の代わりに、ブラウザ版の [MMDAgent-EX Web](https://github.com/kazu44ttaka/mmdagent-ex-web)
 でアバターを表示できます。本体（上の手順 1）は要らず、サンプル集と `maai_sds` フォルダー（手順 2・3）だけを用意します。
 
-1. MMDAgent-EX Web を導入し、ページを開きます。Chrome か Edge と、ページを配る HTTP サーバー（下では Python）を使います。
+1. MMDAgent-EX Web を `C:\mmdagent-ex-web`（macOS は `~/mmdagent-ex-web`）に置きます。
 
    ```powershell
    git clone https://github.com/kazu44ttaka/mmdagent-ex-web.git C:\mmdagent-ex-web
-   cd C:\mmdagent-ex-web
-   python -m http.server 8000   # 開いたままにして、ブラウザで http://localhost:8000 を開く
    ```
 
    macOS では次のようにします（サンプル集と `maai_sds` フォルダーもここで用意します。この置き方なら、設定画面の MDF が自動で入ります）。
@@ -296,14 +294,19 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
    git clone --recursive https://github.com/mmdagent-ex/example ~/MMDAgent-EX/example
    cp -R assets/mmdagent/maai_sds ~/MMDAgent-EX/example/   # MaAI-SDS のフォルダーで実行する
    git clone https://github.com/kazu44ttaka/mmdagent-ex-web.git ~/mmdagent-ex-web
-   cd ~/mmdagent-ex-web
-   python3 -m http.server 8000   # 開いたままにして、Chrome か Edge で http://localhost:8000 を開く
    ```
 
 2. 「MMDAgent-EX起動設定」の「アバターの表示先」を「ブラウザ（MMDAgent-EX Web）」にします。MaAI-SDS は MMDAgent-EX を起動せず、
    `ws://localhost:9001/chat` で待ち受けます（ポートは同じ画面で変えられます。ブラウザは TCP を開けないので、MDF の TCP の
-   設定は使いません）。
-3. MMDAgent-EX Web でサンプル集のフォルダー（例：`C:\MMDAgent-EX\example`、macOS では `~/MMDAgent-EX/example`）を選び、`maai_sds/maai_sds_web.mdf` を開始して接続します。
+   設定は使いません）。MMDAgent-EX Web を別の場所に置いたときは、「ファイル設定」の「MMDAgent-EX Web」で指定します。
+3. メイン画面の「MMDAgent-EX起動」を押します。MaAI-SDS が MMDAgent-EX Web のページとサンプル集を
+   `http://localhost:8010/`（この PC からだけ。ポートは同じ画面の「ページ」）で配り、既定のブラウザで開きます。ページは
+   MDF の隣の `maai_sds_web.mdf` を始めて、対話サーバーへ自動で接続します。ブラウザはクリックするまで音を出さないので、
+   画面の下の「クリックすると声が出ます」を押してください。「停止」で配信を止めます（タブは手で閉じます）。
+
+   手で開くこともできます：MMDAgent-EX Web のフォルダーで `python -m http.server 8000` を実行して
+   <http://localhost:8000> を開き、サンプル集のフォルダー（例：`C:\MMDAgent-EX\example`）を選び、
+   `maai_sds/maai_sds_web.mdf` を開始して接続します。
 
 > [!NOTE]
 > MaAI-SDS のリポジトリには、MMDAgent-EX 本体・アバター・モーションは含まれていません（上の手順で各配布元から取得します）。

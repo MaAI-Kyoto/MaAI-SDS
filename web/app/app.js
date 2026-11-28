@@ -2384,6 +2384,11 @@ async function startMmdagent() {
     if (state.mdfDirty.size) throw new Error('MDFを保存できなかったためMMDAgent-EXを起動しません。');
   }
   const status = await api.post('/api/mmdagent/start', {});
+  // ブラウザ表示のときは、サーバーが配る MMDAgent-EX Web を新しいタブで開く（ボタンを押してすぐなら
+  // ポップアップとして止められない。止められたら URL を出す）
+  if (status.browser_url && !window.open(status.browser_url, '_blank')) {
+    appendConsole(`[MMDAgent] ブラウザで ${status.browser_url} を開いてください`);
+  }
   applyMmdagentStatus(status);
   appendConsole(`[MMDAgent] ${status.message || '起動要求を送信しました'}`);
   if (status.fst_message) appendConsole(`[MMDAgent] ${status.fst_message}`);

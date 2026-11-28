@@ -1366,7 +1366,7 @@ def create_app(
     async def mmdagent_action(action: str) -> dict[str, Any]:
         if action not in {"start", "stop"}:
             raise HTTPException(status_code=404, detail="unknown MMDAgent action")
-        available, reason = runtime_policy.mmd_launch_availability()
+        available, reason = mmdagent.launch_availability()
         if not available:
             raise HTTPException(status_code=501, detail=reason)
         try:

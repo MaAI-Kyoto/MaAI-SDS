@@ -669,6 +669,8 @@ class AppConfigIOMixin:
             self._apply_app_config_field(cfg, "asr_maai_turn_condition")
             self._apply_app_config_field(cfg, "avatar_display")
             self._apply_app_config_field(cfg, "avatar_browser_ws_port")
+            self._apply_app_config_field(cfg, "avatar_browser_http_port")
+            self._apply_app_config_field(cfg, "avatar_browser_web_dir")
             self._apply_app_config_field(cfg, "asr_maai_turn_hold_frames")
             self._apply_app_config_field(cfg, "asr_smart_turn_threshold")
             self._apply_app_config_field(cfg, "asr_smart_turn_num_threads")

@@ -969,6 +969,20 @@ def avatar_browser_ws_port(cfg: dict) -> int:
     return port if 1 <= port <= 65535 else AVATAR_BROWSER_WS_DEFAULT_PORT
 
 
+AVATAR_BROWSER_HTTP_DEFAULT_PORT = 8010
+
+
+def avatar_browser_http_port(cfg: dict) -> int:
+    """MMDAgent-EX Web のページを配るポート（`avatar_browser_http_port`、既定 8010。Web UI の 8000 とは別）。"""
+    port = cfg_int(cfg, "avatar_browser_http_port", AVATAR_BROWSER_HTTP_DEFAULT_PORT)
+    return port if 1 <= port <= 65535 else AVATAR_BROWSER_HTTP_DEFAULT_PORT
+
+
+def avatar_browser_web_dir(cfg: dict) -> str:
+    """MMDAgent-EX Web のフォルダー（`avatar_browser_web_dir`）。空なら既定の場所（mmd/web_viewer.default_web_dir）。"""
+    return cfg_str(cfg, "avatar_browser_web_dir", "").strip()
+
+
 def build_remote_plugin_tcp_settings_dict(
     cfg: dict,
     *,

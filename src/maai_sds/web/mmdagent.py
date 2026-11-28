@@ -18,6 +18,7 @@ from typing import Any
 from ..config_store import ConfigStore
 from ..dialog import settings as vds
 from ..ipc.process_service import MMDProcessService
+from ..mmd import web_viewer
 from ..mmd.console_filter import is_per_frame_line
 from . import parity as web_parity
 
@@ -130,6 +131,7 @@ class WebMmdAgentController:
         self._stopping = False
         self._last_exit_code: int | None = None
         self._last_bridge_error = ""
+        self._web_viewer = web_viewer.WebViewerLauncher()
 
     def _config(self) -> dict[str, Any]:
         return web_parity.merge_app_ui_defaults(
@@ -204,9 +206,15 @@ class WebMmdAgentController:
             "both_enabled": False,
         }
 
+    def launch_availability(self, cfg: dict[str, Any] | None = None) -> tuple[bool, str]:
+        """起動ボタンを使えるか。ブラウザ表示ならコンテナの外のどの OS でも（MMDAgent-EX を起動しないので）。"""
+        if not self.policy.docker and vds.avatar_in_browser(cfg if cfg is not None else self._config()):
+            return True, ""
+        return self.policy.mmd_launch_availability()
+
     def status(self) -> dict[str, Any]:
         cfg = self._config()
-        available, reason = self.policy.mmd_launch_availability()
+        available, reason = self.launch_availability(cfg)
         running = bool(self.process_service.is_running())
         process = getattr(self.process_service, "process", None)
         pid = getattr(process, "pid", None) if running else None
@@ -317,19 +325,28 @@ class WebMmdAgentController:
         self._emit_event({"type": "mmdagent_status", **self.status()})
 
     def start(self) -> dict[str, Any]:
-        available, reason = self.policy.mmd_launch_availability()
+        cfg = self._config()
+        available, reason = self.launch_availability(cfg)
         if not available:
             raise MmdAgentLaunchUnavailable(reason)
 
-        cfg = self._config()
         if vds.avatar_in_browser(cfg):
-            # アバターはブラウザ版（MMDAgent-EX Web）に出す設定：MMDAgent-EX は起動せず、受け口だけ用意する
+            # アバターはブラウザ版（MMDAgent-EX Web）に出す設定：MMDAgent-EX は起動せず、受け口を用意して、
+            # ページとサンプル集を配る（ブラウザで開く URL を返す。Qt の「MMDAgent-EX起動」と同じ）
             self.sync_audio_output()
+            try:
+                url = self._web_viewer.launch(
+                    web_dir=vds.avatar_browser_web_dir(cfg),
+                    mdf_path=str(cfg.get("mdf_path") or ""),
+                    http_port=vds.avatar_browser_http_port(cfg),
+                    ws_port=vds.avatar_browser_ws_port(cfg),
+                )
+            except web_viewer.WebViewerError as exc:
+                raise MmdAgentConfigurationError(str(exc)) from exc
+            self._log(f"[MMDAgent] MMDAgent-EX Web を配っています：{url}")
             result = self.status()
-            result["message"] = (
-                "アバターはブラウザ（MMDAgent-EX Web）に表示する設定です。MMDAgent-EX Web で maai_sds_web.mdf を開始し、"
-                f"ws://localhost:{vds.avatar_browser_ws_port(cfg)}/chat に接続してください。"
-            )
+            result["browser_url"] = url
+            result["message"] = f"ブラウザで MMDAgent-EX Web を開きます：{url}"
             return result
         exec_path = Path(str(cfg.get("exec_path") or "").strip())
         mdf_path = Path(str(cfg.get("mdf_path") or "").strip())
@@ -396,6 +413,15 @@ class WebMmdAgentController:
         return result
 
     def stop(self, *, sync_audio_output: bool = True, emit: bool = True) -> dict[str, Any]:
+        if self._web_viewer.stop():
+            self._send_remote_stop()
+            message = "MMDAgent-EX Web の配信を止めました（ブラウザのタブは閉じてください）。"
+            self._log(f"[MMDAgent] {message}")
+            result = self.status()
+            result["message"] = message
+            if emit:
+                self._emit_event({"type": "mmdagent_status", **result})
+            return result
         with self._lock:
             was_running = bool(self.process_service.is_running())
             self._generation += 1
@@ -415,5 +441,6 @@ class WebMmdAgentController:
         return result
 
     def close(self) -> None:
+        self._web_viewer.stop()
         if self.process_service.is_running():
             self.stop(sync_audio_output=False, emit=False)

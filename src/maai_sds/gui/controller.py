@@ -12,6 +12,7 @@ import subprocess
 import sys
 import threading
 import time
+import webbrowser
 from datetime import datetime
 from typing import Any
 from pathlib import Path
@@ -34,6 +35,7 @@ from ..docker_paths import DockerPathMapper
 from . import settings as cs
 from ..config_store import ConfigStore
 from ..mmd.mdf_service import MdfService
+from ..mmd import web_viewer
 from ..ipc.process_service import (
     DialogOrchestratorProcessService,
     MMDProcessService,
@@ -3398,9 +3400,15 @@ class MMDAgentController(
     def _on_avatar_display_changed(self, _index: int = 0) -> None:
         """表示先を切り替えたら、保存して音声の出口とブリッジ（TCP / WebSocket）を取り直す。"""
         browser = self._avatar_in_browser()
-        edit = getattr(self, "avatar_browser_ws_port_edit", None)
-        if edit is not None:
-            edit.setEnabled(browser)
+        for name in (
+            "avatar_browser_ws_port_edit",
+            "avatar_browser_http_port_edit",
+            "avatar_browser_web_dir_edit",
+            "avatar_browser_web_dir_browse_btn",
+        ):
+            widget = getattr(self, name, None)
+            if widget is not None:
+                widget.setEnabled(browser)
         if getattr(self, "_is_loading_app_config", False):
             return
         # 保存すると音声の出口を取り直し、出せるならブリッジの設定も送る（_save_app_config）
@@ -6644,14 +6652,7 @@ class MMDAgentController(
 
     def launch_mmdagent(self) -> None:
         if self._avatar_in_browser():
-            port = vds.avatar_browser_ws_port(self._widget_config_snapshot())
-            QMessageBox.information(
-                self,
-                "ブラウザ表示",
-                "アバターはブラウザ（MMDAgent-EX Web）に表示する設定なので、MMDAgent-EX は起動しません。\n\n"
-                "MMDAgent-EX Web でコンテンツのフォルダーを選び、maai_sds_web.mdf を開始して、"
-                f"ws://localhost:{port}/chat に接続してください。",
-            )
+            self._launch_browser_avatar()
             return
         exec_path = Path(self.exec_edit.text().strip())
         mdf_path = self._current_mdf_host_path(warn=True)
@@ -6711,7 +6712,40 @@ class MMDAgentController(
             QMessageBox.critical(self, "起動失敗", str(ex))
             self.status_label.setText("状態：起動失敗")
 
+    def _launch_browser_avatar(self) -> None:
+        """ブラウザ表示：MMDAgent-EX Web のページとサンプル集を配り、シーンと接続先を指定してブラウザで開く。"""
+        cfg = self._widget_config_snapshot()
+        mdf_path = self._current_mdf_host_path(warn=True)
+        if mdf_path is None:
+            return
+        launcher = getattr(self, "_web_viewer", None)
+        if launcher is None:
+            launcher = self._web_viewer = web_viewer.WebViewerLauncher()
+        try:
+            url = launcher.launch(
+                web_dir=vds.avatar_browser_web_dir(cfg),
+                mdf_path=str(mdf_path),
+                http_port=vds.avatar_browser_http_port(cfg),
+                ws_port=vds.avatar_browser_ws_port(cfg),
+            )
+        except web_viewer.WebViewerError as ex:
+            QMessageBox.warning(self, "MMDAgent-EX Web", str(ex))
+            return
+        # 音声の出口とブリッジ（WebSocket）は、表示先をブラウザにしたときに用意してある（_on_avatar_display_changed）。
+        # ページは対話サーバーにつながるまで、つなぎ直し続ける。
+        if not webbrowser.open(url):
+            QMessageBox.information(self, "MMDAgent-EX Web", f"ブラウザで次の URL を開いてください：\n{url}")
+        self.status_label.setText(f"状態：ブラウザで MMDAgent-EX Web を開きました（{url}）")
+
+    def _stop_browser_avatar(self) -> bool:
+        launcher = getattr(self, "_web_viewer", None)
+        return bool(launcher is not None and launcher.stop())
+
     def stop_mmdagent(self) -> None:
+        if self._stop_browser_avatar():
+            self._send_remote_plugin_stop()
+            self.status_label.setText("状態：MMDAgent-EX Web の配信を止めました（ブラウザのタブは閉じてください）")
+            return
         was_running = self.process_service.is_running()
         if was_running:
             self.process_service.stop()
@@ -6731,6 +6765,7 @@ class MMDAgentController(
             pass
         self._controller_closing = True
         self._fast_shutdown = True
+        self._stop_browser_avatar()
         self._stop_remote_mic_capture()
         # ワーカーを落とす前に LM Studio のモデルを解放する（VRAM を握ったままにしない）。
         if not self._remote_backend_enabled:
