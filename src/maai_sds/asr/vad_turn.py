@@ -180,24 +180,50 @@ class VadTurnMixin:
                 for chunk in chunks:
                     self._maai_mic_chunk.put_chunk(chunk)
                     self._maai_zero_chunk.put_chunk(self._get_system_audio_chunk(chunk.shape[0]))
-                    # 同期取得: 現在フレームに対応する最新のMAAI結果を待って取得する。
-                    result = self._maai_instance.get_result()
-                    if frame is not None:
-                        self._emit_maai_result(
-                            result,
-                            source_ts_start=float(frame.ts_start),
-                            source_ts_end=float(frame.ts_end),
-                            source_sample_start=int(frame.sample_start),
-                            source_sample_end=int(frame.sample_end),
-                        )
-                    else:
-                        self._emit_maai_result(result)
-                    last_vad = float(result["vad"][0])
+                    # 同期取得: 現在フレームに対応する最新のMAAI結果を待って取得する（結果が無いチャンクもある）。
+                    for result in self._take_maai_vad_results():
+                        if frame is not None:
+                            self._emit_maai_result(
+                                result,
+                                source_ts_start=float(frame.ts_start),
+                                source_ts_end=float(frame.ts_end),
+                                source_sample_start=int(frame.sample_start),
+                                source_sample_end=int(frame.sample_end),
+                            )
+                        else:
+                            self._emit_maai_result(result)
+                        last_vad = float(result["vad"][0])
                 return last_vad
             except Exception as ex:
                 self._error(f"MAAI VAD 推論に失敗しました: {ex}")
                 return None
         return None
+
+    # MaAI の結果を待つ上限。1 チャンクの推論（CPU で数十 ms）より十分長く、超えても VAD が 1 フレーム遅れるだけ。
+    MAAI_VAD_RESULT_TIMEOUT_SEC = 0.5
+
+    def _take_maai_vad_results(self) -> list[dict]:
+        """チャンクを 1 つ入れたあとの MaAI の結果を受け取る（0 個のこともある）。
+
+        MaAI はチャンクごとに結果を 1 つ返すとは限らない。Mimi を ONNX で動かすモデル
+        （normal-ver2 など）は最初のエンコーダー出力を捨てて結果を出さず、音声特徴が
+        取れなかったフレームも結果を出さない。Maai.get_result() は結果が来るまで待ち続けるため、
+        それを呼ぶと VAD のループが止まり、ASR が区間を 1 つも切り出さなくなる。
+        待つ時間に上限を付け、遅れて届いた結果もここでまとめて受け取る。
+        """
+        result_queue = getattr(self._maai_instance, "result_dict_queue", None)
+        if result_queue is None:
+            return [self._maai_instance.get_result()]
+        results: list[dict] = []
+        try:
+            results.append(result_queue.get(timeout=self.MAAI_VAD_RESULT_TIMEOUT_SEC))
+        except queue.Empty:
+            return results
+        while True:
+            try:
+                results.append(result_queue.get_nowait())
+            except queue.Empty:
+                return results
 
     def _smart_turn_loop(self) -> None:
         while not self._stop_event.is_set():
