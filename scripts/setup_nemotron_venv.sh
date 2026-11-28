@@ -4,7 +4,14 @@ set -euo pipefail
 
 APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="${1:-.venv_nemotron}"
-TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
+# CUDA 版の torch の索引。macOS には CUDA 版が無い（cu128 には macOS の wheel が無く
+# 「No matching distribution found for torch」で止まる）ので、MPS も使える CPU 版の索引にする。
+if [ "$(uname -s)" = "Darwin" ]; then
+    DEFAULT_TORCH_INDEX_URL="https://download.pytorch.org/whl/cpu"
+else
+    DEFAULT_TORCH_INDEX_URL="https://download.pytorch.org/whl/cu128"
+fi
+TORCH_INDEX_URL="${TORCH_INDEX_URL:-$DEFAULT_TORCH_INDEX_URL}"
 NEMO_VERSION="${NEMO_VERSION:===3.0.0}"
 
 if [[ "${VENV_DIR}" = /* ]]; then
@@ -40,7 +47,7 @@ echo "[nemotron] Upgrading pip..."
 "$VENV_PYTHON" -m pip install --upgrade pip
 
 if [ -n "$TORCH_INDEX_URL" ]; then
-    echo "[nemotron] Installing CUDA torch from ${TORCH_INDEX_URL} ..."
+    echo "[nemotron] Installing torch from ${TORCH_INDEX_URL} ..."
     "$VENV_PYTHON" -m pip install torch torchaudio --index-url "$TORCH_INDEX_URL"
 fi
 
@@ -49,7 +56,7 @@ echo "[nemotron] Installing ${NEMO_SPEC} ..."
 "$VENV_PYTHON" -m pip install "$NEMO_SPEC"
 
 echo "[nemotron] Verifying imports..."
-"$VENV_PYTHON" -c "import torch, nemo.collections.asr as a; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())"
+"$VENV_PYTHON" -c "import torch, nemo.collections.asr as a; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), 'mps', torch.backends.mps.is_available())"
 
 echo ""
 echo "[nemotron] Done. Set ASR 'Nemotron Python' to: ${VENV_DIR}/bin/python"
