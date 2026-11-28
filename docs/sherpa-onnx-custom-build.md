@@ -9,6 +9,7 @@ PyPI の `sherpa-onnx` には含まれていません。MaAI-SDS では、公式
 通常は自分でビルドする必要はありません。`scripts\setup_env.ps1`（および `scripts/setup_assets.sh`）が、
 GitHub Releases に公開しているビルド済みパッケージ（Python 3.11 用）を取得して導入します。
 自分でビルドする必要があるのは、Python のバージョンが異なる場合と、パッチを変更する場合のみです。
+macOS 用のビルド済みパッケージは配布していないので、`nemotron-onnx` を使うときは Mac でビルドします（[自分でビルドする（macOS）](#自分でビルドするmacos)）。
 
 Docker イメージ（GPU 版・CPU 版とも）は、ビルド時に Linux 用のビルド済みパッケージを同じ Releases から取得して導入します。
 CUDA 版のビルドですが、CUDA は使用時にのみ読み込むため、GPU の無い環境でも CPU で動作します。
@@ -64,6 +65,18 @@ CUDA と cuDNN の DLL は、venv の `nvidia-*` と `torch` の wheel から `o
 自動で検出します（cuDNN を別途導入する必要はありません）。CPU のみで使用する場合は `-CpuOnly` でビルドできます（`setup_env.ps1 -Device cpu` はこちらを使います）。
 
 Linux 用のビルド済みパッケージは `scripts/build_sherpa_prebuilt_linux.sh` で作成します。
+
+## 自分でビルドする（macOS）
+
+前提：Git、Xcode Command Line Tools（`xcode-select --install`）、`uv sync` 済みの `.venv`（Python 3.11）。Apple Silicon の Mac で数分かかります。
+
+```bash
+bash scripts/setup_env.sh --build-sherpa      # 環境の構築とあわせてビルドする
+bash scripts/upgrade_sherpa_onnx.sh           # ビルドだけ（clone・パッチ・ビルド・インストール・確認まで）
+```
+
+`upgrade_sherpa_onnx.sh` は `scripts/build_sherpa_prebuilt_linux.sh` で CPU 版をビルドし、`vendor/sherpa_onnx_prebuilt/` に置いてから
+`.venv` に入れ、`.sherpa_onnx_git_built` を書きます。以後の `setup_env.sh` とエンジン管理の「適用」は、`uv sync` のあとにここから戻します。
 
 ## Nemotron の ONNX モデル
 
@@ -131,6 +144,8 @@ JSUT 20 文を 1 発話ずつまとめて投入した場合の、平均遅延と
 ```powershell
 .\scripts\setup_env.ps1      # 待避しておいたビルド済みパッケージを戻す（無ければ取ってくる）
 ```
+
+macOS では `bash scripts/setup_env.sh`（`vendor/sherpa_onnx_prebuilt/` から戻す）です。
 
 それでも解決しない場合は、`.\scripts\upgrade_sherpa_onnx.ps1` でビルドし直してください。
 `scripts/fix_sherpa_onnx_init.py` は、`.pyd` と `__init__.py` の公開名が一致しなくなった場合の修正用です。

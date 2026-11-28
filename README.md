@@ -140,17 +140,16 @@ Host and Docker can be switched, started and stopped from 「対話サーバー�
 
 | Item | Requirement |
 |---|---|
-| OS | Windows (tested on Windows 11; the Qt app, setup scripts and MMDAgent-EX). The dialogue server also runs in Docker (Linux) |
+| OS | Windows (tested on Windows 11; the Qt app, setup scripts and MMDAgent-EX) and macOS (Apple Silicon, tested on macOS 26; [macOS (Apple Silicon)](#macos-apple-silicon)). The dialogue server also runs in Docker (Linux) |
 | Python | [3.11](https://www.python.org/downloads/) (the official python.org build is recommended; `.python-version` pins 3.11 because the prebuilt sherpa-onnx package targets 3.11) |
-| Build tools (some engines only) | [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (Desktop development with C++) and [CMake](https://cmake.org/). Not needed for the default setup; needed to install Kokoro or Tsukasa (their dependencies are built from source) and to build sherpa-onnx from source |
+| Build tools (some engines only) | [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (Desktop development with C++) and [CMake](https://cmake.org/). Not needed for the default setup; needed to install Kokoro or Tsukasa (their dependencies are built from source) and to build sherpa-onnx from source. On macOS, Xcode Command Line Tools (`xcode-select --install`), needed to build the sherpa-onnx used by `nemotron-onnx` |
 | Package manager | [uv](https://docs.astral.sh/uv/) |
-| GPU | An NVIDIA GPU (CUDA 12.8) is recommended. CPU-only setups are also supported |
-| Avatar | [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) (Windows build, tested with v2.1) and a CG avatar ([setup](#3-mmdagent-ex-and-the-avatar)) |
+| GPU | An NVIDIA GPU (CUDA 12.8) is recommended. CPU-only setups are also supported. On macOS, some engines use the Apple Silicon GPU (Metal, MPS) |
+| Avatar | [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX) (Windows build, tested with v2.1) and a CG avatar ([setup](#3-mmdagent-ex-and-the-avatar)). On macOS, the browser version [MMDAgent-EX Web](https://github.com/kazu44ttaka/mmdagent-ex-web) |
 | LLM | [LM Studio](https://lmstudio.ai/) with [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b) (`google/gemma-4-e4b`) by default. The OpenAI API and OpenAI-compatible servers also work |
-| Optional | [Node.js](https://nodejs.org/) (used by some tests), [Docker Desktop](https://www.docker.com/products/docker-desktop/), [VOICEVOX](https://voicevox.hiroshiba.jp/), [AivisSpeech](https://aivis-project.com/) |
+| Optional | [Node.js](https://nodejs.org/) (used by some tests), [Docker Desktop](https://www.docker.com/products/docker-desktop/), [VOICEVOX](https://voicevox.hiroshiba.jp/), [AivisSpeech](https://aivis-project.com/), [7-Zip](https://www.7-zip.org/) (on macOS, to install VOICEVOX (the app version) and AivisSpeech; `brew install sevenzip`) |
 
-On macOS with Apple Silicon, ASR, MaAI, the LLM and TTS (VOICEVOX Core, CPU only) have been confirmed to work
-([macOS (Apple Silicon)](#macos-apple-silicon)). Dialogue through the microphone and the avatar have not been tested.
+macOS is supported on Apple Silicon Macs. See [macOS (Apple Silicon)](#macos-apple-silicon) for the steps and the differences from Windows.
 
 ---
 
@@ -159,7 +158,7 @@ On macOS with Apple Silicon, ASR, MaAI, the LLM and TTS (VOICEVOX Core, CPU only
 ### 1. Environment
 
 `uv sync` alone does not complete the environment (a patched sherpa-onnx and the engine assets are also needed).
-The required steps are collected in `scripts/setup_env.ps1`.
+The required steps are collected in `scripts/setup_env.ps1` (on macOS, `scripts/setup_env.sh`; see [macOS (Apple Silicon)](#macos-apple-silicon)).
 
 ```powershell
 git clone https://github.com/MaAI-Kyoto/MaAI-SDS.git
@@ -190,7 +189,7 @@ TTS: VOICEVOX Core) are installed (engines that are already installed are kept).
 
 > [!WARNING]
 > Running `uv sync` on its own replaces the patched sherpa-onnx with the PyPI build. Run `scripts\setup_env.ps1`
-> again to restore it ([docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md), Japanese).
+> (on macOS, `bash scripts/setup_env.sh`) again to restore it ([docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md), Japanese).
 
 > [!NOTE]
 > If the setup fails on Windows:
@@ -203,23 +202,46 @@ TTS: VOICEVOX Core) are installed (engines that are already installed are kept).
 
 ### macOS (Apple Silicon)
 
-`setup_env.ps1` is for Windows. On macOS, install as follows (requires Python 3.11 and [uv](https://docs.astral.sh/uv/)).
+On macOS, use `scripts/setup_env.sh` (requires [uv](https://docs.astral.sh/uv/) and Git; uv fetches Python 3.11 if it is missing).
 
 ```bash
 git clone https://github.com/MaAI-Kyoto/MaAI-SDS.git
 cd MaAI-SDS
-uv sync --extra cpu --extra gui --extra web --extra asr-sherpa --extra tts-voicevox
-bash scripts/setup_assets.sh      # ASR models, smart-turn and the VOICEVOX runtime for macOS
+bash scripts/setup_env.sh
 .venv/bin/python main.py
 ```
 
-- The macOS build of VOICEVOX Core runs on the CPU only. On the CPU it renders each sentence phrase by phrase so the
-  first sound comes sooner (`voicevox_core_chunked` in the VOICEVOX-Core settings). The default thread count is the number of
-  performance cores.
-- On battery (low power mode) synthesis is 3–5 times slower.
-- sherpa-onnx is the unpatched PyPI build (`nemotron-onnx` is less accurate; the default ReazonSpeech is not affected).
-- MMDAgent-EX is Windows only. Without it, speech goes to the speakers.
-- Intel Macs are not supported (the macOS builds of onnxruntime and VOICEVOX Core are for Apple Silicon only).
+The steps are the same as `setup_env.ps1`: `uv sync` (CPU setup) → restore the patched sherpa-onnx → fetch the engine assets
+(`scripts/setup_assets.sh`) → verify (sherpa-onnx version, worker start-up, GUI construction, tests).
+Other engines are installed from 「エンジン管理」 (Engine Manager), as on Windows.
+
+| Option | Description |
+|---|---|
+| `--with-nemotron` | Also create `.venv_nemotron` for the `nemotron-asr` engine |
+| `--build-sherpa` | Build the patched sherpa-onnx on this Mac and install it (needed for `nemotron-onnx`; needs Xcode Command Line Tools and takes a few minutes). Once built, later runs of `setup_env.sh` and the Engine Manager restore it from `vendor/sherpa_onnx_prebuilt` |
+| `--skip-assets` | Do not fetch the engine assets |
+| `--all-extras` | Install the Python packages of every engine |
+| `--skip-tests` | Do not run the tests in `tests/` during the final verification |
+| `--verify-only` | Only verify, without installing anything |
+
+Differences from Windows:
+
+- **GPU**: speech.cpp (Haas-ja, Irodori) and audio.cpp (Irodori, Supertonic 3, Qwen3-TTS, LFM2.5-Audio) use Metal, and the
+  PyTorch version of Irodori uses MPS. VOICEVOX Core and the sherpa-onnx ASR engines run on the CPU.
+- **VOICEVOX Core**: it runs on the CPU, so it renders each sentence phrase by phrase to make the first sound come sooner
+  (`voicevox_core_chunked` in the VOICEVOX-Core settings). The default thread count is the number of performance cores.
+- **VOICEVOX (the app version) and AivisSpeech**: the Engine Manager installs the macOS builds of the engines, and the app starts them.
+  Extracting them needs 7-Zip (`brew install sevenzip`).
+- **`nemotron-onnx`**: available after `--build-sherpa` (or `bash scripts/upgrade_sherpa_onnx.sh`). The other sherpa-onnx engines
+  (including the default ReazonSpeech) work with the PyPI build.
+- **Engines that are heavy on the CPU**: `nemotron-asr` cannot keep up with an inference every 80 ms, so set
+  `asr_nemotron_chunk_size_ms` to 560. `Tsukasa` synthesizes slower than real time.
+- **Not available**: `qwen3-asr` (a vLLM Docker image that needs an NVIDIA GPU) and Intel Macs (the macOS builds of onnxruntime,
+  VOICEVOX Core and others are for Apple Silicon only).
+- **Avatar**: MMDAgent-EX itself is Windows only, so show the avatar with the browser version MMDAgent-EX Web
+  ([Showing the avatar in a browser instead](#3-mmdagent-ex-and-the-avatar)). Without an avatar, speech goes to the speakers.
+- **Power**: on battery (low power mode), synthesis and recognition are 3–5 times slower.
+- Dialogue through the microphone and showing the avatar in MMDAgent-EX Web have not been tested on a Mac yet.
 
 ### 2. API keys
 
@@ -280,10 +302,20 @@ collection and the `maai_sds` folder (steps 2 and 3).
    python -m http.server 8000   # keep it running and open http://localhost:8000 in the browser
    ```
 
+   On macOS, do the following (this also prepares the example collection and the `maai_sds` folder).
+
+   ```bash
+   git clone --recursive https://github.com/mmdagent-ex/example ~/MMDAgent-EX/example
+   cp -R assets/mmdagent/maai_sds ~/MMDAgent-EX/example/   # run in the MaAI-SDS folder
+   git clone https://github.com/kazu44ttaka/mmdagent-ex-web.git ~/mmdagent-ex-web
+   cd ~/mmdagent-ex-web
+   python3 -m http.server 8000   # keep it running and open http://localhost:8000 in Chrome or Edge
+   ```
+
 2. Set 「アバターの表示先」 (avatar display) in 「MMDAgent-EX起動設定」 to 「ブラウザ（MMDAgent-EX Web）」. MaAI-SDS then does not
    start MMDAgent-EX and listens on `ws://localhost:9001/chat` (the port can be changed there; browsers cannot open TCP,
    so the TCP settings of the MDF are not used).
-3. In MMDAgent-EX Web, choose the example collection folder (for example `C:\MMDAgent-EX\example`), start
+3. In MMDAgent-EX Web, choose the example collection folder (for example `C:\MMDAgent-EX\example`, or `~/MMDAgent-EX/example` on macOS), start
    `maai_sds/maai_sds_web.mdf` and connect.
 
 > [!NOTE]
@@ -308,9 +340,9 @@ collection and the `maai_sds` folder (steps 2 and 3).
 | Application | Preparation |
 |---|---|
 | [LM Studio](https://lmstudio.ai/) (default LLM) | Download [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b) (`lms get google/gemma-4-e4b`) and start the local server (the model can be changed in the settings) |
-| [VOICEVOX](https://voicevox.hiroshiba.jp/) / [AivisSpeech](https://aivis-project.com/) | Install and start each engine |
+| [VOICEVOX](https://voicevox.hiroshiba.jp/) / [AivisSpeech](https://aivis-project.com/) | Install and start each engine (on macOS, the Engine Manager installs the macOS builds and the app starts them) |
 | OpenAI-compatible server | Expose an API with [vLLM](https://github.com/vllm-project/vllm) or similar (LLM backend "Custom") |
-| Qwen3-ASR | [Docker Desktop](https://www.docker.com/products/docker-desktop/) and an NVIDIA GPU. The settings window starts the container automatically when the ASR starts |
+| Qwen3-ASR | [Docker Desktop](https://www.docker.com/products/docker-desktop/) and an NVIDIA GPU. The settings window starts the container automatically when the ASR starts (not available on macOS) |
 
 ---
 
@@ -376,16 +408,16 @@ Speed, accuracy and memory comparisons of Japanese ASR, TTS and LLMs, measured p
 | Engine | Runs on | Notes |
 |---|---|---|
 | `sherpa-onnx` | Local ([sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)) | [ReazonSpeech k2-v2](https://huggingface.co/reazon-research/reazonspeech-k2-v2). Default |
-| `speechcpp-asr` | Local ([speech.cpp](https://github.com/nyosegawa/speech.cpp)) | [Haas-ja v1.0](https://huggingface.co/third-intelligence/Haas-ja-v1.0), [ReazonSpeech NeMo v2](https://huggingface.co/reazon-research/reazonspeech-nemo-v2), [Parakeet TDT-CTC 0.6B ja](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja), [Qwen3-ASR 1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B). Haas-ja takes about 30 ms per utterance on a GPU with 0.8 GB of GPU memory. Uses Vulkan on Windows and CUDA in the Docker GPU image |
+| `speechcpp-asr` | Local ([speech.cpp](https://github.com/nyosegawa/speech.cpp)) | [Haas-ja v1.0](https://huggingface.co/third-intelligence/Haas-ja-v1.0), [ReazonSpeech NeMo v2](https://huggingface.co/reazon-research/reazonspeech-nemo-v2), [Parakeet TDT-CTC 0.6B ja](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja), [Qwen3-ASR 1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B). Haas-ja takes about 30 ms per utterance on a GPU with 0.8 GB of GPU memory. Uses Vulkan on Windows, CUDA in the Docker GPU image and Metal on macOS |
 | `sensevoice-onnx` | Local (sherpa-onnx) | [SenseVoiceSmall](https://huggingface.co/FunAudioLLM/SenseVoiceSmall) |
 | `parakeet-onnx` | Local (sherpa-onnx) | [Parakeet TDT-CTC 0.6B Japanese](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja) |
 | `cohere-asr-onnx` | Local (sherpa-onnx) | [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) (14 languages) |
 | `funasr-nano-onnx` | Local (sherpa-onnx) | [Fun-ASR-Nano-2512](https://huggingface.co/FunAudioLLM/Fun-ASR-Nano-2512) |
 | `qwen3-asr-onnx` | Local (sherpa-onnx) | [Qwen3-ASR 0.6B](https://huggingface.co/Qwen/Qwen3-ASR-0.6B) |
-| `nemotron-onnx` | Local (patched sherpa-onnx) | [Nemotron 3.5 streaming](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b). True streaming recognition |
+| `nemotron-onnx` | Local (patched sherpa-onnx) | [Nemotron 3.5 streaming](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b). True streaming recognition. On macOS, available after `setup_env.sh --build-sherpa` |
 | `faster-whisper` | Local ([faster-whisper](https://github.com/SYSTRAN/faster-whisper)) | Whisper models |
 | `qwen3-asr` | Docker ([`qwenllm/qwen3-asr`](https://hub.docker.com/r/qwenllm/qwen3-asr)) | [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR) (vLLM). The container starts and stops with the ASR |
-| `nemotron-asr` | Dedicated environment ([NeMo](https://github.com/NVIDIA/NeMo)) | Create `.venv_nemotron` from the Engine Manager or with `setup_env.ps1 -WithNemotron` |
+| `nemotron-asr` | Dedicated environment ([NeMo](https://github.com/NVIDIA/NeMo)) | Create `.venv_nemotron` from the Engine Manager or with `setup_env.ps1 -WithNemotron` (on macOS, `setup_env.sh --with-nemotron`) |
 | `external-asr-tcp` | External | Connects to an external ASR over TCP |
 
 Voice activity detection can be `maai` or [`silero`](https://github.com/snakers4/silero-vad), and turn detection `maai` or
@@ -396,7 +428,7 @@ Measurements of each engine and the reasoning behind the defaults are in [docs/a
 
 | Engine | Runs on | Notes |
 |---|---|---|
-| `VOICEVOX-Core` | Local ([voicevox_core](https://github.com/VOICEVOX/voicevox_core)) | Default. GPU supported |
+| `VOICEVOX-Core` | Local ([voicevox_core](https://github.com/VOICEVOX/voicevox_core)) | Default. GPU supported (CPU on macOS) |
 | `VOICEVOX` | HTTP | The [VOICEVOX](https://voicevox.hiroshiba.jp/) engine |
 | `AivisSpeech` | HTTP | The [AivisSpeech](https://aivis-project.com/) engine |
 | `Irodori-v4` | Local (speech.cpp / audio.cpp / PyTorch) | [Irodori-TTS](https://github.com/Aratako/Irodori-TTS). speech.cpp by default ([v4.1 Small MF](https://huggingface.co/Aratako/Irodori-TTS-v4.1-Small-MF), 0.15–0.3 s per sentence on a GPU). Can also use audio.cpp (500M v3 / 600M v3 VoiceDesign, reading CER 0.004) or PyTorch (dedicated environment) |

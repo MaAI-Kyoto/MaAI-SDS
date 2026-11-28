@@ -132,17 +132,16 @@ MaAI はユーザーとシステムの音声から、フレームごとに次の
 
 | 項目 | 要件 |
 |---|---|
-| OS | Windows（Windows 11 で確認。Qt アプリ・セットアップスクリプト・MMDAgent-EX）。対話サーバーは Docker（Linux）でも動作 |
+| OS | Windows（Windows 11 で確認。Qt アプリ・セットアップスクリプト・MMDAgent-EX）、macOS（Apple Silicon。macOS 26 で確認。[macOS（Apple Silicon）](#macosapple-silicon)）。対話サーバーは Docker（Linux）でも動作 |
 | Python | [3.11](https://www.python.org/downloads/)（python.org の公式版を推奨。sherpa-onnx のビルド済みパッケージが 3.11 向けのため、`.python-version` で 3.11 を指定） |
-| ビルドツール（一部のエンジンのみ） | [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)（C++ によるデスクトップ開発）と [CMake](https://cmake.org/)。既定の構成では不要。Kokoro・Tsukasa を入れるとき（依存をソースからビルドする）と、sherpa-onnx をソースからビルドするときに必要 |
+| ビルドツール（一部のエンジンのみ） | [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)（C++ によるデスクトップ開発）と [CMake](https://cmake.org/)。既定の構成では不要。Kokoro・Tsukasa を入れるとき（依存をソースからビルドする）と、sherpa-onnx をソースからビルドするときに必要。macOS は Xcode Command Line Tools（`xcode-select --install`。`nemotron-onnx` 用の sherpa-onnx をビルドするときに必要） |
 | パッケージ管理 | [uv](https://docs.astral.sh/uv/) |
-| GPU | NVIDIA GPU（CUDA 12.8）を推奨。CPU のみの構成にも対応 |
-| アバター | [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX)（Windows 版。v2.1 で確認）と CG アバター（[セットアップ](#3-mmdagent-ex-とアバター)） |
+| GPU | NVIDIA GPU（CUDA 12.8）を推奨。CPU のみの構成にも対応。macOS は一部のエンジンが Apple Silicon の GPU（Metal・MPS）を使う |
+| アバター | [MMDAgent-EX](https://github.com/mmdagent-ex/MMDAgent-EX)（Windows 版。v2.1 で確認）と CG アバター（[セットアップ](#3-mmdagent-ex-とアバター)）。macOS はブラウザ版の [MMDAgent-EX Web](https://github.com/kazu44ttaka/mmdagent-ex-web) |
 | LLM | 既定は [LM Studio](https://lmstudio.ai/) と [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b)（`google/gemma-4-e4b`）。OpenAI API・OpenAI 互換サーバーも利用可 |
-| その他（任意） | [Node.js](https://nodejs.org/)（一部のテストで使用）、[Docker Desktop](https://www.docker.com/products/docker-desktop/)、[VOICEVOX](https://voicevox.hiroshiba.jp/)、[AivisSpeech](https://aivis-project.com/) |
+| その他（任意） | [Node.js](https://nodejs.org/)（一部のテストで使用）、[Docker Desktop](https://www.docker.com/products/docker-desktop/)、[VOICEVOX](https://voicevox.hiroshiba.jp/)、[AivisSpeech](https://aivis-project.com/)、[7-Zip](https://www.7-zip.org/)（macOS で VOICEVOX〔アプリ版〕・AivisSpeech を入れるとき。`brew install sevenzip`） |
 
-macOS は Apple Silicon で、ASR・MaAI・LLM・TTS（VOICEVOX Core、CPU のみ）が動くことを確かめています
-（[macOS（Apple Silicon）](#macosapple-silicon)）。マイクでの対話とアバターは確かめていません。
+macOS は Apple Silicon の Mac に対応しています。手順と Windows との違いは [macOS（Apple Silicon）](#macosapple-silicon) を参照してください。
 
 ---
 
@@ -151,7 +150,7 @@ macOS は Apple Silicon で、ASR・MaAI・LLM・TTS（VOICEVOX Core、CPU の�
 ### 1. 環境構築
 
 `uv sync` だけでは環境は完成しません（パッチを当てた sherpa-onnx とエンジンの資産が別途必要）。
-必要な手順は `scripts/setup_env.ps1` にまとめてあります。
+必要な手順は `scripts/setup_env.ps1` にまとめてあります（macOS は `scripts/setup_env.sh`。[macOS（Apple Silicon）](#macosapple-silicon)）。
 
 ```powershell
 git clone https://github.com/MaAI-Kyoto/MaAI-SDS.git
@@ -182,7 +181,7 @@ Developer PowerShell から実行する必要はありません。
 
 > [!WARNING]
 > `uv sync` を単独で実行すると、パッチ適用済みの sherpa-onnx が PyPI 版で上書きされます。その場合は
-> `scripts\setup_env.ps1` を再実行して復元してください（[docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md)）。
+> `scripts\setup_env.ps1`（macOS は `bash scripts/setup_env.sh`）を再実行して復元してください（[docs/sherpa-onnx-custom-build.md](docs/sherpa-onnx-custom-build.md)）。
 
 > [!NOTE]
 > Windows でうまくいかないとき：
@@ -195,22 +194,46 @@ Developer PowerShell から実行する必要はありません。
 
 ### macOS（Apple Silicon）
 
-`setup_env.ps1` は Windows 用です。macOS では次の手順で入れます（Python 3.11 と [uv](https://docs.astral.sh/uv/) が必要）。
+macOS では `scripts/setup_env.sh` を使います（[uv](https://docs.astral.sh/uv/) と Git が必要。Python 3.11 が無ければ uv が取得します）。
 
 ```bash
 git clone https://github.com/MaAI-Kyoto/MaAI-SDS.git
 cd MaAI-SDS
-uv sync --extra cpu --extra gui --extra web --extra asr-sherpa --extra tts-voicevox
-bash scripts/setup_assets.sh      # ASR のモデル・smart-turn・VOICEVOX のランタイム（macOS 用）
+bash scripts/setup_env.sh
 .venv/bin/python main.py
 ```
 
-- VOICEVOX Core の macOS 版は CPU だけで動きます。CPU では、文節ごとに分けて合成して最初の声を早くします
-  （設定画面の「文節ごとの分割合成」）。スレッド数の既定は性能コアの数です。
-- 電源につないでいないとき（省電力モード）は、合成が 3〜5 倍遅くなります。
-- sherpa-onnx はパッチを当てていない PyPI 版になります（`nemotron-onnx` の精度が下がる。既定の ReazonSpeech は影響なし）。
-- MMDAgent-EX は Windows 版だけです。MMDAgent-EX が無いときは、音声をスピーカーから出します。
-- Intel の Mac には対応していません（onnxruntime と VOICEVOX Core の macOS 版が Apple Silicon 用だけ）。
+手順は `setup_env.ps1` と同じです：`uv sync`（CPU 構成）→ パッチ適用済み sherpa-onnx の復元 → エンジン資産の取得
+（`scripts/setup_assets.sh`）→ 検証（sherpa-onnx の版・ワーカーの起動・GUI の構築・テスト）。
+ほかのエンジンは、Windows と同じく「エンジン管理」で入れます。
+
+| オプション | 説明 |
+|---|---|
+| `--with-nemotron` | `nemotron-asr` 用の環境 `.venv_nemotron` も作成する |
+| `--build-sherpa` | パッチ適用済みの sherpa-onnx をこの Mac でビルドして入れる（`nemotron-onnx` に必要。Xcode Command Line Tools が必要で、数分かかる）。一度入れれば、以後の `setup_env.sh` とエンジン管理が `vendor/sherpa_onnx_prebuilt` から戻す |
+| `--skip-assets` | エンジン資産を取得しない |
+| `--all-extras` | すべてのエンジンの Python パッケージを導入する |
+| `--skip-tests` | 最後の検証で `tests/` のテストを実行しない |
+| `--verify-only` | 導入せず検証のみ行う |
+
+Windows との違い：
+
+- **GPU**：speech.cpp（Haas-ja・Irodori）と audio.cpp（Irodori・Supertonic 3・Qwen3-TTS・LFM2.5-Audio）は Metal、
+  Irodori の PyTorch 版は MPS で動きます。VOICEVOX Core と sherpa-onnx 系の ASR は CPU で動きます。
+- **VOICEVOX Core**：CPU で動くので、文節ごとに分けて合成し、最初の声を早くします（設定画面の「文節ごとの分割合成」）。
+  スレッド数の既定は性能コアの数です。
+- **VOICEVOX（アプリ版）・AivisSpeech**：エンジン管理が Mac 版のエンジンを入れ、アプリから起動します。
+  展開に 7-Zip（`brew install sevenzip`）が必要です。
+- **`nemotron-onnx`**：`--build-sherpa`（または `bash scripts/upgrade_sherpa_onnx.sh`）のあとで使えます。
+  ほかの sherpa-onnx 系のエンジン（既定の ReazonSpeech を含む）は PyPI 版で動きます。
+- **CPU では重いエンジン**：`nemotron-asr` は 80 ms ごとの推論が追いつかないので、`asr_nemotron_chunk_size_ms` を 560 にします。
+  `Tsukasa` は実時間より遅く合成します。
+- **使えないもの**：`qwen3-asr`（vLLM の Docker。NVIDIA の GPU が必要）と、Intel の Mac（onnxruntime・VOICEVOX Core などの
+  macOS 版が Apple Silicon 用だけ）。
+- **アバター**：MMDAgent-EX 本体は Windows 版だけなので、ブラウザ版の MMDAgent-EX Web で表示します
+  （[ブラウザに表示する場合](#3-mmdagent-ex-とアバター)）。表示しないときは、音声をスピーカーから出します。
+- **電源**：電源につないでいないとき（低電力モード）は、合成と認識が 3〜5 倍遅くなります。
+- マイクでの対話と、MMDAgent-EX Web でのアバターの表示は、Mac ではまだ確かめていません。
 
 ### 2. API キー
 
@@ -267,10 +290,20 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
    python -m http.server 8000   # 開いたままにして、ブラウザで http://localhost:8000 を開く
    ```
 
+   macOS では次のようにします（サンプル集と `maai_sds` フォルダーもここで用意します）。
+
+   ```bash
+   git clone --recursive https://github.com/mmdagent-ex/example ~/MMDAgent-EX/example
+   cp -R assets/mmdagent/maai_sds ~/MMDAgent-EX/example/   # MaAI-SDS のフォルダーで実行する
+   git clone https://github.com/kazu44ttaka/mmdagent-ex-web.git ~/mmdagent-ex-web
+   cd ~/mmdagent-ex-web
+   python3 -m http.server 8000   # 開いたままにして、Chrome か Edge で http://localhost:8000 を開く
+   ```
+
 2. 「MMDAgent-EX起動設定」の「アバターの表示先」を「ブラウザ（MMDAgent-EX Web）」にします。MaAI-SDS は MMDAgent-EX を起動せず、
    `ws://localhost:9001/chat` で待ち受けます（ポートは同じ画面で変えられます。ブラウザは TCP を開けないので、MDF の TCP の
    設定は使いません）。
-3. MMDAgent-EX Web でサンプル集のフォルダー（例：`C:\MMDAgent-EX\example`）を選び、`maai_sds/maai_sds_web.mdf` を開始して接続します。
+3. MMDAgent-EX Web でサンプル集のフォルダー（例：`C:\MMDAgent-EX\example`、macOS では `~/MMDAgent-EX/example`）を選び、`maai_sds/maai_sds_web.mdf` を開始して接続します。
 
 > [!NOTE]
 > MaAI-SDS のリポジトリには、MMDAgent-EX 本体・アバター・モーションは含まれていません（上の手順で各配布元から取得します）。
@@ -293,9 +326,9 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
 | 対象 | 準備 |
 |---|---|
 | [LM Studio](https://lmstudio.ai/)（既定の LLM） | [Gemma 4 E4B](https://lmstudio.ai/models/google/gemma-4-e4b) を取得し（`lms get google/gemma-4-e4b`）、ローカルサーバーを起動する（モデルは設定で変更可） |
-| [VOICEVOX](https://voicevox.hiroshiba.jp/) / [AivisSpeech](https://aivis-project.com/) | 各エンジンを導入して起動する |
+| [VOICEVOX](https://voicevox.hiroshiba.jp/) / [AivisSpeech](https://aivis-project.com/) | 各エンジンを導入して起動する（macOS では、エンジン管理が Mac 版のエンジンを入れ、アプリから起動する） |
 | OpenAI 互換サーバー | [vLLM](https://github.com/vllm-project/vllm) などで API を公開する（LLM の Custom） |
-| Qwen3-ASR | [Docker Desktop](https://www.docker.com/products/docker-desktop/) と NVIDIA GPU。ASR の起動時に設定画面がコンテナを自動で起動する |
+| Qwen3-ASR | [Docker Desktop](https://www.docker.com/products/docker-desktop/) と NVIDIA GPU。ASR の起動時に設定画面がコンテナを自動で起動する（macOS では使えない） |
 
 ---
 
@@ -360,16 +393,16 @@ Docker の対話サーバーに同時に接続できる設定画面は 1 つで�
 | エンジン | 実行形態 | 備考 |
 |---|---|---|
 | `sherpa-onnx` | ローカル（[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)） | [ReazonSpeech k2-v2](https://huggingface.co/reazon-research/reazonspeech-k2-v2)。既定 |
-| `speechcpp-asr` | ローカル（[speech.cpp](https://github.com/nyosegawa/speech.cpp)） | [Haas-ja v1.0](https://huggingface.co/third-intelligence/Haas-ja-v1.0)・[ReazonSpeech NeMo v2](https://huggingface.co/reazon-research/reazonspeech-nemo-v2)・[Parakeet TDT-CTC 0.6B ja](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja)・[Qwen3-ASR 1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B)。Haas-ja は GPU で 1 発話 約 30 ms・GPU メモリ 0.8 GB。Windows は Vulkan、Docker の GPU 構成は CUDA で動作 |
+| `speechcpp-asr` | ローカル（[speech.cpp](https://github.com/nyosegawa/speech.cpp)） | [Haas-ja v1.0](https://huggingface.co/third-intelligence/Haas-ja-v1.0)・[ReazonSpeech NeMo v2](https://huggingface.co/reazon-research/reazonspeech-nemo-v2)・[Parakeet TDT-CTC 0.6B ja](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja)・[Qwen3-ASR 1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B)。Haas-ja は GPU で 1 発話 約 30 ms・GPU メモリ 0.8 GB。Windows は Vulkan、Docker の GPU 構成は CUDA、macOS は Metal で動作 |
 | `sensevoice-onnx` | ローカル（sherpa-onnx） | [SenseVoiceSmall](https://huggingface.co/FunAudioLLM/SenseVoiceSmall) |
 | `parakeet-onnx` | ローカル（sherpa-onnx） | [Parakeet TDT-CTC 0.6B 日本語](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja) |
 | `cohere-asr-onnx` | ローカル（sherpa-onnx） | [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026)（14 言語） |
 | `funasr-nano-onnx` | ローカル（sherpa-onnx） | [Fun-ASR-Nano-2512](https://huggingface.co/FunAudioLLM/Fun-ASR-Nano-2512) |
 | `qwen3-asr-onnx` | ローカル（sherpa-onnx） | [Qwen3-ASR 0.6B](https://huggingface.co/Qwen/Qwen3-ASR-0.6B) |
-| `nemotron-onnx` | ローカル（パッチ適用済み sherpa-onnx） | [Nemotron 3.5 streaming](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b)。逐次（真の）ストリーミング認識 |
+| `nemotron-onnx` | ローカル（パッチ適用済み sherpa-onnx） | [Nemotron 3.5 streaming](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b)。逐次（真の）ストリーミング認識。macOS は `setup_env.sh --build-sherpa` のあとで使える |
 | `faster-whisper` | ローカル（[faster-whisper](https://github.com/SYSTRAN/faster-whisper)） | Whisper 系 |
 | `qwen3-asr` | Docker（[`qwenllm/qwen3-asr`](https://hub.docker.com/r/qwenllm/qwen3-asr)） | [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR)（vLLM）。ASR の起動に合わせてコンテナを起動・停止 |
-| `nemotron-asr` | 専用環境（[NeMo](https://github.com/NVIDIA/NeMo)） | `.venv_nemotron` をエンジン管理または `setup_env.ps1 -WithNemotron` で作成 |
+| `nemotron-asr` | 専用環境（[NeMo](https://github.com/NVIDIA/NeMo)） | `.venv_nemotron` をエンジン管理または `setup_env.ps1 -WithNemotron`（macOS は `setup_env.sh --with-nemotron`）で作成 |
 | `external-asr-tcp` | 外部 | TCP で外部の ASR に接続 |
 
 音声区間検出は `maai` / [`silero`](https://github.com/snakers4/silero-vad)、ターン検出は `maai` / [`smart-turn`](https://github.com/pipecat-ai/smart-turn) から選択できます（既定の設定では、音声区間検出が `silero`、
@@ -380,7 +413,7 @@ Docker の対話サーバーに同時に接続できる設定画面は 1 つで�
 
 | エンジン | 実行形態 | 備考 |
 |---|---|---|
-| `VOICEVOX-Core` | ローカル（[voicevox_core](https://github.com/VOICEVOX/voicevox_core)） | 既定。GPU 対応 |
+| `VOICEVOX-Core` | ローカル（[voicevox_core](https://github.com/VOICEVOX/voicevox_core)） | 既定。GPU 対応（macOS は CPU） |
 | `VOICEVOX` | HTTP | [VOICEVOX](https://voicevox.hiroshiba.jp/) エンジン |
 | `AivisSpeech` | HTTP | [AivisSpeech](https://aivis-project.com/) エンジン |
 | `Irodori-v4` | ローカル（speech.cpp / audio.cpp / PyTorch） | [Irodori-TTS](https://github.com/Aratako/Irodori-TTS)。既定は speech.cpp（[v4.1 Small MF](https://huggingface.co/Aratako/Irodori-TTS-v4.1-Small-MF)、GPU で 1 文 0.15〜0.3 秒）。audio.cpp 版（500M v3 / 600M v3 VoiceDesign、読みの CER 0.004）と PyTorch 版（専用環境）にも切り替え可 |

@@ -103,6 +103,8 @@ docs/bug-audit-*.md
 scripts/*
 # 環境構築に必要なものだけ許可する（他は解析・実験用のローカルスクリプト）
 !scripts/setup_env.ps1
+# macOS 版（setup_env.ps1 と同じ手順）
+!scripts/setup_env.sh
 !scripts/setup_nemotron_venv.ps1
 !scripts/setup_qwen3_tts_venv.ps1
 !scripts/setup_irodori_venv.ps1
