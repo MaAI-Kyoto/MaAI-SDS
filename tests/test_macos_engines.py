@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import queue
 import sys
 import tempfile
 import unittest
@@ -10,6 +11,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from maai_sds import engine_manager, paths
+from maai_sds.asr.service import ASRService
 from maai_sds.tts import audiocpp_client, irodori_server
 
 _MAC_SERVER = "audio.cpp/build/macos-metal-release/bin/audiocpp_server"
@@ -114,6 +116,60 @@ class MacosTtsEngineRunTest(unittest.TestCase):
             with mock.patch.object(sys, "platform", "win32"), \
                     mock.patch.object(paths, "resolve_under_repo", lambda rel: Path(tmp) / rel):
                 self.assertIsNone(paths.resolve_tts_engine_exe(None, "voicevox"))
+
+
+class InferenceQueueKeepsFinalsTest(unittest.TestCase):
+    """推論が遅いエンジン（Mac の CPU の faster-whisper）で、疑似ストリーミングの partial が final を押し出さない。"""
+
+    def _service(self, size: int = 4) -> ASRService:
+        service = object.__new__(ASRService)  # キューだけを使う
+        service.inference_queue = queue.Queue(maxsize=size)
+        return service
+
+    @staticmethod
+    def _p(name: str) -> dict:
+        return {"result_mode": "partial", "name": name}
+
+    @staticmethod
+    def _f(name: str) -> dict:
+        return {"result_mode": "final", "name": name}
+
+    @staticmethod
+    def _names(service: ASRService) -> list[str]:
+        return [item["name"] for item in list(service.inference_queue.queue)]
+
+    def test_final_drops_waiting_partials(self) -> None:
+        service = self._service()
+        for name in ("p1", "p2", "p3"):
+            service._put_inference(self._p(name))
+        service._put_inference(self._f("f1"))
+        self.assertEqual(self._names(service), ["f1"])
+
+    def test_partials_of_the_next_utterance_do_not_push_the_final_out(self) -> None:
+        service = self._service()
+        service._put_inference(self._f("f1"))
+        for i in range(10):  # 推論が追いつかない間に次の発話の partial が続く
+            service._put_inference(self._p(f"q{i}"))
+        names = self._names(service)
+        self.assertEqual(names[0], "f1")
+        self.assertEqual(len(names), 4)
+        self.assertEqual(names[-1], "q9")  # partial は新しいものが残る
+
+    def test_full_of_finals_keeps_them_and_skips_the_partial(self) -> None:
+        service = self._service(size=2)
+        service._put_inference(self._f("f1"))
+        service._put_inference(self._f("f2"))
+        self.assertFalse(service._put_inference(self._p("p")))
+        self.assertEqual(self._names(service), ["f1", "f2"])
+        # final どうしは以前と同じく古いほうを捨てる
+        self.assertTrue(service._put_inference(self._f("f3")))
+        self.assertEqual(self._names(service), ["f2", "f3"])
+
+    def test_order_is_kept_when_not_full(self) -> None:
+        service = self._service()
+        service._put_inference(self._f("f1"))
+        service._put_inference(self._p("p1"))
+        self.assertEqual(self._names(service), ["f1", "p1"])
 
 
 if __name__ == "__main__":

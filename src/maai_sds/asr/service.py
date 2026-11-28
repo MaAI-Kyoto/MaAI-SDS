@@ -1227,9 +1227,7 @@ class ASRService(
                                     result_mode="partial",
                                 )
                                 if bootstrap_payload is not None:
-                                    self._queue_put(
-                                        self.inference_queue, bootstrap_payload, policy=self.QUEUE_POLICY_DROP_OLDEST
-                                    )
+                                    self._put_inference(bootstrap_payload)
                             next_partial_sample_end = int(frame.sample_end) + pseudo_chunk_samples
                     else:
                         activation_count = 0
@@ -1257,7 +1255,7 @@ class ASRService(
                         result_mode="partial",
                     )
                     if partial_payload is not None:
-                        self._queue_put(self.inference_queue, partial_payload, policy=self.QUEUE_POLICY_DROP_OLDEST)
+                        self._put_inference(partial_payload)
                     while next_partial_sample_end <= int(frame.sample_end):
                         next_partial_sample_end += pseudo_chunk_samples
                 if hooks.emit_to_inference and self._force_finalize_event.is_set():
@@ -1276,7 +1274,7 @@ class ASRService(
                                 "result_mode": "final",
                                 "force_finalize_request_id": request_id,
                             }
-                            self._queue_put(self.inference_queue, payload, policy=self.QUEUE_POLICY_DROP_OLDEST)
+                            self._put_inference(payload)
                             if self.turn_backend == "smart-turn":
                                 self._queue_put(self.smart_turn_queue, payload, policy=self.QUEUE_POLICY_DROP_OLDEST)
                         else:
@@ -1323,7 +1321,7 @@ class ASRService(
                                 }
                                 if hooks.emit_to_inference:
                                     payload["result_mode"] = "final"
-                                    self._queue_put(self.inference_queue, payload, policy=self.QUEUE_POLICY_DROP_OLDEST)
+                                    self._put_inference(payload)
                                     if self.turn_backend == "smart-turn":
                                         self._queue_put(
                                             self.smart_turn_queue, payload, policy=self.QUEUE_POLICY_DROP_OLDEST
@@ -1787,6 +1785,48 @@ class ASRService(
             kind = "final" if result.is_final else "partial"
             stream = "stream" if result.is_streaming else "non-stream"
             self._log(f"[{engine}][{stream}/{kind}] {text} latency={latency:.3f}s")
+
+    def _put_inference(self, payload: dict) -> bool:
+        """推論キューへ入れる。確定（final）は途中結果（partial）に押し出させない。
+
+        以前は満杯なら一番古いものを捨てていた。推論が遅いエンジン（Mac の CPU の faster-whisper は 6 秒の発話に
+        約 4 秒）では疑似ストリーミングの partial がたまり、final が次の発話の partial に押し出されて、
+        確定結果がほとんど出なかった（3 発話で 0〜1 件）。
+
+        - final を入れるときは、待っている partial を捨てる（同じ発話の途中結果で、final が出れば用済み）。
+        - 満杯なら、一番古い partial を捨てる。partial が無ければ、partial は入れず（final を残す）、
+          final なら一番古い final を捨てる（以前と同じ）。
+        キューが満杯にならない速いエンジンでは、final の前の古い partial を飛ばすだけで、ほかは変わらない。
+        """
+        target = self.inference_queue
+        is_partial = str(payload.get("result_mode", "final")).strip().lower() == "partial"
+        # 推論スレッドは get しかしないので、取り出して並べ直してよい（その間に取られたものはそのまま推論される）
+        pending: list[dict] = []
+        while True:
+            try:
+                pending.append(target.get_nowait())
+            except queue.Empty:
+                break
+        if not is_partial:
+            pending = [item for item in pending if str(item.get("result_mode", "final")).strip().lower() != "partial"]
+        accepted = True
+        limit = target.maxsize
+        if limit > 0 and len(pending) >= limit:
+            oldest_partial = next(
+                (i for i, item in enumerate(pending) if str(item.get("result_mode", "final")).strip().lower() == "partial"),
+                None,
+            )
+            if oldest_partial is not None:
+                del pending[oldest_partial]
+            elif is_partial:
+                accepted = False
+            else:
+                del pending[0]
+        if accepted:
+            pending.append(payload)
+        for item in pending:
+            self._queue_put(target, item, policy=self.QUEUE_POLICY_DROP_OLDEST)
+        return accepted
 
     def _queue_put(self, target_queue: queue.Queue, item, policy: str = QUEUE_POLICY_DROP_OLDEST) -> bool:
         if policy == self.QUEUE_POLICY_BLOCK:
