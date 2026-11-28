@@ -161,6 +161,10 @@ invoke_sherpa_prebuilt() {
 
     if [ "$(uname -s)" != "Linux" ]; then
         ok "配布物は Linux x86_64 向けです（検出: $(uname -s)）。取得せず PyPI 版を使います。"
+        # Nemotron ONNX はパッチ入りのビルドが無いと動かない。この PC でビルドして入れる手順を案内する。
+        if [ "$(uname -s)" = "Darwin" ]; then
+            ok "Nemotron ONNX を使うなら bash scripts/upgrade_sherpa_onnx.sh でこの Mac 用にビルドして入れてください（数分かかります）。"
+        fi
         return 0
     fi
 

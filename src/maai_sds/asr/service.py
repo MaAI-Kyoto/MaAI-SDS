@@ -1567,12 +1567,18 @@ class ASRService(
         marker = self._sherpa_onnx_git_build_marker()
         if marker.is_file():
             return
+        # macOS・Linux 用は scripts/upgrade_sherpa_onnx.sh（以前は Windows の .ps1 しか案内していなかった）
+        how = (
+            " PowerShell で scripts/upgrade_sherpa_onnx.ps1 を実行し、"
+            if os.name == "nt"
+            else " bash scripts/upgrade_sherpa_onnx.sh を実行し（C++ コンパイラーが要ります。数分かかります）、"
+        )
         raise RuntimeError(
             "多言語 Nemotron ONNX には sherpa-onnx v1.13.5 Git ビルド（品質パッチ込み）が必要です。"
             f" マーカー {marker.name} がありません（素の PyPI は max_symbols=10 / NeMo mel 未対応。"
             " prompt_index だけなら PyPI 1.13.3+ で足ります）。"
-            " PowerShell で scripts/upgrade_sherpa_onnx.ps1 を実行し、"
-            " 直後に uv sync しないで GUI を再起動してください。"
+            + how
+            + " 直後に uv sync しないで GUI を再起動してください。"
         )
 
     @staticmethod

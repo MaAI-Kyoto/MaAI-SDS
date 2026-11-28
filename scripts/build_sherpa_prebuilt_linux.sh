@@ -15,11 +15,21 @@
 # 成果物: /out/sherpa_onnx_prebuilt_<版>_linux_x86_64_cp311.zip
 # これを GitHub Release に上げると、setup_assets.sh の SherpaPrebuilt が拾える
 # （拾う側の実装は現状 Windows のみ。Linux 版を配る際にあわせて実装すること）。
+#
+# macOS（Apple Silicon）でもそのまま動く（CPU 版。成果物は …_macos_arm64_cp311.zip）。
+# この PC のアプリに入れるなら scripts/upgrade_sherpa_onnx.sh を使う（このスクリプトを呼んで入れるところまでやる）。
 set -euo pipefail
 
 SHERPA_TAG="${SHERPA_TAG:-v1.13.5}"
 SHERPA_COMMIT="${SHERPA_COMMIT:-3dc7c569f31ca2cd4a20ed6f7db780327e6714c5}"
-ENABLE_GPU="${ENABLE_GPU:-1}"
+# macOS に CUDA は無い
+if [ "$(uname -s)" = "Darwin" ]; then
+    ENABLE_GPU="${ENABLE_GPU:-0}"
+    PLATFORM_TAG="macos_$(uname -m)"
+else
+    ENABLE_GPU="${ENABLE_GPU:-1}"
+    PLATFORM_TAG="linux_x86_64"
+fi
 
 REPO="${REPO:-/repo}"
 OUT="${OUT:-/out}"
@@ -75,6 +85,12 @@ CMAKE_ARGS="-DSHERPA_ONNX_ENABLE_BINARY=OFF -DSHERPA_ONNX_ENABLE_TTS=OFF"
 CMAKE_ARGS="$CMAKE_ARGS -DSHERPA_ONNX_ENABLE_SPEAKER_DIARIZATION=OFF"
 CMAKE_ARGS="$CMAKE_ARGS -DSHERPA_ONNX_ENABLE_WEBSOCKET=OFF -DSHERPA_ONNX_ENABLE_PORTAUDIO=OFF"
 [ "$ENABLE_GPU" = "1" ] && CMAKE_ARGS="$CMAKE_ARGS -DSHERPA_ONNX_ENABLE_GPU=ON"
+# 拡張を作る Python を CMake に明示する。CMake 4 の FindPython は PYTHON_EXECUTABLE を見ず、
+# 新しい Python（Homebrew の 3.15 など）があるとそちら用の拡張（cpython-315）を作ってしまい、
+# 3.11 の環境では import できない。venv の python ではなく元の python を渡す
+# （venv の python を渡すと「Could NOT find Python (missing: Development.Module)」になる）。
+BASE_PY="$("$VENV/bin/python" -c 'import sys; print(sys._base_executable)')"
+CMAKE_ARGS="$CMAKE_ARGS -DPYTHON_EXECUTABLE=$BASE_PY -DPython_EXECUTABLE=$BASE_PY -DPython3_EXECUTABLE=$BASE_PY"
 export SHERPA_ONNX_CMAKE_ARGS="$CMAKE_ARGS"
 echo "SHERPA_ONNX_CMAKE_ARGS=$SHERPA_ONNX_CMAKE_ARGS"
 PATH="$VENV/bin:$PATH" "$VENV/bin/pip" install --no-build-isolation --no-cache-dir "$SRC"
@@ -94,9 +110,10 @@ step "検証"
 "$VENV/bin/python" - <<'PY'
 import sherpa_onnx, pathlib
 p = pathlib.Path(sherpa_onnx.__file__).parent
-sos = sorted(f.name for f in p.rglob('*.so'))
+# macOS の onnxruntime は .dylib
+sos = sorted(f.name for f in [*p.rglob('*.so'), *p.rglob('*.dylib')])
 print('  __version__:', getattr(sherpa_onnx, '__version__', '(なし)'))
-print('  .so:', len(sos), '個')
+print('  .so / .dylib:', len(sos), '個')
 for n in sos[:8]:
     print('   ', n)
 assert any('onnxruntime' in n for n in sos), '同梱 onnxruntime が見つかりません（GPU ビルド失敗?）'
@@ -115,7 +132,7 @@ for d in "$SITE"/sherpa_onnx-*.dist-info; do
 done
 printf '%s' "$VER" > "$STAGE/VERSION.txt"
 
-ZIP="$OUT/sherpa_onnx_prebuilt_${VER}_linux_x86_64_cp311.zip"
+ZIP="$OUT/sherpa_onnx_prebuilt_${VER}_${PLATFORM_TAG}_cp311.zip"
 rm -f "$ZIP"
 ( cd "$STAGE" && "$VENV/bin/python" -c "
 import shutil, sys

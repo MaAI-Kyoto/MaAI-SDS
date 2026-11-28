@@ -128,6 +128,8 @@ scripts/*
 # カスタム sherpa-onnx のビルド一式。プリビルドを配布していない環境（他プラットフォーム、
 # sherpa を上げたい保守作業）ではここから再現する必要があるので追跡する。
 !scripts/upgrade_sherpa_onnx.ps1
+# 同じく macOS・Linux 版（build_sherpa_prebuilt_linux.sh でビルドしてアプリに入れる）
+!scripts/upgrade_sherpa_onnx.sh
 !scripts/build_sherpa_prebuilt_linux.sh
 # TTS=OFF ビルドで .pyd/.so から落ちるシンボルを __init__.py から外す。
 # これが無いと import 時に必ず ImportError になるので、ビルドに必須。
