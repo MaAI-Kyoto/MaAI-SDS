@@ -241,7 +241,7 @@ Differences from Windows:
 - **Avatar**: MMDAgent-EX itself is Windows only, so show the avatar with the browser version MMDAgent-EX Web
   ([Showing the avatar in a browser instead](#3-mmdagent-ex-and-the-avatar)). Without an avatar, speech goes to the speakers.
 - **Power**: on battery (low power mode), synthesis and recognition are 3–5 times slower.
-- Dialogue through the microphone and showing the avatar in MMDAgent-EX Web have not been tested on a Mac yet.
+- Dialogue through the microphone has not been tested on a Mac yet (dialogue from WAV input and the avatar in MMDAgent-EX Web have been).
 
 ### 2. API keys
 
@@ -302,7 +302,7 @@ collection and the `maai_sds` folder (steps 2 and 3).
    python -m http.server 8000   # keep it running and open http://localhost:8000 in the browser
    ```
 
-   On macOS, do the following (this also prepares the example collection and the `maai_sds` folder).
+   On macOS, do the following (this also prepares the example collection and the `maai_sds` folder; with this layout the MDF is filled in automatically in the settings window).
 
    ```bash
    git clone --recursive https://github.com/mmdagent-ex/example ~/MMDAgent-EX/example

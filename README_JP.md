@@ -233,7 +233,7 @@ Windows との違い：
 - **アバター**：MMDAgent-EX 本体は Windows 版だけなので、ブラウザ版の MMDAgent-EX Web で表示します
   （[ブラウザに表示する場合](#3-mmdagent-ex-とアバター)）。表示しないときは、音声をスピーカーから出します。
 - **電源**：電源につないでいないとき（低電力モード）は、合成と認識が 3〜5 倍遅くなります。
-- マイクでの対話と、MMDAgent-EX Web でのアバターの表示は、Mac ではまだ確かめていません。
+- マイクでの対話は、Mac ではまだ確かめていません（WAV 入力での対話と、MMDAgent-EX Web でのアバターの表示は確かめています）。
 
 ### 2. API キー
 
@@ -290,7 +290,7 @@ Copy-Item -Recurse <MaAI-SDS のフォルダー>\assets\mmdagent\maai_sds C:\MMD
    python -m http.server 8000   # 開いたままにして、ブラウザで http://localhost:8000 を開く
    ```
 
-   macOS では次のようにします（サンプル集と `maai_sds` フォルダーもここで用意します）。
+   macOS では次のようにします（サンプル集と `maai_sds` フォルダーもここで用意します。この置き方なら、設定画面の MDF が自動で入ります）。
 
    ```bash
    git clone --recursive https://github.com/mmdagent-ex/example ~/MMDAgent-EX/example
