@@ -251,6 +251,38 @@ def resolve_audiocpp_server(raw: str) -> Path:
     return last
 
 
+# macOS（Apple Silicon）の VOICEVOX ENGINE・AivisSpeech Engine。setup_assets.sh の VoicevoxApp・AivisSpeech が置く。
+_MACOS_TTS_ENGINE_RUN = {
+    "voicevox": "voicevox_engine/run",
+    "aivisspeech": "aivisspeech_engine/run",
+}
+
+
+def macos_tts_engine_run(kind: str) -> str | None:
+    """macOS で VOICEVOX（kind="voicevox"）・AivisSpeech（"aivisspeech"）のエンジンを置く場所（相対パス）。ほかの OS は None。"""
+    if sys.platform != "darwin":
+        return None
+    return _MACOS_TTS_ENGINE_RUN[kind]
+
+
+def resolve_tts_engine_exe(configured: Path | str | None, kind: str) -> Path | None:
+    """VOICEVOX・AivisSpeech の起動に使う実行ファイル。
+
+    設定のパスがあればそれ。無い・空なら、macOS では setup_assets.sh が置いた run を使う
+    （見本の設定は空か Windows の %LOCALAPPDATA%\\...\\run.exe で、macOS では見つからない）。
+    どれも無ければ設定の値（空なら None）を返し、呼ぶ側が「見つからない」を出す。
+    """
+    text = str(configured or "").strip()
+    if text and Path(text).exists():
+        return Path(text)
+    fallback = macos_tts_engine_run(kind)
+    if fallback is not None:
+        candidate = resolve_under_repo(fallback)
+        if candidate.is_file():
+            return candidate
+    return Path(text) if text else None
+
+
 _WIN_ABS = re.compile(r"^[A-Za-z]:[/\\]")
 
 

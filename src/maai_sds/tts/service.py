@@ -14,6 +14,7 @@ from urllib import parse as urllib_parse
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
+from .. import paths as _paths
 from ..audio.convert import swap_pcm16_endian, wav_bytes_to_pcm16be_16k_mono
 from ..llm.common import normalize_docker_loopback_host, running_in_docker
 
@@ -71,14 +72,16 @@ class TTSBridge:
                     f" Windows 側で VOICEVOX を起動し http://{host}:{port}/version が応答するのを待つか、"
                     "TTS エンジンを VOICEVOX-Core にしてください。"
                 )
-            if self.voicevox_exe_path is None:
+            # 設定が空か見つからなければ、macOS では setup_assets.sh が置いた VOICEVOX ENGINE（voicevox_engine/run）
+            exe = _paths.resolve_tts_engine_exe(self.voicevox_exe_path, "voicevox")
+            if exe is None:
                 raise RuntimeError("VOICEVOX.exe path is not configured")
-            if not self.voicevox_exe_path.exists():
-                raise FileNotFoundError(str(self.voicevox_exe_path))
+            if not exe.exists():
+                raise FileNotFoundError(str(exe))
             # PIPE のまま読み取らないと stderr/stdout が詰まり、子プロセスがブロックして GUI が固まる。
             self.voicevox_proc = subprocess.Popen(
-                [str(self.voicevox_exe_path)],
-                cwd=str(self.voicevox_exe_path.parent),
+                [str(exe)],
+                cwd=str(exe.parent),
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -121,15 +124,17 @@ class TTSBridge:
                 return None
             if self.aivisspeech_proc is not None and self.aivisspeech_proc.poll() is None:
                 return self.aivisspeech_proc
-            if self.aivisspeech_exe_path is None:
+            # 設定が空か見つからなければ、macOS では setup_assets.sh が置いた AivisSpeech Engine（aivisspeech_engine/run）
+            exe = _paths.resolve_tts_engine_exe(self.aivisspeech_exe_path, "aivisspeech")
+            if exe is None:
                 raise RuntimeError("AivisSpeech Engine の run.exe パスが未設定です")
-            if not self.aivisspeech_exe_path.exists():
-                raise FileNotFoundError(str(self.aivisspeech_exe_path))
-            args = [str(self.aivisspeech_exe_path), "--host", host, "--port", str(port)]
+            if not exe.exists():
+                raise FileNotFoundError(str(exe))
+            args = [str(exe), "--host", host, "--port", str(port)]
             if use_gpu:
                 args.append("--use_gpu")
             self.aivisspeech_proc = subprocess.Popen(
-                args, cwd=str(self.aivisspeech_exe_path.parent), stdin=subprocess.DEVNULL,
+                args, cwd=str(exe.parent), stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )

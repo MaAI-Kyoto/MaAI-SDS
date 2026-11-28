@@ -580,9 +580,80 @@ invoke_voicevox_runtime() {
     ok "配置完了: ${vvm_target}"
 }
 
+# macOS（Apple Silicon）用の VOICEVOX ENGINE・AivisSpeech Engine。どちらも公式の .7z（1 つ目の分割 .7z.001 だけで全部）。
+# 置き場は src/maai_sds/paths.py の macos_tts_engine_run と同じ。設定の voicevox_exe_path・aivisspeech_exe_path が
+# 空か Windows の場所のままなら、アプリはここの run を起動する。
+VOICEVOX_ENGINE_VERSION="0.26.2"
+VOICEVOX_ENGINE_SHA256_MACOS_ARM64="60aa5610682960aa74e4f1abc17a1d014c67cd569f116a37e65e6ed0bf6eb1fd"
+AIVISSPEECH_ENGINE_VERSION="1.2.0"
+AIVISSPEECH_ENGINE_SHA256_MACOS_ARM64="581a7f34afb2c5343ff8b27d6d88859083375868607657de95fad506939185df"
+
+install_macos_tts_engine() {
+    local label="$1" url="$2" sum="$3" target="$4"
+    if [ -x "${target}/run" ]; then
+        ok "既にあるためスキップ: ${target}/run"
+        return 0
+    fi
+    if [ "$(uname -m)" != "arm64" ]; then
+        die "このスクリプトが入れる ${label} の macOS 版は Apple Silicon（arm64）用だけです（検出: $(uname -m)）"
+    fi
+    # .7z は macOS の標準の道具では開けない
+    local sevenzip
+    sevenzip="$(command -v 7zz || command -v 7z || true)"
+    [ -n "$sevenzip" ] || die "${label} の展開に 7-Zip が要ります。brew install sevenzip で入れてからもう一度実行してください"
+    mkdir -p "${TMP_ROOT}"
+    local archive="${TMP_ROOT}/$(basename "$url")"
+    download "$url" "$archive"
+    local got
+    got="$(sha256_of "$archive")"
+    if [ "$got" != "$sum" ]; then
+        rm -f "$archive"
+        die "${label} の .7z の SHA-256 が違います: ${got}（期待値 ${sum}）"
+    fi
+    local ex="${TMP_ROOT}/$(basename "$target")_extract"
+    rm -rf "$ex"
+    mkdir -p "$ex"
+    "$sevenzip" x -y -bd -o"$ex" "$archive" >/dev/null || die "${label} を展開できません: ${archive}"
+    rm -f "$archive"
+    # 中は macos-arm64/ や macOS-arm64/ の下にある。run の場所から求める。
+    local run
+    run="$(find "$ex" -maxdepth 3 -name run -type f | head -n 1 || true)"
+    if [ -z "$run" ]; then
+        rm -rf "$ex"
+        die "${label} の .7z に run が見つかりません"
+    fi
+    rm -rf "$target"
+    mkdir -p "$(dirname "$target")"
+    mv "$(dirname "$run")" "$target"
+    rm -rf "$ex"
+    chmod +x "${target}/run"
+    ok "配置完了: ${target}/run"
+}
+
 invoke_aivis_speech() {
+    if [ "$(uname -s)" = "Darwin" ]; then
+        step "AivisSpeech Engine ${AIVISSPEECH_ENGINE_VERSION}（macOS arm64）"
+        install_macos_tts_engine "AivisSpeech Engine" \
+            "https://github.com/Aivis-Project/AivisSpeech-Engine/releases/download/${AIVISSPEECH_ENGINE_VERSION}/AivisSpeech-Engine-macOS-arm64-${AIVISSPEECH_ENGINE_VERSION}.7z.001" \
+            "${AIVISSPEECH_ENGINE_SHA256_MACOS_ARM64}" "${PROJECT_ROOT}/aivisspeech_engine"
+        return 0
+    fi
     step "AivisSpeech（リモート HTTP）"
     ok "Linux / Docker では AivisSpeech 本体は入れません。ホストで起動し host.docker.internal:10104 へ接続してください。"
+}
+
+# アプリ版 VOICEVOX（GUI の TTS「VOICEVOX」）。Windows はアプリ（setup_assets.ps1）、macOS は VOICEVOX ENGINE を入れる。
+# 以前はこのスクリプトにステップが無く、エンジン管理で選ぶと「Unknown --only value: VoicevoxApp」で失敗していた。
+invoke_voicevox_app() {
+    if [ "$(uname -s)" = "Darwin" ]; then
+        step "VOICEVOX ENGINE ${VOICEVOX_ENGINE_VERSION}（macOS arm64・約 1.9 GB）"
+        install_macos_tts_engine "VOICEVOX ENGINE" \
+            "https://github.com/VOICEVOX/voicevox_engine/releases/download/${VOICEVOX_ENGINE_VERSION}/voicevox_engine-macos-arm64-${VOICEVOX_ENGINE_VERSION}.7z.001" \
+            "${VOICEVOX_ENGINE_SHA256_MACOS_ARM64}" "${PROJECT_ROOT}/voicevox_engine"
+        return 0
+    fi
+    step "VOICEVOX（リモート HTTP）"
+    ok "Linux / Docker では VOICEVOX 本体は入れません。ホストで起動し host.docker.internal:50021 へ接続するか、TTS を VOICEVOX-Core にしてください。"
 }
 
 # ランタイムは Release / コンテナと GGUF だけで動く。ソース clone は通常不要だが、
@@ -796,6 +867,7 @@ run_step() {
         TsukasaVendor)     invoke_tsukasa_vendor ;;
         VoicevoxRuntime)   invoke_voicevox_runtime ;;
         AivisSpeech)       invoke_aivis_speech ;;
+        VoicevoxApp)       invoke_voicevox_app ;;
         AudioCppVendor)    invoke_audio_cpp_vendor ;;
         AudioCppServer)    invoke_audio_cpp_server ;;
         SupertonicGguf)    invoke_supertonic_gguf ;;

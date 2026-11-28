@@ -272,11 +272,12 @@ def _posixify_probe_path(raw: str) -> str | None:
         return text
     if "Scripts/python.exe" in text or text.endswith("Scripts/python"):
         return text.replace("Scripts/python.exe", "bin/python").replace("Scripts/python", "bin/python")
+    # AivisSpeech・アプリ版 VOICEVOX の本体は、macOS では setup_assets.sh が置くエンジン（paths.macos_tts_engine_run）。
+    # Linux ではホスト側の HTTP エンジンへ繋ぐので None。
     if "AivisSpeech" in text or text.endswith("run.exe"):
-        return None
-    # アプリ版 VOICEVOX も Windows 専用。Linux ではホスト側の HTTP エンジンへ繋ぐ。
+        return _paths.macos_tts_engine_run("aivisspeech")
     if text.endswith("VOICEVOX.exe"):
-        return None
+        return _paths.macos_tts_engine_run("voicevox")
     if text.endswith("audiocpp_server.exe"):
         # setup_assets.sh が置く場所（paths.resolve_audiocpp_server が探す場所と同じ）
         if sys.platform == "darwin":

@@ -60,6 +60,9 @@ sherpa-onnx-*/
 maai_assets/onnxruntime-linux-x64-*/
 voicevox_runtime/
 voicevox_runtime_linux/
+# macOS の VOICEVOX ENGINE・AivisSpeech Engine（setup_assets.sh の VoicevoxApp・AivisSpeech）
+voicevox_engine/
+aivisspeech_engine/
 smart-turn*.onnx
 # Nemotron 3.5 ASR の共通前処理 ONNX は学習済み重みを含まないため追跡する。
 !assets/nemotron-3.5-asr-streaming-preprocessor/
