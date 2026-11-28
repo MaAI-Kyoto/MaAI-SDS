@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
+from maai_sds.dialog.settings import avatar_model_alias_from_mdf
+from maai_sds.mmd import default_paths
 from maai_sds.mmd.default_paths import detect_default_exec_path, detect_default_mdf_path
+
+_REPO = Path(__file__).resolve().parents[1]
 
 
 class DefaultMdfPathTest(unittest.TestCase):
@@ -48,6 +54,37 @@ class DefaultMdfPathTest(unittest.TestCase):
             ours.mkdir()
             (ours / "maai_sds.mdf").write_text("", encoding="utf-8")
             self.assertEqual(detect_default_mdf_path(base), str(ours / "maai_sds.mdf"))
+
+
+class DefaultBaseDirTest(unittest.TestCase):
+    """探す場所は README の手順のもの。Windows は C:\\MMDAgent-EX、macOS はホームの ~/MMDAgent-EX。"""
+
+    def test_windows_keeps_c_drive(self) -> None:
+        self.assertEqual(default_paths.default_base_dir("win32"), Path(r"C:\MMDAgent-EX"))
+
+    def test_macos_uses_home(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(Path, "home", lambda: Path(tmp)):
+            self.assertEqual(default_paths.default_base_dir("darwin"), Path(tmp) / "MMDAgent-EX")
+
+    def test_macos_readme_layout_gives_the_gene_alias(self) -> None:
+        """README の macOS の手順（サンプル集を ~/MMDAgent-EX/example に clone し、maai_sds をコピー）で、
+        MDF の欄が埋まり、口パク・頷きを送るモデルの別名が gene になる（空欄のままだと "0" で、アバターが動かない）。"""
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(Path, "home", lambda: Path(tmp)), \
+                mock.patch.object(default_paths.sys, "platform", "darwin"):
+            example = Path(tmp) / "MMDAgent-EX" / "example"
+            example.mkdir(parents=True)
+            self.assertEqual(detect_default_mdf_path(), "")
+            self.assertEqual(avatar_model_alias_from_mdf(""), "0")
+            shutil.copytree(_REPO / "assets" / "mmdagent" / "maai_sds", example / "maai_sds")
+            mdf = detect_default_mdf_path()
+            self.assertEqual(mdf, str(example / "maai_sds" / "maai_sds.mdf"))
+            self.assertEqual(avatar_model_alias_from_mdf(mdf), "gene")
+            # 本体は無いので EXE は空のまま（ブラウザ版で表示する）
+            self.assertEqual(detect_default_exec_path(), "")
+            filled = default_paths.fill_default_mmdagent_paths({"exec_path": "", "mdf_path": ""})
+            self.assertEqual(filled["mdf_path"], mdf)
+            self.assertEqual(filled["exec_path"], "")
 
 
 if __name__ == "__main__":
