@@ -37,6 +37,15 @@ ok()   { printf '[ok] %s\n' "$1"; }
 warn() { printf '[warn] %s\n' "$1"; }
 die()  { printf '[error] %s\n' "$1" >&2; exit 1; }
 
+# SHA-256 を出す。sha256sum は Linux と新しい macOS にしか無いので、無ければ shasum（macOS に必ずある）。
+sha256_of() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum -- "$1" | awk '{print $1}'
+    else
+        shasum -a 256 -- "$1" | awk '{print $1}'
+    fi
+}
+
 while [ $# -gt 0 ]; do
     case "$1" in
         --only) ONLY="${2:-}"; shift 2 ;;
@@ -117,11 +126,11 @@ install_nemotron_preprocessor() {
         source="${asset_dir}/${file}"
         destination="${model_dir}/${file}"
         [ -f "$source" ] || die "Nemotron preprocessor asset が見つかりません: ${source}"
-        source_hash="$(sha256sum -- "$source" | awk '{print $1}')"
+        source_hash="$(sha256_of "$source")"
         [ "$source_hash" = "$expected" ] || die "Nemotron preprocessor asset の SHA-256 が不正です: ${source}"
         destination_hash=""
         if [ -f "$destination" ]; then
-            destination_hash="$(sha256sum -- "$destination" | awk '{print $1}')"
+            destination_hash="$(sha256_of "$destination")"
         fi
         if [ "$destination_hash" != "$source_hash" ]; then
             cp -f -- "$source" "$destination"
@@ -251,14 +260,20 @@ invoke_nemotron_onnx_models() {
     done
 }
 
-# speech.cpp（MIT）。GPU は Vulkan。libvulkan が無い環境（多くの Docker イメージ）では CPU 版を入れる。
+# speech.cpp（MIT）。Linux の GPU は Vulkan。libvulkan が無い環境（多くの Docker イメージ）では CPU 版を入れる。
+# macOS（Apple Silicon）は公式の Metal 版を入れる。
 # 版を上げるときは src/maai_sds/speechcpp.py の VERSION と setup_assets.ps1 もそろえる。
 SPEECHCPP_VERSION="0.11.1"
 SPEECHCPP_SHA256_VULKAN="fef3fb5fe5690a96958f7e28ff1a788fa03ec14981eb6d40e8e1dc28fb52b133"
 SPEECHCPP_SHA256_CPU="6ee3cda355b6ac8a60dc9ed5c5e5f6eb5946b266821f741c1690c6759f331fb6"
+SPEECHCPP_SHA256_MACOS_METAL="df2356d4315d375651e0f8faed37eefe8a89151c4b44096746462d62c1ffea03"
 
 invoke_speechcpp_runtime() {
-    step "speech.cpp ${SPEECHCPP_VERSION}（Linux x64）"
+    if [ "$(uname -s)" = "Darwin" ]; then
+        step "speech.cpp ${SPEECHCPP_VERSION}（macOS arm64・Metal）"
+    else
+        step "speech.cpp ${SPEECHCPP_VERSION}（Linux x64）"
+    fi
     # 実行ファイルはアプリ側（Docker ではイメージ内の /app）に置く。モデルはデータの置き場に置く。
     local dir="${APP_ROOT}/vendor/speechcpp"
     local exe="${dir}/speech"
@@ -266,20 +281,30 @@ invoke_speechcpp_runtime() {
         ok "既にあるためスキップ: ${exe}"
         return 0
     fi
-    if [ "${MAAI_SDS_SPEECHCPP_FLAVOR:-}" = "cuda" ]; then
-        build_speechcpp_cuda "$dir"
-        return 0
+    local platform flavor sum
+    if [ "$(uname -s)" = "Darwin" ]; then
+        # 以前は macOS でも Linux 版を取り、「cannot execute binary file」で止まっていた。
+        # 公式の macOS 版は Apple Silicon（arm64）の Metal 版だけ。
+        if [ "$(uname -m)" != "arm64" ]; then
+            die "speech.cpp の macOS 版は Apple Silicon（arm64）用だけです（検出: $(uname -m)）"
+        fi
+        platform="macos-arm64"; flavor="metal"; sum="${SPEECHCPP_SHA256_MACOS_METAL}"
+    else
+        if [ "${MAAI_SDS_SPEECHCPP_FLAVOR:-}" = "cuda" ]; then
+            build_speechcpp_cuda "$dir"
+            return 0
+        fi
+        platform="linux-x64"; flavor="cpu"; sum="${SPEECHCPP_SHA256_CPU}"
+        if [ "${MAAI_SDS_SPEECHCPP_FLAVOR:-}" = "vulkan" ] || { [ -z "${MAAI_SDS_SPEECHCPP_FLAVOR:-}" ] && ldconfig -p 2>/dev/null | grep -q "libvulkan.so.1"; }; then
+            flavor="vulkan"; sum="${SPEECHCPP_SHA256_VULKAN}"
+        fi
     fi
-    local flavor="cpu" sum="${SPEECHCPP_SHA256_CPU}"
-    if [ "${MAAI_SDS_SPEECHCPP_FLAVOR:-}" = "vulkan" ] || { [ -z "${MAAI_SDS_SPEECHCPP_FLAVOR:-}" ] && ldconfig -p 2>/dev/null | grep -q "libvulkan.so.1"; }; then
-        flavor="vulkan"; sum="${SPEECHCPP_SHA256_VULKAN}"
-    fi
-    local url="https://github.com/nyosegawa/speech.cpp/releases/download/v${SPEECHCPP_VERSION}/speech-${SPEECHCPP_VERSION}-linux-x64-${flavor}.zip"
+    local url="https://github.com/nyosegawa/speech.cpp/releases/download/v${SPEECHCPP_VERSION}/speech-${SPEECHCPP_VERSION}-${platform}-${flavor}.zip"
     mkdir -p "${TMP_ROOT}"
-    local zip="${TMP_ROOT}/speechcpp-linux.zip"
+    local zip="${TMP_ROOT}/speechcpp-${platform}.zip"
     download "$url" "$zip"
     local got
-    got="$(sha256sum "$zip" | cut -d' ' -f1)"
+    got="$(sha256_of "$zip")"
     if [ "$got" != "$sum" ]; then
         rm -f "$zip"
         die "speech.cpp の zip の SHA-256 が違います: ${got}（期待値 ${sum}）"
