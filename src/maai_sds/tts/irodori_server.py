@@ -63,6 +63,21 @@ def _pcm16le_to_pcm16be_16k(raw_pcm16le: bytes, sample_rate: int) -> bytes:
     return _swap_pcm16_endian(pcm16le)
 
 
+def pick_device_and_precision(torch: Any) -> tuple[str, str]:
+    """モデルとコーデックを載せる装置と精度。
+
+    CUDA があれば bf16 で CUDA。無ければ Apple Silicon の MPS、それも無ければ CPU。
+    irodori_tts は bf16 を CUDA・XPU にしか許さないので、MPS・CPU は fp32
+    （以前は cuda・bf16 固定で、Mac では「CUDA device requested but torch.cuda.is_available() is False」で落ちた）。
+    """
+    if torch.cuda.is_available():
+        return "cuda", "bf16"
+    mps = getattr(getattr(torch, "backends", None), "mps", None)
+    if mps is not None and mps.is_available():
+        return "mps", "fp32"
+    return "cpu", "fp32"
+
+
 class IrodoriTTSServerModel:
     def __init__(
         self,
@@ -88,17 +103,18 @@ class IrodoriTTSServerModel:
 
         # Windows + torch 2.11 has no Triton by default, so keep the existing eager path.
         # TF32 remains useful on RTX-class GPUs.
-        if torch.cuda.is_available():
+        device, precision = pick_device_and_precision(torch)
+        if device == "cuda":
             torch.set_float32_matmul_precision("high")
         checkpoint_path = download_hf_checkpoint(checkpoint)
         self._runtime = InferenceRuntime.from_key(
             RuntimeKey(
                 checkpoint=checkpoint_path,
-                model_device="cuda",
+                model_device=device,
                 codec_repo="Aratako/Semantic-DACVAE-Japanese-32dim",
-                model_precision="bf16",
-                codec_device="cuda",
-                codec_precision="bf16",
+                model_precision=precision,
+                codec_device=device,
+                codec_precision=precision,
                 codec_deterministic_encode=True,
                 codec_deterministic_decode=True,
                 compile_model=False,
